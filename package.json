@@ -24,6 +24,7 @@
   "dependencies": {
     "@chakra-ui/react": "^2.0.2",
     "@ethersproject/strings": "^5.6.0",
+    "@fontsource/inter": "^4.5.11",
     "@fortawesome/fontawesome-svg-core": "^6.1.1",
     "@fortawesome/free-brands-svg-icons": "^6.1.1",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",

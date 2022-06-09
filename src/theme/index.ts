@@ -4,34 +4,27 @@ import {
     withDefaultColorScheme,
     withDefaultVariant
 } from '@chakra-ui/react';
-import TextStyles from './foundations/typography';
+import fonts from './foundations/fonts';
+import textStyles from './foundations/typography';
+import colors from './foundations/colors';
 
 const theme = extendTheme({
     colors: {
-        brand: {
-            primary: '#5631F1',
-            secondary: '#172F5E',
-            tertiary: '#936DFF',
-            quaternary: '#DBD5F6',
-            quinary: '#9AA3C7',
-            firstaccent: '#FF6663',
-            secondaccent: '#69DC9E',
-        }
+        ...colors
     },
     fonts: {
-        heading: `Inter, sans-serif`,
-        body: `Inter, sans-serif`,
+        ...fonts
     },
     layerStyles: {
         
     },
     textStyles: {
-        ...TextStyles
+        ...textStyles
     },
     styles: {
         global: () => ({
             body: {
-                bg: "#0f172a",
+                bg: "#FFF",
             }
         })
     },

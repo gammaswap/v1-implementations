@@ -31,7 +31,6 @@ cache
 .env.development.local
 .env.test.local
 .env.production.local
-package-lock.json
 keys.txt
 accounts.txt
 secrets.json
