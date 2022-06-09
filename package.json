@@ -1,0 +1,89 @@
+{
+  "name": "gammaswap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "lint": "prettier ./test/*/*/*.ts --check",
+    "precompile": "rimraf ./src/abis/",
+    "compile": "waffle",
+    "pretest": "yarn compile",
+    "test": "mocha",
+    "prepublishOnly": "yarn test",
+    "generate-types": "npx typechain --target=truffle-v5 'src/abis/*.json'",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test1": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "author": "Daniel Alcarraz",
+  "license": "ISC",
+  "dependencies": {
+    "@chakra-ui/react": "^2.0.2",
+    "@ethersproject/strings": "^5.6.0",
+    "@fortawesome/fontawesome-svg-core": "^6.1.1",
+    "@fortawesome/free-brands-svg-icons": "^6.1.1",
+    "@fortawesome/free-regular-svg-icons": "^6.1.1",
+    "@fortawesome/free-solid-svg-icons": "^6.1.1",
+    "@fortawesome/react-fontawesome": "^0.1.18",
+    "@openzeppelin/contracts": "^4.6.0",
+    "@truffle/contract": "^4.5.10",
+    "@types/jest": "^28.1.0",
+    "@types/node": "^17.0.38",
+    "@types/react": "^18.0.10",
+    "@types/react-dom": "^18.0.5",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "base64-sol": "^1.1.0",
+    "chai": "^4.3.6",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^3.0.0",
+    "ethereumjs-abi": "^0.6.7",
+    "ethereumjs-util": "^7.1.4",
+    "ethers": "^5.6.6",
+    "framer-motion": "^6.3.3",
+    "react": "^18.1.0",
+    "react-bootstrap": "^2.4.0",
+    "react-dom": "^18.1.0",
+    "react-hook-form": "^7.31.2",
+    "react-router-dom": "^6.3.0",
+    "react-scripts": "^5.0.1",
+    "truncate-eth-address": "^1.0.2",
+    "web-vitals": "^2.1.4",
+    "web3": "^1.7.3"
+  },
+  "devDependencies": {
+    "@transak/transak-sdk": "^1.0.31",
+    "@truffle/hdwallet-provider": "^1.7.0",
+    "@typechain/truffle-v5": "^8.0.0",
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "^9.1.1",
+    "autoprefixer": "^10.4.7",
+    "ethereum-waffle": "^3.4.4",
+    "mocha": "^10.0.0",
+    "prettier": "^2.6.2",
+    "rimraf": "^3.0.2",
+    "solc": "^0.8.14-fixed",
+    "solhint-plugin-prettier": "^0.0.5",
+    "truffle": "^5.5.14",
+    "ts-node": "^10.7.0",
+    "typechain": "^8.0.0",
+    "typescript": "^4.7.2",
+    "yarn": "^1.22.18"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
