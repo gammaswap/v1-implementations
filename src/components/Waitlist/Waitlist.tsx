@@ -1,12 +1,20 @@
 import * as React from 'react';
 import { VStack, Heading, Box, Button, Link, Container } from '@chakra-ui/react';
-import Navbar from '../Navbar';
-import Socials from './Socials';
+import Navbar from '../Navbar/Navbar';
 
 const Waitlist: React.FC = () => {
     return (
         <>
             <Navbar />
+            <Box textStyle="display" color="brand.primary">GammaSwap</Box>
+            <Box textStyle="h1" color="brand.secondary">GammaSwap</Box>
+            <Box textStyle="h2" color="brand.tertiary">GammaSwap</Box>
+            <Box textStyle="h3" color="brand.quaternary">GammaSwap</Box>
+            <Box textStyle="h4" color="brand.quinary">GammaSwap</Box>
+            <Box textStyle="body_base" color="brand.firstaccent">GammaSwap</Box>
+            <Box textStyle="body_sm" color="brand.secondaccent">GammaSwap</Box>
+            <Box textStyle="body_label" color="brand.primary">GammaSwap</Box>
+            <Box textStyle="body_instruction" color="brand.primary">GammaSwap</Box>
             <Container>
                 <VStack
                     spacing={8}
@@ -20,7 +28,6 @@ const Waitlist: React.FC = () => {
                         <Heading
                         as="h1"
                         fontFamily="body"
-                        bgColor="blue.400"
                         bgClip="text"
                         fontSize="6xl"
                         bgGradient="linear(to-l, #79c2ff, #4a5888)"
@@ -48,7 +55,6 @@ const Waitlist: React.FC = () => {
                             </Button>
                         </Link>
                     </Box>
-                    <Socials />
                 </VStack>
             </Container>
         </>

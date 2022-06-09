@@ -127,7 +127,7 @@ function Borrow({ account, token0, token1, posManager }) {
             account,  
         ).send({ from: account });
         console.log("createPosition");
-        console.log(createPosition);/**/
+        console.log(createPosition);
     }
 
     async function checkAllowance(account, token) {
@@ -229,7 +229,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='token0'
                             type='number'
                             {...register('token0Amt')}
@@ -246,7 +245,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='token1'
                             type='number'
                             {...register('token1Amt')}
@@ -263,7 +261,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='liquidity'
                             type='number'
                             {...register('liquidity')}
@@ -314,6 +311,5 @@ function Borrow({ account, token0, token1, posManager }) {
             </Box>
         </>
     );
-
 }
 export default Borrow;
