@@ -8,6 +8,7 @@ import {
     Heading,
     List,
     ListItem,
+    Center
 } from '@chakra-ui/react';
 
 const Tokens: Array<Token> = [
@@ -91,7 +92,7 @@ const SelectToken: React.FC<SelectTokenProps> = (props) => {
                     >
                         {Tokens.map((token) => (
                             <ListItem cursor="pointer" key={token.symbol} display='flex' p={1} onClick={() => props.handleTokenSelected1(token)}> 
-                                <Container p={0} w='32px'><img src={token.iconPath} /></Container>
+                                <Container p={0} w='80px'><img src={token.iconPath} /></Container>
                                 <Container >{token.symbol}</Container> 
                                 <Container textAlign='right'>0</Container> 
                             </ListItem>
