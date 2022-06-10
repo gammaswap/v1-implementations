@@ -229,7 +229,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='token0'
                             type='number'
                             {...register('token0Amt')}
@@ -246,7 +245,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='token1'
                             type='number'
                             {...register('token1Amt')}
@@ -263,7 +261,6 @@ function Borrow({ account, token0, token1, posManager }) {
                         <Input
                             color={'#e2e8f0'}
                             placeholder='amount'
-                            color={'#e2e8f0'}
                             id='liquidity'
                             type='number'
                             {...register('liquidity')}

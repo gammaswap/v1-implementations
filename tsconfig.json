@@ -27,7 +27,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "watch": true,
   },
   "include": [
     "**/*.ts",
