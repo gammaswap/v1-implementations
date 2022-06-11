@@ -3,14 +3,12 @@ import MobileNav from './Mobile/MobileNav';
 import {
     Box,
     Flex,
-    Text,
     IconButton,
-    Stack,
     Collapse,
     Icon,
     useColorModeValue,
-    useBreakpointValue,
     useDisclosure,
+    Image,
 } from "@chakra-ui/react";
 import {
   HiMenu,
@@ -19,18 +17,15 @@ import {
 
 const Navbar = () => {
     const { isOpen, onToggle } = useDisclosure();
+    const logoColor = useColorModeValue("gray.100", "gray.100")
 
     return (
         <Box>
             <Flex
-                bg={useColorModeValue("white", "gray.800")}
+                bg={useColorModeValue("gray.800", "gray.800")}
                 color={useColorModeValue("gray.600", "white")}
-                minH={"60px"}
                 py={{ base: 2 }}
                 px={{ base: 4 }}
-                borderBottom={1}
-                borderStyle={"solid"}
-                borderColor={useColorModeValue("gray.200", "gray.900")}
                 align={"center"}
             >
                 <Flex
@@ -40,11 +35,12 @@ const Navbar = () => {
                 >
                     <IconButton
                         onClick={onToggle}
+                        colorScheme={"purple"}
                         icon={
                             isOpen ? (
-                                <Icon as={HiX} w={3} h={3} />
+                                <Icon as={HiX} color={"gray.100"} _hover={{ color: "gray.700" }} w={5} h={5} />
                             ) : (
-                                <Icon as={HiMenu} w={5} h={5} />
+                                <Icon as={HiMenu} color={"gray.100"} _hover={{ color: "gray.700" }} w={5} h={5} />
                             )
                         }
                         variant={"ghost"}
@@ -53,33 +49,27 @@ const Navbar = () => {
                 </Flex>
                 <Flex
                     flex={{ base: 1 }}
-                    justify={{ base: "center", md: "start" }}
+                    justify={{ base: "center", md:"flex-start"}}
                 >
-                    <Text
-                        textAlign={useBreakpointValue({
-                            base: "center",
-                            md: "left",
-                        })}
+                    <Image w={"40px"} src={"/assets/gsLogo.png"} alt={"GammaSwap Logo"} />
+                    <Box
                         textStyle={"h3"}
-                        color={useColorModeValue("gray.800", "white")}
+                        ml={1}
+                        pt={1} 
+                        color={logoColor}
                     >
                         GammaSwap
-                    </Text>
-
+                    </Box>
+                </Flex>
+                <Flex
+                    flex={{ base: 1 }}
+                    justify={{ base: "center", md: "flex-end" }}
+                >
                     <Flex display={{ base: "none", md: "flex" }} ml={10}>
                         <DesktopNav />
                     </Flex>
                 </Flex>
-
-                <Stack
-                    flex={{ base: 1, md: 0 }}
-                    justify={"flex-end"}
-                    direction={"row"}
-                    spacing={6}
-                >
-                </Stack>
             </Flex>
-
             <Collapse in={isOpen} animateOpacity>
                 <MobileNav />
             </Collapse>

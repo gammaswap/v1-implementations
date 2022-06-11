@@ -30,7 +30,7 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
             >
                 <Text
                     fontWeight={600}
-                    color={useColorModeValue("gray.600", "gray.200")}
+                    color={useColorModeValue("gray.100", "gray.200")}
                 >
                     {label}
                 </Text>
@@ -55,7 +55,7 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
                     pl={4}
                     borderLeft={1}
                     borderStyle={"solid"}
-                    borderColor={useColorModeValue("gray.200", "gray.700")}
+                    borderColor={useColorModeValue("gray.100", "gray.700")}
                     align={"start"}
                 >
                     {children &&

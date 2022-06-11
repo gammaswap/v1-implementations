@@ -24,10 +24,10 @@ const theme = extendTheme({
     styles: {
         global: () => ({
             body: {
-                bg: "#FFF",
+                bg: "gray.800"
             }
         })
-    },
+    }
 })
 
 export default theme

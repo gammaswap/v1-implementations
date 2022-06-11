@@ -9,6 +9,7 @@ const textStyles = {
         fontSize: '7xl',
         fontWeight: FONT_WEIGHT.BOLD,
         lineHeight: 'tall',
+        letterSpacing: 'tighter',
     },
     h1: {
         fontSize: '6xl',
