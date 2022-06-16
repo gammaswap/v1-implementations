@@ -22,6 +22,7 @@
   "author": "Daniel Alcarraz",
   "license": "ISC",
   "dependencies": {
+    "@chakra-ui/icons": "^2.0.2",
     "@chakra-ui/modal": "^2.0.3",
     "@chakra-ui/react": "^2.0.2",
     "@ethersproject/strings": "^5.6.0",

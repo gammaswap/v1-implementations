@@ -31,6 +31,10 @@ export const Button: ComponentStyleConfig = {
             bg: '#69DC9E',  
             color: '#e2e8f0'
         },
+        collateral: {
+            bg: '#274060',  
+            color: '#e2e8f0'
+        },
     },
 }
 
@@ -45,6 +49,9 @@ export const FormLabel: ComponentStyleConfig = {
             color:'#e2e8f0',
             float: 'right'
         },
+        openLoanFit: {
+            color:'#e2e8f0'
+        }
       },
 }
 
