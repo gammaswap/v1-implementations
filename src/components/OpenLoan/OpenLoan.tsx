@@ -61,6 +61,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
             setToken1Icon(<Image mr="5px" boxSize='25px' src={token.iconPath} />)
         }
         onCloseSelectToken();
+        resetCollateralType();
     }
 
     const handleCollateralSelected = (type: CollateralType) => {
@@ -96,6 +97,11 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                 return "Select collateral type";
         }
         return "";
+    }
+
+    function resetCollateralType() {
+        setCollateralType(CollateralType.None);
+        setCollateralButtonText(getCollateralTypeButtonText(CollateralType.None));
     }
 
     return (
