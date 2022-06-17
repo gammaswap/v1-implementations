@@ -41,7 +41,9 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     const [token1Icon, setToken1Icon] = React.useState<React.ReactElement>(<Image h='25px'/>);
     const [confirmVariant, setConfirmVariant] = React.useState("confirmGrey");
     const [loanAmt, setLoanAmt] = React.useState(0);
-    const [collateralAmt, setCollateralAmt] = React.useState(0);
+    const [collateralAmt0, setCollateralAmt0] = React.useState(0);
+    const [collateralAmt1, setCollateralAmt1] = React.useState(0);
+    const [showToken1, setShowToken1] = React.useState(false);
     const { 
         isOpen: isOpenSelectToken, 
         onOpen: onOpenSelectToken, 
@@ -54,7 +56,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     } = useDisclosure()
 
     const handleTokenSelected = (token: Token, tokenNumber: number) => {
-        console.log("selected token" + tokenNumber + " " + token.symbol);
+        console.log("selected token", tokenNumber, token.symbol);
         if (tokenNumber==0) {
             setToken0(token);
             setToken0Text(token.symbol);
@@ -70,9 +72,10 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     }
 
     const handleCollateralSelected = (type: CollateralType) => {
-        console.log("selected collateral type " + CollateralType[type]);
+        console.log("selected collateral type", CollateralType[type]);
         setCollateralType(type);
         setCollateralButtonText(getCollateralTypeButtonText(type));
+        setShowToken1(type == CollateralType.Both);
         onCloseSelectCollateral();
         validate();
     }
@@ -109,6 +112,8 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
         setCollateralType(CollateralType.None);
         setCollateralButtonText(getCollateralTypeButtonText(CollateralType.None));
         setConfirmVariant("confirmGrey");
+        setShowToken1(false);
+        setCollateralAmt1(0);
     }
 
     function handleConfirmClick() {
@@ -116,7 +121,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
             console.log("invalid inputs");
             return;
         }
-        console.log("selected token");
+        console.log("Confirm values:", token0.symbol, token1.symbol, loanAmt, getCollateralTypeButtonText(collateralType), collateralAmt0, collateralAmt1);
     }
 
     function validate() {
@@ -135,8 +140,18 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
             setConfirmVariant("confirmGrey");
             return false;
         }
-        if (loanAmt <= 0 || collateralAmt <= 0) {
-            console.log("Amount must be positive.");
+        if (loanAmt <= 0) {
+            console.log("Loan amount must be positive.");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        if (collateralAmt0 <= 0) {
+            console.log(token0.symbol, "collateral amount must be positive.");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        if (collateralType == CollateralType.Both && collateralAmt1 <= 0) {
+            console.log(token1.symbol, "collateral amount must be positive.");
             setConfirmVariant("confirmGrey");
             return false;
         }
@@ -150,8 +165,13 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
         validate();
     }
     
-    function collateralAmtChanged(valString: string, valNum: number) {
-        setCollateralAmt(valNum);
+    function collateralAmt0Changed(valString: string, valNum: number) {
+        setCollateralAmt0(valNum);
+        validate();
+    }
+
+    function collateralAmt1Changed(valString: string, valNum: number) {
+        setCollateralAmt1(valNum);
         validate();
     }
 
@@ -223,10 +243,22 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                             min={0} 
                             clampValueOnBlur={true} 
                             keepWithinRange={true}
-                            onChange={collateralAmtChanged}
-                            value={collateralAmt}>
+                            onChange={collateralAmt0Changed}
+                            value={collateralAmt0}>
                             <NumberInputField  />
                         </NumberInput>
+                        { showToken1 ? 
+                        <NumberInput 
+                            variant='openLoan' 
+                            w='100%' 
+                            defaultValue={0} 
+                            min={0} 
+                            clampValueOnBlur={true} 
+                            keepWithinRange={true}
+                            onChange={collateralAmt1Changed}
+                            value={collateralAmt1}>
+                            <NumberInputField  /> 
+                        </NumberInput> : null }
                         <Container p='20px' />
                         <Container textAlign='right'>
                             <Text variant='loanInfoRight' pr='5px'>Interest Rate</Text>
