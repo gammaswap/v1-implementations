@@ -14,8 +14,9 @@ import {
     ButtonGroup,
     Text,
     VStack,
-    Input,
-    Image
+    Image,
+    NumberInput,
+    NumberInputField,
 } from '@chakra-ui/react';
 import {
     FaInfoCircle,
@@ -38,6 +39,9 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     const [token0Icon, setToken0Icon] = React.useState<React.ReactElement>(<Image h='25px'/>);
     const [token1Text, setToken1Text] = React.useState("Select token");
     const [token1Icon, setToken1Icon] = React.useState<React.ReactElement>(<Image h='25px'/>);
+    const [confirmVariant, setConfirmVariant] = React.useState("confirmGrey");
+    const [loanAmt, setLoanAmt] = React.useState(0);
+    const [collateralAmt, setCollateralAmt] = React.useState(0);
     const { 
         isOpen: isOpenSelectToken, 
         onOpen: onOpenSelectToken, 
@@ -62,6 +66,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
         }
         onCloseSelectToken();
         resetCollateralType();
+        validate();
     }
 
     const handleCollateralSelected = (type: CollateralType) => {
@@ -69,6 +74,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
         setCollateralType(type);
         setCollateralButtonText(getCollateralTypeButtonText(type));
         onCloseSelectCollateral();
+        validate();
     }
 
     function onOpenToken0() {
@@ -102,6 +108,51 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     function resetCollateralType() {
         setCollateralType(CollateralType.None);
         setCollateralButtonText(getCollateralTypeButtonText(CollateralType.None));
+        setConfirmVariant("confirmGrey");
+    }
+
+    function handleConfirmClick() {
+        if (!validate()) {
+            console.log("invalid inputs");
+            return;
+        }
+        console.log("selected token");
+    }
+
+    function validate() {
+        if (token0 == token1) {
+            console.log("Tokens must be different.");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        if (token0Text == "Select token" || token1Text == "Select token" ) {
+            console.log("Token must be selected.");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        if (collateralType == CollateralType.None) {
+            console.log("Collateral must be selected");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        if (loanAmt <= 0 || collateralAmt <= 0) {
+            console.log("Amount must be positive.");
+            setConfirmVariant("confirmGrey");
+            return false;
+        }
+        console.log("Valid inputs.");
+        setConfirmVariant("confirmGreen");
+        return true;
+    }
+
+    function loanAmtChanged(valString: string, valNum: number) {
+        setLoanAmt(valNum);
+        validate();
+    }
+    
+    function collateralAmtChanged(valString: string, valNum: number) {
+        setCollateralAmt(valNum);
+        validate();
     }
 
     return (
@@ -141,7 +192,17 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                             </ButtonGroup>
                         </Container>
                         <FormLabel variant='openLoan'>Your Loan Amount</FormLabel>
-                        <Input variant='outline' placeholder='0'></Input>
+                         <NumberInput 
+                            variant='openLoan' 
+                            w='100%' 
+                            defaultValue={0} 
+                            min={0} 
+                            clampValueOnBlur={true} 
+                            keepWithinRange={true}
+                            onChange={loanAmtChanged}
+                            value={loanAmt}>
+                            <NumberInputField/>
+                        </NumberInput>
                         <Container display='inline-flex' p='0' m='0'>
                             <FormLabel variant='openLoanFit' pr='20px' m='0'>Your Collateral</FormLabel>
                             <Button variant='select' size='tiny' h='20px' rightIcon={<ChevronDownIcon />} onClick={onOpenSelectCollateral}>
@@ -155,14 +216,24 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                                 onClose={onCloseSelectCollateral}
                             />
                         </Container>
-                        <Input variant='outline' placeholder='0'></Input>
+                        <NumberInput 
+                            variant='openLoan' 
+                            w='100%' 
+                            defaultValue={0} 
+                            min={0} 
+                            clampValueOnBlur={true} 
+                            keepWithinRange={true}
+                            onChange={collateralAmtChanged}
+                            value={collateralAmt}>
+                            <NumberInputField  />
+                        </NumberInput>
                         <Container p='20px' />
                         <Container textAlign='right'>
                             <Text variant='loanInfoRight' pr='5px'>Interest Rate</Text>
                             <Text variant='loanInfoRight' >--%</Text>
                         </Container>
                         <Container p='0 0 5px 0'>
-                            <Button variant='confirmGrey' >Confirm</Button>
+                            <Button variant={confirmVariant} onClick={handleConfirmClick}>Confirm</Button>
                         </Container>
                     </VStack>
                 </FormControl>

@@ -7,7 +7,7 @@ import {
 import fonts from './foundations/fonts';
 import textStyles from './foundations/typography';
 import colors from './foundations/colors';
-import { Button, FormLabel, Text } from '../components/OpenLoan/OpenLoanStyle'
+import { Button, FormLabel, Text, NumberInput } from '../components/OpenLoan/OpenLoanStyle'
 
 const theme = extendTheme({
     colors: {
@@ -32,7 +32,8 @@ const theme = extendTheme({
     components: {
         Button,
         FormLabel,
-        Text
+        Text,
+        NumberInput
     },
 })
 

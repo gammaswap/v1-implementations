@@ -1,4 +1,5 @@
 import type { ComponentStyleConfig } from '@chakra-ui/theme'
+import { theme } from "@chakra-ui/react";
 
 export const Button: ComponentStyleConfig = {
     sizes: {
@@ -55,15 +56,6 @@ export const FormLabel: ComponentStyleConfig = {
       },
 }
 
-export const Input: ComponentStyleConfig = {
-    variants: {
-        openLoan: {
-            w:'100%',
-            color:'#e2e8f0'
-        },
-    }
-}
-
 export const Text: ComponentStyleConfig = {
     variants: {
         loanInfoRight: {
@@ -72,4 +64,16 @@ export const Text: ComponentStyleConfig = {
             textAlign: 'right'
         }
     },
+}
+
+export const NumberInput: ComponentStyleConfig = {
+    variants: {
+        openLoan: (props) => ({
+            ...theme.components.NumberInput.variants.outline(props),
+            field: {
+                ...theme.components.NumberInput.variants.outline(props).field,
+                color:'#e2e8f0',
+              },
+          })
+    }
 }
