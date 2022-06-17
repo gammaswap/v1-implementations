@@ -1,5 +1,4 @@
 import * as React from 'react';
-import ReactDOM from 'react-dom/client';
 import { Token, Tokens } from '../SelectToken/Token';
 import { CollateralType } from './CollateralType';
 import SelectTokenModal from '../SelectToken/SelectTokenModal';
@@ -11,12 +10,12 @@ import {
     FormControl,
     Heading,
     FormLabel,
-    Select,
     Button,
     ButtonGroup,
     Text,
     VStack,
     Input,
+    Image
 } from '@chakra-ui/react';
 import {
     FaInfoCircle,
@@ -35,6 +34,10 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
     const [tokenNumber, setTokenNumber] = React.useState(0);
     const [collateralType, setCollateralType] = React.useState<CollateralType>(CollateralType.None);
     const [collateralButtonText, setCollateralButtonText] = React.useState("Select collateral type");
+    const [token0Text, setToken0Text] = React.useState("Select token");
+    const [token0Icon, setToken0Icon] = React.useState<React.ReactElement>(<Image h='25px'/>);
+    const [token1Text, setToken1Text] = React.useState("Select token");
+    const [token1Icon, setToken1Icon] = React.useState<React.ReactElement>(<Image h='25px'/>);
     const { 
         isOpen: isOpenSelectToken, 
         onOpen: onOpenSelectToken, 
@@ -50,8 +53,12 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
         console.log("selected token" + tokenNumber + " " + token.symbol);
         if (tokenNumber==0) {
             setToken0(token);
+            setToken0Text(token.symbol);
+            setToken0Icon(<Image mr="5px" boxSize='25px' src={token.iconPath}  />)
         } else {
             setToken1(token);
+            setToken1Text(token.symbol);
+            setToken1Icon(<Image mr="5px" boxSize='25px' src={token.iconPath} />)
         }
         onCloseSelectToken();
     }
@@ -93,14 +100,22 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
 
     return (
         <Container>
-            <Box borderRadius={'2xl'} bg={'#1d2c52'} maxW='450px' boxShadow='dark-lg'>
+            <Box m='auto' borderRadius={'2xl'} bg={'#1d2c52'} maxW='420px' boxShadow='dark-lg'>
                 <FormControl p='10px 15px 0px 15px' boxShadow='lg'>
                     <VStack>
                         <Heading color={'#e2e8f0'} marginBottom={'25px'}>Open Your Loan</Heading>
                         <FormLabel variant='openLoan'>Select a Token Pair</FormLabel>
-                        <Container>
-                            <Container w='50%' display='inline-block' ><Select id='token0' onClick={onOpenToken0} color={'#e2e8f0'} placeholder='Select a token'/></Container>
-                            <Container w='50%' display='inline-block' ><Select id='token1' onClick={onOpenToken1} color={'#e2e8f0'} placeholder='Select a token'/></Container>
+                        <Container display='inline-block'>
+                            <Container w='50%' display='inline-grid' >
+                                <Button id='token0' variant='select' onClick={onOpenToken0} rightIcon={<ChevronDownIcon />} leftIcon={token0Icon}>
+                                    {token0Text}
+                                </Button>
+                            </Container>
+                            <Container w='50%' display='inline-grid' >
+                                <Button id='token1' variant='select' onClick={onOpenToken1} rightIcon={<ChevronDownIcon />} leftIcon={token1Icon}>
+                                    {token1Text}
+                                </Button>
+                            </Container>
                             <SelectTokenModal handleTokenSelected={handleTokenSelected} isOpen={isOpenSelectToken} onClose={onCloseSelectToken} tokenNumber={tokenNumber}></SelectTokenModal>
                         </Container>
                         <Container textAlign='center'>
@@ -123,7 +138,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                         <Input variant='outline' placeholder='0'></Input>
                         <Container display='inline-flex' p='0' m='0'>
                             <FormLabel variant='openLoanFit' pr='20px' m='0'>Your Collateral</FormLabel>
-                            <Button variant='collateral' size='tiny' h='20px' rightIcon={<ChevronDownIcon />} onClick={onOpenSelectCollateral}>
+                            <Button variant='select' size='tiny' h='20px' rightIcon={<ChevronDownIcon />} onClick={onOpenSelectCollateral}>
                                 <Text ml='4px'>{collateralButtonText}</Text>
                             </Button>
                             <SelectCollateralModal 
@@ -141,7 +156,7 @@ const OpenLoan: React.FC<OpenLoanProps> = (props) => {
                             <Text variant='loanInfoRight' >--%</Text>
                         </Container>
                         <Container p='0 0 5px 0'>
-                            <Button variant='insuffBal' >Confirm</Button>
+                            <Button variant='confirmGrey' >Confirm</Button>
                         </Container>
                     </VStack>
                 </FormControl>

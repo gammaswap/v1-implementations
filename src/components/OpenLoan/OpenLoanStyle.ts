@@ -31,7 +31,7 @@ export const Button: ComponentStyleConfig = {
             bg: '#69DC9E',  
             color: '#e2e8f0'
         },
-        collateral: {
+        select: {
             bg: '#274060',  
             color: '#e2e8f0'
         },
