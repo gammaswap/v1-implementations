@@ -30,7 +30,7 @@ const Waitlist: React.FC = () => {
                     textStyle={"h1"}
                     color={"gray.200"}
                 >
-                    A Decentralized
+                    Decentralized
                 </Box>
                 <Box
                     textStyle={"display"}
