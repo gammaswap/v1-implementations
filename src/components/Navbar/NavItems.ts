@@ -3,17 +3,20 @@ interface NavItem {
     subLabel?: string;
     children?: Array<NavItem>;
     href?: string;
+    target?: string;
 }
 
 const NAV_ITEMS: Array<NavItem> = [
     {
         label: "Blog",
         href: "https://medium.com/gammaswap-labs",
+        target: "_blank"
     },
-    {
-        label: "About Us",
-        href: "#",
-    },
+    //{
+    //    label: "About Us",
+    //    href: "#",
+    //    target: ""
+    //},
 ];
 
 export type navItem = NavItem;

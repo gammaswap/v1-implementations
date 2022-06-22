@@ -30,54 +30,54 @@ const Waitlist: React.FC = () => {
                     textStyle={"h1"}
                     color={"gray.200"}
                 >
-                    The First 
+                    A Decentralized
                 </Box>
                 <Box
                     textStyle={"display"}
                     color={"gray.100"}
                 >
-                    Volatility Exchange. 
+                    Volatility Exchange
                 </Box>
                 <Box>
-                    <Link href='https://linktr.ee/gammaswap'>
+                    <Link href={"https://4u44h1i583d.typeform.com/to/B6Uz3LKy"}
+                          style={{textDecoration: "none"}}>
                         <Button
-                        bgColor={"brand.primary"}
-                        borderRadius={10}
-                        mt={'10'}
-                        h={20}
-                        w={72}
-                        >
-                            <Link href={"https://4u44h1i583d.typeform.com/to/B6Uz3LKy"}>
+                            bgColor={"brand.primary"}
+                            borderRadius={10}
+                            mt={'10'}
+                            h={20}
+                            w={72}
+                            >
                                 <Box textStyle={"h3"} color={"gray.100"}>
                                     Get Notified at Launch
                                 </Box>
-                            </Link>
                         </Button>
                     </Link>
                     <Box
                     textStyle={"h4"}
                     color={"gray.100"}
                     lineHeight={8}
-                    px={96}
+                    px={["1em", 86]}
                     py={20}
                     >
-                        GammaSwap is the newest decentralized platform that allows you to buy and sell volatility under the Uniswap protocol. Earn yields while migitating your risk.
+                        GammaSwap is the first decentralized exchange that allows you to short or long crypto volatility
+                        by providing or shorting liquidity from CFMMs like Uniswap, Sushiswap, Balancer, etc.
                     </Box>
                 </Box>
             </VStack>
             <Flex
                 direction={"row"}
-                justify={"flex-end"}
-                mr={20}
+                justify={["center","flex-end"]}
+                mr={[0,"1em"]}
             >
                 <HStack spacing={4} color={"gray.100"}>
-                    <Link href={"https://www.twitter.com/gammaswaplabs"}>
+                    <Link href={"https://www.twitter.com/gammaswaplabs"} target={"_blank"}>
                         <Icon w={7} h={7} as={FaTwitter} />
                     </Link>
-                    <Link href={"https://www.linkedin.com/company/gammaswap-labs/"}>
+                    <Link href={"https://www.linkedin.com/company/gammaswap-labs/"} target={"_blank"}>
                         <Icon w={7} h={7} as={FaLinkedin} />
                     </Link>
-                    <Link href={"https://www.github.com/gammaswap"}>
+                    <Link href={"https://www.github.com/gammaswap"} target={"_blank"}>
                         <Icon w={7} h={7} as={FaGithub} />
                     </Link>
                 </HStack>

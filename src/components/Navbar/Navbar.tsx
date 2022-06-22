@@ -55,7 +55,7 @@ const Navbar = () => {
                     <Box
                         textStyle={"h3"}
                         ml={1}
-                        pt={1} 
+                        pt={1}
                         color={logoColor}
                     >
                         GammaSwap

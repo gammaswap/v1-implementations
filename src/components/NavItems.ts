@@ -1,20 +1,24 @@
 type NavItems = {
     label: string,
-    href: string;
+    href: string,
+    target: string
 }
 
 const NavItems: Array<NavItems> = [
     {
         label: 'Logo',
         href: '#',
+        target: ''
     },
     {
         label: 'Blog',
         href: 'https://medium.com/@danielalcarraz_42353',
+        target: '_blank'
     },
     {
         label: 'About Us',
-        href: '/aboutus'
+        href: '/aboutus',
+        target: ''
     }
     // {
     //     label: 'Home',

@@ -13,10 +13,11 @@ import {
 } from 'react-icons/hi';
 
 
-const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
+const DesktopSubNav = ({ label, href, subLabel, target }: NavItem) => {
     return (
         <Link
             href={href}
+            target={target}
             role={"group"}
             display={"block"}
             p={2}

@@ -13,7 +13,7 @@ import {
     HiChevronDown
 } from 'react-icons/hi';
 
-const MobileNavItem = ({ label, children, href }: NavItem) => {
+const MobileNavItem = ({ label, children, href, target }: NavItem) => {
     const { isOpen, onToggle } = useDisclosure();
 
     return (
@@ -22,6 +22,7 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
                 py={2}
                 as={Link}
                 href={href ?? "#"}
+                target={target ?? ""}
                 justify={"space-between"}
                 align={"center"}
                 _hover={{
@@ -60,7 +61,7 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
                 >
                     {children &&
                         children.map((child) => (
-                            <Link key={child.label} py={2} href={child.href}>
+                            <Link key={child.label} py={2} href={child.href}  target={child.target}>
                                 {child.label}
                             </Link>
                         ))}

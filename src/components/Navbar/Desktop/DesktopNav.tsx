@@ -25,6 +25,7 @@ const DesktopNav = () => {
                                 p={2}
                                 textStyle={"h4"}
                                 href={navItem.href ?? "#"}
+                                target={navItem.target ?? ""}
                                 color={linkColor}
                                 _hover={{
                                     textDecoration: "none",
