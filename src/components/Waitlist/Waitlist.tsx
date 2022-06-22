@@ -67,7 +67,7 @@ const Waitlist: React.FC = () => {
             </VStack>
             <Flex
                 direction={"row"}
-                justify={["center","flex-end"]}
+                justify={"center"}
                 mr={[0,"1em"]}
             >
                 <HStack spacing={4} color={"gray.100"}>
