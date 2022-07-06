@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
-contract IProtocolRouter {
+import "./IPeripheryPayments.sol";
+import "./IPeripheryImmutableState.sol";
+
+interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
+
     struct AddLiquidityParams {
         address tokenA;
         address tokenB;
@@ -10,10 +14,9 @@ contract IProtocolRouter {
         uint amountAMin;
         uint amountBMin;
         address to;
-        uint protocolId;
+        uint24 protocol;
         uint deadline;
         address gammaPool;
     }/**/
-
 
 }

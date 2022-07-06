@@ -1,20 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
-import "./IProtocolRouter.sol";
-import "./IAddLiquidityCallback.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
+import "../interfaces/external/IUniswapV2PairMinimal.sol";
+import "../interfaces/IProtocolRouter.sol";
+import "../interfaces/IAddLiquidityCallback.sol";
+import "../PositionManager.sol";
+import "../interfaces/IPositionManager.sol";
 
 contract UniswapV2Router is IProtocolRouter {
 
-    address public immutable override factory;
+    address public immutable factory;//protocol factory
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
     }
 
-    constructor(address _factory) public {
+    constructor(address _factory) {
         factory = _factory;
     }
 
@@ -26,20 +31,20 @@ contract UniswapV2Router is IProtocolRouter {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address tokenA, address tokenB) internal pure returns (address pair) {
-        pair = address(uint(keccak256(abi.encodePacked(
+    function pairFor(address _factory, address tokenA, address tokenB) internal pure returns (address pair) {
+        pair = address(uint160(uint256(keccak256(abi.encodePacked(
                 hex'ff',
-                factory,
-                keccak256(abi.encodePacked(token0, token1)),
+                _factory,
+                keccak256(abi.encodePacked(tokenA, tokenB)),
                 hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-            ))));
+            )))));
     }
 
     // fetches and sorts the reserves for a pair
     function getReserves(address tokenA, address tokenB) internal view returns (address pair, uint reserveA, uint reserveB) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
-        pair = pairFor(token0, token1);
-        (uint reserve0, uint reserve1,) = IUniswapV2Pair(pairFor(token0, token1)).getReserves();
+        pair = pairFor(factory, token0, token1);
+        (uint reserve0, uint reserve1,) = IUniswapV2PairMinimal(pair).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
@@ -47,7 +52,7 @@ contract UniswapV2Router is IProtocolRouter {
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
         require(amountA > 0, 'UniswapV2Library: INSUFFICIENT_AMOUNT');
         require(reserveA > 0 && reserveB > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
-        amountB = amountA.mul(reserveB) / reserveA;
+        amountB = (amountA * reserveB) / reserveA;
     }
 
     // **** ADD LIQUIDITY ****
@@ -76,33 +81,37 @@ contract UniswapV2Router is IProtocolRouter {
             }
         }
         pool = pair;
-    }/*
-    Pool:
-        -tokens (A, B, ..., etc)
-        -protocol
+    }
+    /*
+        Pool:
+            -tokens (A, B, ..., etc)
+            -protocol
     */
     /// @dev Get the pool's balance of token0
     /// @dev This function is gas optimized to avoid a redundant extcodesize check in addition to the returndatasize
     /// check
-    function balanceOf(address token, address pool) private view returns (uint256) {
+    function balanceOf(address token, address pool) internal view returns (uint256) {
         (bool success, bytes memory data) =
-        token.staticcall(abi.encodeWithSelector(IERC20Minimal.balanceOf.selector, pool));
+        token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, pool));
         require(success && data.length >= 32);
         return abi.decode(data, (uint256));
     }
 
-    function addLiquidity(AddLiquidityParams params, bytes calldata data) external virtual override ensure(params.deadline) returns (uint amountA, uint amountB, uint liquidity, address pool) {
+    //TODO: Just to be safe lock this to positionManager only. Later on we'll see if we can open it.
+    function addLiquidity(IPositionManager.AddLiquidityParams calldata params, address to, bytes calldata data) external virtual override ensure(params.deadline) returns (uint amountA, uint amountB, uint liquidity, address pool) {
         (amountA, amountB, pool) = _addLiquidity(params.tokenA, params.tokenB, params.amountADesired, params.amountBDesired, params.amountAMin, params.amountBMin);
 
         uint256 balance0Before;
         uint256 balance1Before;
         if (amountA > 0) balance0Before = balanceOf(params.tokenA, pool);
         if (amountB > 0) balance1Before = balanceOf(params.tokenB, pool);
-        IAddLiquidityCallback(msg.sender).addLiquidityCallback(amountA, amountB, data);
-        if (amountA > 0) require(balance0Before.add(amountA) <= balanceOf(params.tokenA, pool), 'M0');
-        if (amountB > 0) require(balance1Before.add(amountB) <= balanceOf(params.tokenB, pool), 'M1');
+        IAddLiquidityCallback(msg.sender).addLiquidityCallback(amountA, amountB, pool, data);
+            //send x tokens from pool to C. Pool has not given permission to sender to spend its tokens.
+        if (amountA > 0) require(balance0Before + amountA <= balanceOf(params.tokenA, pool), 'M0');
+        if (amountB > 0) require(balance1Before + amountB <= balanceOf(params.tokenB, pool), 'M1');
 
-        liquidity = IUniswapV2Pair(uniPool).mint(params.gammaPool);
+        liquidity = IUniswapV2PairMinimal(pool).mint(to);
 
     }
+
 }
