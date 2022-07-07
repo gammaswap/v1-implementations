@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -33,7 +34,7 @@ contract TestUniswapV2Pair is ERC20, IUniswapV2PairMinimal{
     function burn(address to) external override returns (uint amount0, uint amount1) {
         amount0 = reserve0 * 1000 / 10000;
         amount1 = reserve1 * 1000 / 10000;
-        _burn(address(this), 10);
+        _burn(to, 10);
     }
 
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external override {

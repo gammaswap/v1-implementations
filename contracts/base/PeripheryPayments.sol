@@ -10,6 +10,7 @@ import '../libraries/TransferHelper.sol';
 
 import './PeripheryImmutableState.sol';
 
+//TODO: Change the name of these functions to differentiate them for licensing purposes
 abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableState {
     receive() external payable {
         require(msg.sender == WETH9, 'Not WETH9');

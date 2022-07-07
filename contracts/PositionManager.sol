@@ -5,14 +5,14 @@ pragma abicoder v2;
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
 import "./interfaces/IPositionManager.sol";
-import "./interfaces/IAddLiquidityCallback.sol";
-import "./interfaces/IProtocolRouter.sol";
-import "./libraries/CallbackValidation.sol";
+import "./interfaces/IProtocolModule.sol";
 import "./base/PeripheryImmutableState.sol";
 import "./base/PeripheryPayments.sol";
 import "./interfaces/IGammaPool.sol";
+import "./interfaces/IGammaPoolFactory.sol";
+import "./libraries/PoolAddress.sol";
 
-contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPayments, ERC721 {
+contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
 
     uint256 MAX_SLIPPAGE = 10**17;//10%
 
@@ -29,7 +29,6 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
     uint80 private _nextPoolId = 1;
 
     mapping(address => mapping(address => address)) public getPool;
-    mapping(uint256 => address) public protocols;
 
     address[] public  allPools;
     address public owner;
@@ -56,32 +55,24 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
         owner = msg.sender;
     }
 
-    /// @inheritdoc IAddLiquidityCallback
-    function addLiquidityCallback(
-        uint256 amount0Owed,
-        uint256 amount1Owed,
-        address destination,
-        bytes calldata data
-    ) external override {
-        AddLiquidityCallbackData memory decoded = abi.decode(data, (AddLiquidityCallbackData));
-        CallbackValidation.verifyCallback(factory, decoded.poolKey);
-
-        if (amount0Owed > 0) pay(decoded.poolKey.token0, decoded.payer, destination, amount0Owed);
-        if (amount1Owed > 0) pay(decoded.poolKey.token1, decoded.payer, destination, amount1Owed);
-    }
-
-
     //A GammaPool has its own protocol router. The gammaPool no because we don't want to make the GammaPool code to work specifically with Uniswap
     //What we do is we update the GammaPool
     //Use callback to avoid having to approve every deposit pool
     //the protocolRouter is at PositionManager level because if we need to update we don't want to update every single GammaPool.
+    //PosMgr -> GammaPool -> Router just does calculations of what you need to send. It doesn't do anything else
     // **** ADD LIQUIDITY ****
     function addLiquidity(AddLiquidityParams calldata params) external virtual returns (uint amountA, uint amountB, uint liquidity) {
-        IProtocolRouter router = IProtocolRouter(protocols[params.protocol]);
-        PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({token0: params.tokenA, token1: params.tokenB, protocol: params.protocol});
+        PoolAddress.PoolKey memory poolKey = PoolAddress.getPoolKey(params.tokenA, params.tokenB, params.protocol);
         address gammaPool = PoolAddress.computeAddress(factory, poolKey);
-        (amountA, amountB,,) = router.addLiquidity(params, gammaPool, abi.encode(AddLiquidityCallbackData({poolKey: poolKey, payer: msg.sender})));
-        liquidity = IGammaPool(gammaPool).mint(params.to);
+        require(gammaPool != address(0), "ADDRESS_ZERO");
+        address cfmm;
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(params.protocol));
+        (amountA, amountB, cfmm) = module.addLiquidity(params.tokenA, params.tokenB, params.amountADesired, params.amountBDesired, params.amountAMin, params.amountBMin);
+        if (amountA > 0) pay(params.tokenA, msg.sender, cfmm, amountA);
+        if (amountB > 0) pay(params.tokenB, msg.sender, cfmm, amountB);
+        (uint totalInvariant, uint newInvariant) = module.mint(cfmm, gammaPool);
+        //calculate
+        liquidity = IGammaPool(gammaPool).mint(totalInvariant, newInvariant, params.to);
     }
 
 }

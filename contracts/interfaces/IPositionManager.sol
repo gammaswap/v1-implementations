@@ -16,7 +16,6 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         address to;
         uint24 protocol;
         uint deadline;
-        address gammaPool;
     }/**/
 
 }
