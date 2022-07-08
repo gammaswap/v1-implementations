@@ -6,7 +6,7 @@ import "./IPeripheryImmutableState.sol";
 
 interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
 
-    struct AddLiquidityParams {
+    struct AddLiquidityParams2 {
         address tokenA;
         address tokenB;
         uint amountADesired;
@@ -17,5 +17,14 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint24 protocol;
         uint deadline;
     }/**/
+
+    struct AddLiquidityParams {
+        address cfmm;
+        uint[] amountsDesired;
+        uint[] amountsMin;
+        address to;
+        uint24 protocol;
+        uint deadline;
+    }
 
 }

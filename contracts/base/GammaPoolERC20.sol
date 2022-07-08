@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract GammaPoolERC20 is IERC20 {
+abstract contract GammaPoolERC20 is IERC20 {
 
     string public name = 'GammaSwap V1';
     string public symbol = 'GAMA-V1';
@@ -47,5 +47,22 @@ contract GammaPoolERC20 is IERC20 {
         }
         _transfer(from, to, value);
         return true;
+    }
+
+    function _mint(address account, uint256 amount) internal virtual {
+        totalSupply += amount;
+        _balanceOf[account] += amount;
+        emit Transfer(address(0), account, amount);
+    }
+
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0), "ERC20: burn from the zero address");
+        uint256 accountBalance = _balanceOf[account];
+        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        unchecked {
+            _balanceOf[account] = accountBalance - amount;
+        }
+        totalSupply -= amount;
+        emit Transfer(account, address(0), amount);
     }
 }

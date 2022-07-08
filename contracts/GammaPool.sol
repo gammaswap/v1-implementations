@@ -14,10 +14,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
     uint public constant MINIMUM_LIQUIDITY = 10**3;
 
     address public factory;
-    address public token0;
-    address public token1;
+    address[] public _tokens;
     uint24 public protocol;
-    address public cfmm;
+    address public override cfmm;
+
+    uint256 public LP_TOKEN_BALANCE;
+    uint256 public BORROWED_INVARIANT;
 
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
@@ -32,8 +34,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
         unlocked = 1;
     }
 
+    function tokens() external view virtual override returns(address[] memory) {
+        return _tokens;
+    }/**/
+
     constructor() {
-        (factory, token0, token1, protocol, cfmm) = IGammaPoolFactory(msg.sender).parameters();
+        (factory, _tokens, protocol, cfmm) = IGammaPoolFactory(msg.sender).getParameters();
         owner = msg.sender;
     }
 
@@ -63,50 +69,55 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
             -PosManager pays back this Invariant difference
 
     */
-    //TODO: This has to be closed to positionManager only. We have to do it through a verification of the address to save in gas
-    function mint(uint totalCFMMInvariant, uint newInvariant, address to) external virtual override lock returns(uint256 liquidity) {
 
-        /*
-            Strategy:
-                -check sender is PositionManager (ask factory)
-                -get updated feeIndex (using totalCFMMInvariant)
-                -calculate totalInvariant (totalCFMMInvariant + BorrowedInvariant * (1 + fee) [hence we need updated feeIndex])
-                -calculate prorata share of invariant deposited in terms of GS LP Shares to issue
-                -mint these shares (Remember to avoid the MINIMUM_LIQUIDITY bug)
-                -update state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
-        */
+    function updateFeeIndex() internal {
+        //updates fee index and also BORROWED_INVARIANT
+    }
 
-        /*this.getAndUpdateLastFeeIndex();
+    function getInvariantChanges() internal view returns(uint256 totalInvariant, uint256 depositedInvariant) {
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));//Maybe this will be set permanently later on. For testing now we want to be able to update the modules as we develop
+        uint256 totalInvariantInCFMM;
+        (totalInvariantInCFMM, depositedInvariant) = module.getCFMMInvariantChanges(cfmm, LP_TOKEN_BALANCE);
+        totalInvariant = totalInvariantInCFMM + BORROWED_INVARIANT;
+    }
 
-        uint256 _reserve0;
-        uint256 _reserve1;
-        (uint256 _uniReserve0, uint256 _uniReserve1) = GammaswapLibrary.getUniReserves(uniPair, token0, token1);
-
+    function mint(address to) external virtual override lock returns(uint256 liquidity) {
+        updateFeeIndex();
+        (uint256 totalInvariant, uint256 depositedInvariant) = getInvariantChanges();
         uint256 _totalSupply = totalSupply;
-        if(_totalSupply > 0) {
-            //get reserves from uni
-            (_reserve0, _reserve1) = GammaswapLibrary.getBorrowedReserves(uniPair, _uniReserve0, _uniReserve1, totalUniLiquidity, BORROWED_INVARIANT);//This is right because the liquidity has to
-        }
-
-        uint256 amountA;
-        uint256 amountB;
-        //TODO: Change all of this so that it is init to the invariant when there is no liquidity.
-        if(amount0 > 0 && amount1 > 0) {
-            (amountA, amountB, liquidity) = addLiquidity(amount0, amount1, 0, 0);
-        }
-
-        totalUniLiquidity = IERC20(uniPair).balanceOf(address(this));
-
         if (_totalSupply == 0) {
-            liquidity = GammaswapLibrary.convertAmountsToLiquidity(amountA, amountB) - MINIMUM_LIQUIDITY;
+            liquidity = depositedInvariant - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
-            liquidity = GammaswapLibrary.min2((amountA * _totalSupply) / _reserve0, (amountB * _totalSupply) / _reserve1);//match everything that is in uniswap
+            liquidity = (depositedInvariant * _totalSupply) / totalInvariant;
         }
-        require(liquidity > 0, 'DepositPool: INSUFFICIENT_LIQUIDITY_MINTED');
+        require(liquidity > 0, 'GammaPool.mint: INSUFFICIENT_LIQUIDITY_MINTED');
         _mint(to, liquidity);
-
-        //We do not update the reserves because in theory reserves should not change due to this
-        //emit Mint(msg.sender, amountA, amountB);/**/
+        LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
+        //emit Mint(msg.sender, amountA, amountB);
     }
+    /*
+        Strategy:
+            -get updated feeIndex (using totalCFMMInvariant)
+            -calculate totalInvariant (totalCFMMInvariant + BorrowedInvariant * (1 + fee) [hence we need updated feeIndex])
+                -can be handled through a callback too. we call positionManager (sender) to calculate totalCFMMInvariant
+                    -respond must be checked that came from position manager though.
+                    -positionMgr sends back its signature. When we compute its address. Just check the address
+                    *If we need to update the positionManager we have to update the signature verification too unless
+                    we ask the factory. We might as well just have the factory keep track of the positionManager
+                    *Only calls that result in transfers need verifications.
+                    *In order to avoid this whole problem. GammaPool has to use the module. But that would require
+                     GammaPool having a field for the module. We want to avoid all that.
+                    *Just ask positionManager, since we'll have a point to it, to do these calculatiosn for you, using
+                     the module. Because what if we update the module.
+                    *Since you have a pointer to factory you can always ask for the module too. Instead of having
+                     the PosManager ask for the module from the factory. You can ask for the module directly to do what you need.
+                    *Or you can ask the factory to do it for you, use the module. No that's putting logic where it is not needed.
+                    *So module is used in GammaPool and PositionManager
+                    *PosMgr moves assets to CFMM and tells CFMM to mint to GammaPool
+                    then call GammaPool. Then when calling GammaPool --------
+            -calculate prorata share of invariant deposited in terms of GS LP Shares to issue
+            -mint these shares (Remember to avoid the MINIMUM_LIQUIDITY bug)
+            -update state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
+    */
 }

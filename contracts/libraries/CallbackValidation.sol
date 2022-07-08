@@ -12,7 +12,7 @@ library CallbackValidation {
     /// @param tokenB The contract address of the other token
     /// @param protocol The fee collected upon every swap in the pool, denominated in hundredths of a bip
     /// @return pool The V3 pool contract address
-    function verifyCallback(
+    /*function verifyCallback(
         address factory,
         address tokenA,
         address tokenB,
@@ -32,5 +32,5 @@ library CallbackValidation {
     {
         pool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
         require(msg.sender == address(pool));
-    }
+    }/**/
 }
