@@ -9,8 +9,8 @@ abstract contract GammaPoolERC20 is IERC20 {
     string public symbol = 'GAMA-V1';
     uint8 public decimals = 18;
     uint public override totalSupply;
-    mapping(address => uint) private _balanceOf;
-    mapping(address => mapping(address => uint)) private _allowance;
+    mapping(address => uint) internal _balanceOf;
+    mapping(address => mapping(address => uint)) internal _allowance;
 
     function balanceOf(address account) external override view returns (uint256 bal) {
         bal = _balanceOf[account];

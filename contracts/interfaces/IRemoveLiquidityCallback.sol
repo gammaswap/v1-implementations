@@ -3,16 +3,16 @@ pragma solidity ^0.8.0;
 
 import "../libraries/PoolAddress.sol";
 
-/// @title Callback for IAddLiquidityCallback#addLiquidityCallback
+/// @title Callback for IRemoveLiquidityCallback#addLiquidityCallback
 /// @notice Any contract that calls IUniswapV3PoolActions#mint must implement this interface
-interface IAddLiquidityCallback {
+interface IRemoveLiquidityCallback {
 
-    struct AddLiquidityCallbackData {
+    struct RemoveLiquidityCallbackData {
         bytes32 poolKey;
         address payer;
     }
 
-    function addLiquidityCallback(
+    function removeLiquidityCallback(
         address payee,
         address[] calldata tokens,
         uint[] calldata amounts,

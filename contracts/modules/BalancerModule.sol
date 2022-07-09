@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
+import "../libraries/PoolAddress.sol";
 import "../interfaces/IProtocolModule.sol";
 
 contract BalancerModule is IProtocolModule {
@@ -41,23 +42,33 @@ contract BalancerModule is IProtocolModule {
     function getKey(address _cfmm) external view override returns(bytes32 key) {
     }
 
-    function getCFMM(address tokenA, address tokenB) external virtual override view returns(address cfmm) {
-        cfmm = address(0);
+    function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256 invariant) {
+        invariant = uint160(cfmm);
     }
 
-    function getCFMMInvariantChanges(address cfmm, uint256 lpTokenBal) external pure override returns(uint256 totalInvariant, uint256 newInvariant) {
+    function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view override returns(uint256 totalInvariant, uint256 newInvariant) {
     }
 
     // **** ADD LIQUIDITY ****
     function addLiquidity(
         address cfmm,
         uint[] calldata amountsDesired,
-        uint[] calldata amountsMin,
-        address from
+        uint[] calldata amountsMin
     ) external virtual override returns (uint[] memory amounts) {
         // create the pair if it doesn't exist yet
         /*amountA = 0;
         amountB = 0;
         cfmm = address(0);/**/
+    }
+
+    function getPayee(address cfmm) external virtual override view returns(address) {
+        return PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+    }
+
+    function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
+    }
+
+    function burn(address cfmm, address to) external virtual override returns(uint[] memory amounts) {
+
     }
 }

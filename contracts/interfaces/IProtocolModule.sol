@@ -5,14 +5,12 @@ interface IProtocolModule {
     function protocol() external view returns(uint24);
     function protocolFactory() external view returns(address);
     function factory() external view returns(address);
-    function validateCFMM(address[] calldata _tokens, address _cfmm)  external view returns(address[] memory tokens);
-    function getKey(address _cfmm) external view returns(bytes32 key);
-    function getCFMM(address tokenA, address tokenB) external view returns(address cfmm);
-    function getCFMMInvariantChanges(address cfmm, uint256 lpTokenBal) external pure returns(uint256 totalInvariantInCFMM, uint256 depositedInvariant);
-    function addLiquidity(
-        address gammaPool,
-        uint[] calldata amountsDesired,
-        uint[] calldata amountsMin,
-        address payer
-    ) external returns (uint[] memory amounts);
+    function validateCFMM(address[] calldata _tokens, address _cfmm)  external view returns(address[] memory);
+    function getKey(address _cfmm) external view returns(bytes32);
+    function getCFMMTotalInvariant(address cfmm) external view returns(uint256);
+    function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view returns(uint256, uint256);
+    function addLiquidity(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) external returns (uint[] memory);
+    function getPayee(address cfmm) external view returns(address);
+    function mint(address cfmm, uint[] calldata amounts) external returns(uint liquidity);
+    function burn(address cfmm, address to) external returns(uint[] memory amounts);
 }

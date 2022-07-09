@@ -7,14 +7,16 @@ import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/external/IUniswapV2PairMinimal.sol";
 import "./base/GammaPoolERC20.sol";
 import "./PositionManager.sol";
+import "./modules/UniswapV2Module.sol";
+import "./interfaces/IRemoveLiquidityCallback.sol";
 
-contract GammaPool is GammaPoolERC20, IGammaPool {
+contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
 
     uint public constant ONE = 10**18;
     uint public constant MINIMUM_LIQUIDITY = 10**3;
 
     address public factory;
-    address[] public _tokens;
+    address[] private _tokens;
     uint24 public protocol;
     address public override cfmm;
 
@@ -44,12 +46,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
     }
 
     /*
-        burn() Strategy:
-            -PosManager gets totalInvariant in CFMM
-            -update feeIndex with PosManager totalInvariant calc
-            -PosManager checks GS liquidity value in LP Shares (Which starts by figuring out the Invariant it represents)
-            -PosManager calls GSPool.burn() LP shares to withdrawer
-            -update state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
 
         *PosManager uses modules to do all calculations. GammaPools only calc interest rates in Pool (but needs inputs from PosManager) and hold funds.
             -Therefore PosManager is GPL v3, GammaPool is BSD since GammaPool never deals with none of the open source code
@@ -74,16 +70,42 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
         //updates fee index and also BORROWED_INVARIANT
     }
 
-    function getInvariantChanges() internal view returns(uint256 totalInvariant, uint256 depositedInvariant) {
-        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));//Maybe this will be set permanently later on. For testing now we want to be able to update the modules as we develop
-        uint256 totalInvariantInCFMM;
-        (totalInvariantInCFMM, depositedInvariant) = module.getCFMMInvariantChanges(cfmm, LP_TOKEN_BALANCE);
-        totalInvariant = totalInvariantInCFMM + BORROWED_INVARIANT;
+    function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external virtual override returns(uint[] memory amounts){
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));//Maybe we should just move the module here so we never have to ask for it.
+        amounts = module.addLiquidity(cfmm, amountsDesired, amountsMin);//for now it's ok for it to be here so we can update if we have to during testing.
+
+        address payee = module.getPayee(cfmm);
+        uint[] memory balanceBefore = new uint[](_tokens.length);
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0) balanceBefore[i] = GammaSwapLibrary.balanceOf(_tokens[i], payee);
+        }
+
+        //In Uni/Suh transfer U -> CFMM
+        //In Bal/Crv transfer U -> Module -> GP
+        IAddLiquidityCallback(msg.sender).addLiquidityCallback(payee, _tokens, amounts, data);
+
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] <= GammaSwapLibrary.balanceOf(_tokens[i], payee), 'M0');
+        }
+
+        //In Uni/Suh mint [CFMM -> GP] single tx
+        //In Bal/Crv mint [GP -> Module -> CFMM and CFMM -> Module -> GP] single tx
+        module.mint(cfmm, amounts);
     }
 
     function mint(address to) external virtual override lock returns(uint256 liquidity) {
+        uint256 depLPBal = GammaSwapLibrary.balanceOf(cfmm, address(this)) - LP_TOKEN_BALANCE;
+        require(depLPBal > 0, 'GammaPool.mint: INSUFFICIENT_LIQUIDITY_MINTED');
+
         updateFeeIndex();
-        (uint256 totalInvariant, uint256 depositedInvariant) = getInvariantChanges();
+
+        //Maybe this will be set permanently later on. For testing now we want to be able to update the modules as we develop
+        uint256 cfmmTotalInvariant = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).getCFMMTotalInvariant(cfmm);
+        uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+
+        uint256 totalInvariant = ((LP_TOKEN_BALANCE * cfmmTotalInvariant) / cfmmTotalSupply) + BORROWED_INVARIANT;
+        uint256 depositedInvariant = (depLPBal * cfmmTotalInvariant) / cfmmTotalSupply;
+
         uint256 _totalSupply = totalSupply;
         if (_totalSupply == 0) {
             liquidity = depositedInvariant - MINIMUM_LIQUIDITY;
@@ -96,6 +118,60 @@ contract GammaPool is GammaPoolERC20, IGammaPool {
         LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
         //emit Mint(msg.sender, amountA, amountB);
     }
+
+
+    function convertGSTokensToLP(uint amount) internal view returns(uint lpTokens) {
+
+    }
+
+    /*
+        burn() Strategy:
+            -PosManager gets totalInvariant in CFMM
+            -update feeIndex with PosManager totalInvariant calc
+            -PosManager checks GS liquidity value in LP Shares (Which starts by figuring out the Invariant it represents)
+            -PosManager calls GSPool.burn() LP shares to withdrawer
+            -update state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
+    */
+    // this low-level function should be called from a contract which performs important safety checks
+    function burn(address to) external virtual override lock returns (uint[] memory amounts) {
+        //get the liquidity tokens
+        uint256 amount = _balanceOf[address(this)];
+        require(amount > 0, "GammaPool.burn: ZERO_AMOUNT");
+
+        LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
+
+        updateFeeIndex();
+        //calculate how much in invariant units the GS Tokens you want to remove represent
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
+        uint256 cfmmTotalInvariant = module.getCFMMTotalInvariant(cfmm);
+        uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+
+        uint256 totalLPBal = LP_TOKEN_BALANCE + (BORROWED_INVARIANT * cfmmTotalSupply) / cfmmTotalInvariant;
+
+        uint256 withdrawLPTokens = (amount * totalLPBal) / totalSupply;
+        require(withdrawLPTokens < LP_TOKEN_BALANCE, "GammaPool.burn: INSUFFICIENT_LIQUIDITY_AVAILABLE");
+
+        //Uni/Sus: U -> GP -> CFMM -> U
+        //                    just call module and ask module to use callback to transfer to CFMM then module calls burn
+        //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> U
+        //                    No need for callbacks here
+        IERC20(cfmm).transfer(address(module), withdrawLPTokens);//maybe create a GammaSwapLibrary function for it to decrease cost (look it up)
+        amounts = module.burn(cfmm, to);
+        _burn(address(this), amount);
+
+        LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
+        //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
+    }
+
+    function removeLiquidityCallback(
+        address payee,
+        address[] calldata tokens,
+        uint[] calldata amounts,
+        bytes calldata data
+    ) external virtual override {
+
+    }
+
     /*
         Strategy:
             -get updated feeIndex (using totalCFMMInvariant)

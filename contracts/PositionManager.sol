@@ -12,6 +12,7 @@ import "./interfaces/IGammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
 import "./libraries/PoolAddress.sol";
 import "./interfaces/IAddLiquidityCallback.sol";
+import "./GammaPool.sol";
 
 contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPayments, ERC721 {
 
@@ -98,22 +99,42 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
             -call GammaPool to mint GS Tokens using invariant info
             *Will the pool ever need to know the CFMM?
     **/
+
     // **** ADD LIQUIDITY ****
     function addLiquidity(AddLiquidityParams calldata params) external returns (uint[] memory amounts, uint liquidity) {
-        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(params.protocol));//We can lower this cost by having our modules created from a factory with predetermined addresses. We'll just need to input INIT_CODE_HASHES and a SALT for them
-        amounts = module.addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin, msg.sender);/**///Here someone could send to a gammaPool that doesn't exist. But when getting data it will fail because the gammaPool will not exist
-        //since the gammaPool is tied to the CFMM address. So if the CFMM doesn't exist then it will fail there too. But nobody can create a gammaPool for a cfmm that doesn't exist so the gammaPool will fail first.
-        liquidity = IGammaPool(PoolAddress.computeAddress(factory, module.getKey(params.cfmm))).mint(params.to);
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
+        amounts = gammaPool.addLiquidity(params.amountsDesired, params.amountsMin, abi.encode(AddLiquidityCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
+        liquidity = gammaPool.mint(params.to);
     }
 
-    function addLiquidityCallback(uint24 protocol, address[] calldata tokens, uint[] calldata amounts, address payer, address payee) external override {
-        address module = IGammaPoolFactory(factory).getModule(protocol);
-        require(msg.sender == module, 'PositionManager.addLiquidityCallback: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
+    function addLiquidityCallback(address payee, address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external override {// Only in Uni. In Bal we use this to transfer to ourselves then the mint function finishes the transfer from the other side.
+        AddLiquidityCallbackData memory decoded = abi.decode(data, (AddLiquidityCallbackData));
+        require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PositionManager.addLiquidityCallback: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
 
         for (uint i = 0; i < tokens.length; i++) {
-            if (amounts[i] > 0 ) pay(tokens[i], payer, payee, amounts[i]);
+            if (amounts[i] > 0 ) pay(tokens[i], decoded.payer, payee, amounts[i]);
         }
     }
 
+    /*
+     struct RemoveLiquidityParams {
+        address cfmm;
+        uint[] amountsMin;
+        address to;
+        uint24 protocol;
+        uint deadline;
+    }
+    */
+    // **** REMOVE LIQUIDITY **** //
+    function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts) {
+        require(params.amount > 0, 'PositionManager.removeLiquidity: ZERO_AMOUNT');
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
+        amounts = IGammaPool(gammaPool).burn(params.to);
+        for (uint i = 0; i < amounts.length; i++) {
+            require(amounts[i] >= params.amountsMin[i], 'PositionManager.removeLiquidity: INSUFFICIENT_AMOUNT');
+        }/**/
+    }
 
 }

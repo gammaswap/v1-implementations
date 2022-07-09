@@ -10,6 +10,7 @@ import "../interfaces/IPositionManager.sol";
 import "../libraries/GammaSwapLibrary.sol";
 import "../libraries/PoolAddress.sol";
 import "../libraries/Math.sol";
+import "../interfaces/IAddLiquidityCallback.sol";
 
 contract UniswapV2Module is IProtocolModule {
 
@@ -41,11 +42,6 @@ contract UniswapV2Module is IProtocolModule {
         key = PoolAddress.getPoolKey(_cfmm, protocol);
     }
 
-    function getCFMM(address tokenA, address tokenB) external virtual override view returns(address cfmm) {
-        (address token0, address token1) = GammaSwapLibrary.sortTokens(tokenA, tokenB);
-        cfmm = pairFor(token0, token1);
-    }
-
     // calculates the CREATE2 address for a pair without making any external calls
     function pairFor(address tokenA, address tokenB) internal virtual view returns (address pair) {
         pair = address(uint160(uint256(keccak256(abi.encodePacked(
@@ -71,27 +67,38 @@ contract UniswapV2Module is IProtocolModule {
         amountB = (amountA * reserveB) / reserveA;
     }
 
-    function getCFMMInvariantChanges(address cfmm, uint256 lpTokenBal) external pure override returns(uint256 totalInvariantInCFMM, uint256 depositedInvariant) {
-        uint256 curLPBal = GammaSwapLibrary.balanceOf(cfmm, msg.sender);
-        uint256 depLPBal = curLPBal - lpTokenBal;
-        uint256 totalSupply = GammaSwapLibrary.totalSupply(cfmm);
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
-        uint256 totalCFMMInvariant = Math.sqrt(reserveA * reserveB);
-        totalInvariantInCFMM = (lpTokenBal * totalCFMMInvariant) / totalSupply;
-        depositedInvariant = (depLPBal * totalCFMMInvariant) / totalSupply;
+    function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256) {
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
+         return Math.sqrt(reserveA * reserveB);
     }
 
-    // **** ADD LIQUIDITY ****
+    function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view override returns(uint256 totalInvariantInCFMM, uint256 depositedInvariant) {
+        uint256 depLPBal = curLPBal - prevLPBal;
+        uint256 totalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
+        uint256 totalCFMMInvariant = Math.sqrt(reserveA * reserveB);
+        totalInvariantInCFMM = (prevLPBal * totalCFMMInvariant) / totalSupply;
+        if (depLPBal > 0) {
+            depositedInvariant = (depLPBal * totalCFMMInvariant) / totalSupply;
+        }
+    }
+
+    /*function transferTokens(address payer, address payee, address[] memory tokens, uint[] memory amounts) internal virtual {
+        uint balance0Before;
+        uint balance1Before;
+        if (amounts[0] > 0) balance0Before = GammaSwapLibrary.balanceOf(tokens[0], payee);
+        if (amounts[1] > 0) balance1Before = GammaSwapLibrary.balanceOf(tokens[1], payee);
+        IAddLiquidityCallback(msg.sender).addLiquidityCallback(protocol, tokens, amounts, payer, payee);
+        if (amounts[0] > 0) require(balance0Before + amounts[0] <= GammaSwapLibrary.balanceOf(tokens[0], payee), 'M0');
+        if (amounts[1] > 0) require(balance1Before + amounts[1] <= GammaSwapLibrary.balanceOf(tokens[1], payee), 'M1');
+    }/**/
+
     function addLiquidity(
         address cfmm,
         uint[] calldata amountsDesired,
-        uint[] calldata amountsMin,
-        address from
+        uint[] calldata amountsMin
     ) external virtual override returns (uint[] memory amounts) {
-        IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol)));
-        require(gammaPool.cfmm() == cfmm, "UniswapV2Module: WRONG_CFMM");
-
-        // create the pair if it doesn't exist yet
+        amounts = new uint[](2);
         (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
         if (reserveA == 0 && reserveB == 0) {
             (amounts[0], amounts[1]) = (amountsDesired[0], amountsDesired[1]);
@@ -107,15 +114,18 @@ contract UniswapV2Module is IProtocolModule {
                 (amounts[0], amounts[1]) = (amountAOptimal, amountsDesired[1]);
             }
         }
-
-        address[] memory tokens = gammaPool.tokens();
-        uint balance0Before;
-        uint balance1Before;
-        if (amounts[0] > 0) balance0Before = GammaSwapLibrary.balanceOf(tokens[0], cfmm);
-        if (amounts[1] > 0) balance1Before = GammaSwapLibrary.balanceOf(tokens[1], cfmm);
-        IAddLiquidityCallback(msg.sender).addLiquidityCallback(protocol, tokens, amounts, from, cfmm);
-        if (amounts[0] > 0) require(balance0Before + amounts[0] <= GammaSwapLibrary.balanceOf(tokens[0], cfmm), 'M0');
-        if (amounts[1] > 0) require(balance1Before + amounts[1] <= GammaSwapLibrary.balanceOf(tokens[1], cfmm), 'M1');
     }
 
+    function getPayee(address cfmm) external virtual override view returns(address) {
+        return cfmm;
+    }
+
+    function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        liquidity = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
+    }
+
+    function burn(address cfmm, address to) external virtual override returns(uint[] memory amounts) {
+
+    }
 }

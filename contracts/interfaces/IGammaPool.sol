@@ -7,7 +7,8 @@ interface IGammaPool is IERC20 {
 
     function tokens() external view returns(address[] memory);
     function cfmm() external view returns(address);
-    function mint(address to) external returns(uint liquidity);
-    //function mint(uint totalCFMMInvariant, uint newInvariant, address to) external returns(uint256 liquidity);
+    function mint(address to) external returns(uint);
+    function burn(address to) external returns(uint[] memory);
+    function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
 
 }
