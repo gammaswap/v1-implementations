@@ -10,5 +10,7 @@ interface IGammaPool {//is IERC20 {
     function mint(address to) external returns(uint);
     function burn(address to) external returns(uint[] memory);
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
+    function addCollateral(uint[] calldata amounts, bytes calldata data) external;
+    function borrowLiquidity(uint256 liquidity) external returns(uint[] memory amounts, uint accFeeIndex);
 
 }

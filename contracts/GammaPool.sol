@@ -7,6 +7,7 @@ import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/IProtocolModule.sol";
 import "./interfaces/IAddLiquidityCallback.sol";
 import "./interfaces/IRemoveLiquidityCallback.sol";
+import "./interfaces/IAddCollateralCallback.sol";
 import "./base/GammaPoolERC20.sol";
 
 contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
@@ -54,22 +55,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         owner = msg.sender;
     }
 
-    /*
-        borrowLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
-            -PosManager calculates interest Rate (gets total invariant, updates BorrowedInvariant, etc.)
-            -PosManager calculates what amount requested means in invariant terms, then in LP Shares
-            -PosManager withdraws LP Shares and holds funds in place, increases BorrowedInvariant
-            -PosManager issues NFT with description of position to borrower
-            -PosManager updates state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
-            *Check credit worthiness before borrowing
-
-        repayLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
-            -PosManager calculates interest Rate
-            -PosManager calculates how much payment is equal in invariant terms of loan
-            -PosManager calculates P/L (Invariant difference)
-            -PosManager pays back this Invariant difference
-    */
-
     function updateBorrowRate() internal {
         borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
     }
@@ -111,6 +96,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         }
     }
 
+    //********* Short Gamma Functions *********//
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external virtual override returns(uint[] memory amounts){
         IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));//Maybe we should just move the module here so we never have to ask for it.
         address payee;
@@ -126,7 +112,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         IAddLiquidityCallback(msg.sender).addLiquidityCallback(payee, _tokens, amounts, data);
 
         for (uint i = 0; i < _tokens.length; i++) {
-            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] <= GammaSwapLibrary.balanceOf(_tokens[i], payee), 'GP: exceeds amount');
+            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] == GammaSwapLibrary.balanceOf(_tokens[i], payee), 'GP: wrong amount');
         }
 
         //In Uni/Suh mint [CFMM -> GP] single tx
@@ -197,4 +183,38 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         GammaSwapLibrary.transfer(cfmm, to, amount);
     }
 
+    //********* Long Gamma Functions *********//
+    function addCollateral(uint[] calldata amounts, bytes calldata data) external virtual override {
+        uint[] memory balanceBefore = new uint[](_tokens.length);
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0) balanceBefore[i] = GammaSwapLibrary.balanceOf(_tokens[i], address(this));
+        }
+
+        IAddCollateralCallback(msg.sender).addCollateralCallback(_tokens, amounts, data);
+
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] == GammaSwapLibrary.balanceOf(_tokens[i], address(this)), 'GP: wrong amount');
+        }
+    }
+
+    /*
+        borrowLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
+            -PosManager calculates interest Rate (gets total invariant, updates BorrowedInvariant, etc.)
+            -PosManager calculates what amount requested means in invariant terms, then in LP Shares
+            -PosManager withdraws LP Shares and holds funds in place, increases BorrowedInvariant
+            -PosManager issues NFT with description of position to borrower
+            -PosManager updates state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
+            *Check credit worthiness before borrowing
+
+        repayLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
+            -PosManager calculates interest Rate
+            -PosManager calculates how much payment is equal in invariant terms of loan
+            -PosManager calculates P/L (Invariant difference)
+            -PosManager pays back this Invariant difference
+    */
+    function borrowLiquidity(uint256 liquidity) external virtual override returns(uint[] memory amounts, uint accFeeIndex){
+        //Could check that the position manager is the one that made the call.
+        //Or I could store the tokenId here instead of in PositionManager
+        //or call the module and check that the module asked for it. PM -> Mod -> GP (checks it's MOD)
+    }
 }
