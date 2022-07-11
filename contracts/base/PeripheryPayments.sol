@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-
 import '../interfaces/IPeripheryPayments.sol';
 import '../interfaces/external/IWETH9.sol';
 
 import '../libraries/TransferHelper.sol';
+import '../libraries/GammaSwapLibrary.sol';
 
 import './PeripheryImmutableState.sol';
 
@@ -18,7 +17,8 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
 
     /// @inheritdoc IPeripheryPayments
     function unwrapWETH9(uint256 amountMinimum, address recipient) public payable override {
-        uint256 balanceWETH9 = IWETH9(WETH9).balanceOf(address(this));
+        //uint256 balanceWETH9 = IWETH9(WETH9).balanceOf(address(this));
+        uint256 balanceWETH9 = GammaSwapLibrary.balanceOf(WETH9, address(this));
         require(balanceWETH9 >= amountMinimum, 'Insufficient WETH9');
 
         if (balanceWETH9 > 0) {
@@ -33,7 +33,7 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
         uint256 amountMinimum,
         address recipient
     ) public payable override {
-        uint256 balanceToken = IERC20(token).balanceOf(address(this));
+        uint256 balanceToken = GammaSwapLibrary.balanceOf(token, address(this));
         require(balanceToken >= amountMinimum, 'Insufficient token');
 
         if (balanceToken > 0) {
@@ -59,7 +59,8 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
         if (token == WETH9 && address(this).balance >= value) {
             // pay with WETH9
             IWETH9(WETH9).deposit{value: value}(); // wrap only what is needed to pay
-            IWETH9(WETH9).transfer(recipient, value);
+            //IWETH9(WETH9).transfer(recipient, value);
+            TransferHelper.safeTransfer(WETH9, recipient, value);
         } else if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
             TransferHelper.safeTransfer(token, recipient, value);

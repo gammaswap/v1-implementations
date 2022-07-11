@@ -33,8 +33,8 @@ contract BalancerModule is IProtocolModule {
     }
 
     //TODO: Not finished
-    function validateCFMM(address[] calldata _tokens, address _cfmm)  external view override returns(address[] memory tokens){
-        /*require(type(BPool).bytecode == at(params.cfmm), 'BalancerModule.validateParams: INVALID_PROTOCOL_FOR_CFMM');
+    function validateCFMM(address[] calldata _tokens, address _cfmm)  external view override returns(address[] memory tokens, bytes32 key){
+        /*require(type(BPool).bytecode == at(params.cfmm), 'BalancerModule.validateParams: INVALID_PROTOCOL_FOR_CFMM');//This check is probably way too expensive
         tokens = BPool(params.cfmm).getFinalTokens();//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         salt = 0;/**/
     }
@@ -46,7 +46,7 @@ contract BalancerModule is IProtocolModule {
         invariant = uint160(cfmm);
     }
 
-    function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view override returns(uint256 totalInvariant, uint256 newInvariant) {
+    function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view virtual override returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply) {
     }
 
     // **** ADD LIQUIDITY ****
@@ -54,15 +54,11 @@ contract BalancerModule is IProtocolModule {
         address cfmm,
         uint[] calldata amountsDesired,
         uint[] calldata amountsMin
-    ) external virtual override returns (uint[] memory amounts) {
+    ) external virtual override returns (uint[] memory amounts, address payee) {
         // create the pair if it doesn't exist yet
         /*amountA = 0;
         amountB = 0;
         cfmm = address(0);/**/
-    }
-
-    function getPayee(address cfmm) external virtual override view returns(address) {
-        return PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
     }
 
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {

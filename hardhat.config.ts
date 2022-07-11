@@ -7,7 +7,8 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
-const { ALCHEMY_API_KEY, GOERLI_PRIVATE_KEY} = require("./secrets.json");
+const { ALCHEMY_API_KEY, GOERLI_PRIVATE_KEY } = require("./secrets.json");
+require("hardhat-contract-sizer"); // "npx hardhat size-contracts" or "yarn run hardhat size-contracts"
 
 dotenv.config();
 

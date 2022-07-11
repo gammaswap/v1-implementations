@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-
 library TransferHelper {
+
+    bytes4 private constant TRANSFER = bytes4(keccak256(bytes('transfer(address,uint256)')));
+    bytes4 private constant TRANSFER_FROM = bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
+    bytes4 private constant APPROVE = bytes4(keccak256(bytes('approve(address,uint256)')));
+
     /// @notice Transfers tokens from the targeted address to the given destination
     /// @notice Errors with 'STF' if transfer fails
     /// @param token The contract address of the token to be transferred
@@ -17,7 +20,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) =
-        token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
+        token.call(abi.encodeWithSelector(TRANSFER_FROM, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'STF');
     }
 
@@ -31,7 +34,7 @@ library TransferHelper {
         address to,
         uint256 value
     ) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(TRANSFER, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'ST');
     }
 
@@ -45,7 +48,7 @@ library TransferHelper {
         address to,
         uint256 value
     ) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(APPROVE, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'SA');
     }
 

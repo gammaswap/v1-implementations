@@ -13,12 +13,13 @@ import "../libraries/Math.sol";
 
 contract UniswapV2Module is IProtocolModule {
 
+    uint256 private immutable ONE = 10**18;
     address public immutable override factory;//protocol factory
     address public immutable override protocolFactory;//protocol factory
     uint24 public override protocol;
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
+        require(deadline >= block.timestamp, 'M1: EXPIRED');
         _;
     }
 
@@ -28,13 +29,27 @@ contract UniswapV2Module is IProtocolModule {
         protocol = 1;
     }
 
-    function validateCFMM(address[] calldata _tokens, address _cfmm) external view override returns(address[] memory tokens){
-        require(_tokens.length == 2, 'UniswapV2Module.validateParams: INVALID_NUMBER_OF_TOKENS');
-        require(_tokens[0] != _tokens[1], 'UniswapV2Module.validateParams: IDENTICAL_ADDRESSES');
-        require(_tokens[0] != address(0) && _tokens[1] != address(0), 'UniswapV2Module.validateParams: ZERO_ADDRESS');
+    function isContract(address account) internal view returns (bool) {
+        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
+        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
+        // for accounts without code, i.e. keccak256('')
+        bytes32 codehash;
+        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { codehash := extcodehash(account) }
+        return (codehash != accountHash && codehash != 0x0);
+    }/**/
+
+    function validateCFMM(address[] calldata _tokens, address _cfmm) external view override returns(address[] memory tokens, bytes32 key){
+        require(_cfmm != address(0), 'M1: CFMM_ZERO_ADDRESS');
+        require(isContract(_cfmm) == true, 'M1: CFMM_DOES_NOT_EXIST');/**/
+        require(_tokens.length == 2, 'M1: INVALID_NUMBER_OF_TOKENS');
+        require(_tokens[0] != _tokens[1], 'M1: IDENTICAL_ADDRESSES');
+        require(_tokens[0] != address(0) && _tokens[1] != address(0), 'M1: ZERO_ADDRESS');
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[1]);//For Uniswap and its clones the user passes the parameters
-        require(_cfmm == pairFor(tokens[0], tokens[1]), 'UniswapV2Module.validateParams: INVALID_PROTOCOL_FOR_CFMM');
+        require(_cfmm == pairFor(tokens[0], tokens[1]), 'M1: INVALID_PROTOCOL_FOR_CFMM');
+        key = PoolAddress.getPoolKey(_cfmm, protocol);
     }
 
     function getKey(address _cfmm) external view override returns(bytes32 key) {
@@ -61,8 +76,8 @@ contract UniswapV2Module is IProtocolModule {
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
-        require(amountA > 0, 'UniswapV2Library: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0, 'M1: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'M1: INSUFFICIENT_LIQUIDITY');
         amountB = (amountA * reserveB) / reserveA;
     }
 
@@ -71,14 +86,15 @@ contract UniswapV2Module is IProtocolModule {
          return Math.sqrt(reserveA * reserveB);
     }
 
-    function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view override returns(uint256 totalInvariantInCFMM, uint256 depositedInvariant) {
-        uint256 depLPBal = curLPBal - prevLPBal;
-        uint256 totalSupply = GammaSwapLibrary.totalSupply(cfmm);
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
-        uint256 totalCFMMInvariant = Math.sqrt(reserveA * reserveB);
-        totalInvariantInCFMM = (prevLPBal * totalCFMMInvariant) / totalSupply;
-        if (depLPBal > 0) {
-            depositedInvariant = (depLPBal * totalCFMMInvariant) / totalSupply;
+    function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view virtual override returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply) {
+        (uint256 reserveA, uint256 reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+        lastInvariant = Math.sqrt(reserveA * reserveB);//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
+        lastTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        if(lastTotalSupply > 0) {
+            uint256 denominator = (prevInvariant * lastTotalSupply) / ONE;
+            lastFeeIndex = (lastInvariant * prevTotalSupply) / denominator;
+        } else {
+            lastFeeIndex = ONE;
         }
     }
 
@@ -86,7 +102,8 @@ contract UniswapV2Module is IProtocolModule {
         address cfmm,
         uint[] calldata amountsDesired,
         uint[] calldata amountsMin
-    ) external virtual override returns (uint[] memory amounts) {
+    ) external virtual override returns (uint[] memory amounts, address payee) {
+        payee = cfmm;
         amounts = new uint[](2);
         (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
         if (reserveA == 0 && reserveB == 0) {
@@ -94,19 +111,15 @@ contract UniswapV2Module is IProtocolModule {
         } else {
             uint amountBOptimal = quote(amountsDesired[0], reserveA, reserveB);
             if (amountBOptimal <= amountsDesired[1]) {
-                require(amountBOptimal >= amountsMin[1], 'UniswapV2Module: INSUFFICIENT_B_AMOUNT');
+                require(amountBOptimal >= amountsMin[1], 'M1: INSUFFICIENT_B_AMOUNT');
                 (amounts[0], amounts[1]) = (amountsDesired[0], amountBOptimal);
             } else {
                 uint amountAOptimal = quote(amountsDesired[1], reserveB, reserveA);
                 assert(amountAOptimal <= amountsDesired[0]);
-                require(amountAOptimal >= amountsMin[0], 'UniswapV2Module: INSUFFICIENT_A_AMOUNT');
+                require(amountAOptimal >= amountsMin[0], 'M1: INSUFFICIENT_A_AMOUNT');
                 (amounts[0], amounts[1]) = (amountAOptimal, amountsDesired[1]);
             }
         }
-    }
-
-    function getPayee(address cfmm) external virtual override view returns(address) {
-        return cfmm;
     }
 
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
@@ -115,9 +128,13 @@ contract UniswapV2Module is IProtocolModule {
     }
 
     function burn(address cfmm, address to, uint256 amount) external virtual override returns(uint[] memory amounts) {
+        require(amount > 0, 'M1: ZERO_AMOUNT');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
-        require(gammaPool == msg.sender, "UniswapV2Module.burn: FORBIDDEN");
-        IRemoveLiquidityCallback(gammaPool).removeLiquidityCallback(cfmm, amount);
+        uint256 balance0Before = GammaSwapLibrary.balanceOf(cfmm, cfmm);//maybe we can check here that the GP balance also decreased
+        uint256 balance1Before = GammaSwapLibrary.balanceOf(cfmm, gammaPool);
+        IRemoveLiquidityCallback(msg.sender).removeLiquidityCallback(cfmm, amount);
+        require(balance0Before + amount <= GammaSwapLibrary.balanceOf(cfmm, cfmm), "M1: NO_TRANSFER0");
+        require(balance1Before - amount <= GammaSwapLibrary.balanceOf(cfmm, gammaPool), "M1: NO_TRANSFER1");
         amounts = new uint[](2);
         (amounts[0], amounts[1]) = IUniswapV2PairMinimal(cfmm).burn(to);
     }

@@ -6,12 +6,11 @@ pragma solidity ^0.8.0;
 /// @dev This is used to avoid having constructor arguments in the pool contract, which results in the init code hash
 /// of the pool being constant allowing the CREATE2 address of the pool to be cheaply computed on-chain
 interface IGammaPoolFactory {
-
     struct Parameters {
         uint24 protocol;
         address[] tokens;
         address cfmm;
-    }
+    }/**/
 
     function isProtocolRestricted(uint24 protocol) external view returns(bool);
     function setIsProtocolRestricted(uint24 protocol, bool isRestricted) external;
@@ -35,7 +34,6 @@ interface IGammaPoolFactory {
     external
     view
     returns (
-        address factory,
         address[] memory tokens,
         uint24 protocol,
         address cfmm

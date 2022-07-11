@@ -8,6 +8,8 @@ import "./interfaces/IProtocolModule.sol";
 
 contract GammaPoolFactory is IGammaPoolFactory{
 
+    event PoolCreated(address indexed pool, address indexed cfmm, uint24 indexed protocol, uint256 count);
+
     address public override feeTo;
     address public override feeToSetter;
     address public override owner;
@@ -19,7 +21,9 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
     address[] public allPools;
 
-    Parameters public parameters;
+    address[] private tokens;
+    address private cfmm;
+    uint24 private protocol;
 
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
@@ -27,11 +31,10 @@ contract GammaPoolFactory is IGammaPoolFactory{
         owner = msg.sender;
     }
 
-    function getParameters() external virtual override view returns(address factory, address[] memory tokens, uint24 protocol, address cfmm) {
-        factory = address(this);
-        tokens = parameters.tokens;
-        protocol = parameters.protocol;
-        cfmm = parameters.cfmm;
+    function getParameters() external virtual override view returns(address[] memory _tokens, uint24 _protocol, address _cfmm) {
+        _tokens = tokens;
+        _protocol = protocol;
+        _cfmm = cfmm;
     }
 
     function allPoolsLength() external virtual override view returns (uint) {
@@ -39,64 +42,56 @@ contract GammaPoolFactory is IGammaPoolFactory{
     }
 
     function addModule(address module) external virtual override {
-        require(msg.sender == owner, 'FACTORY.addModule: FORBIDDEN');
-        uint24 protocol = IProtocolModule(module).protocol();
-        require(protocol > 0, 'FACTORY.addModule: ZERO_PROTOCOL');
-        require(getModule[protocol] == address(0), 'FACTORY.addModule: PROTOCOL_ALREADY_EXISTS');
-        getModule[protocol] = module;
+        require(msg.sender == owner);//'FACTORY.addModule: FORBIDDEN');
+        require(IProtocolModule(module).protocol() > 0);//'FACTORY.addModule: ZERO_PROTOCOL');
+        require(getModule[IProtocolModule(module).protocol()] == address(0));
+        getModule[IProtocolModule(module).protocol()] = module;/**/
     }
 
-    function setIsProtocolRestricted(uint24 protocol, bool isRestricted) external virtual override {
-        require(msg.sender == owner, 'FACTORY.setIsProtocolRestricted: FORBIDDEN');
-        isProtocolRestricted[protocol] = isRestricted;
+    function setIsProtocolRestricted(uint24 _protocol, bool isRestricted) external virtual override {
+        require(msg.sender == owner);//'FACTORY.setIsProtocolRestricted: FORBIDDEN');
+        isProtocolRestricted[_protocol] = isRestricted;
     }
 
     function createPool(Parameters calldata params) external virtual override returns (address pool) {
-        require(getModule[params.protocol] != address(0), 'FACTORY.createPool: PROTOCOL_NOT_SET');
-        require(isProtocolRestricted[params.protocol] == false || msg.sender == owner, 'FACTORY.createPool: PROTOCOL_RESTRICTED');
-        require(params.cfmm != address(0), 'FACTORY.createPool: ZERO_ADDRESS');
-        require(isContract(params.cfmm) == true, 'FACTORY.createPool: CFMM_DOES_NOT_EXIST');
+        require(getModule[params.protocol] != address(0), 'GPF: NOT_SET');
+        require(isProtocolRestricted[params.protocol] == false || msg.sender == owner, 'GPF: RESTRICTED');
 
         IProtocolModule module = IProtocolModule(getModule[params.protocol]);
-        address[] memory tokens = module.validateCFMM(params.tokens, params.cfmm);
-        bytes32 key = module.getKey(params.cfmm);//TODO: The parameters have to be tied to it. That way if someone creates this pool for us. The pool must have the right parameters.
+        bytes32 key;
+        (tokens, key) = module.validateCFMM(params.tokens, params.cfmm);
+
+        require(getPool[key] == address(0), 'GPF: EXISTS');
         //Maybe the protocol should be the module address. That way it is tied to the module.
         //Someone could create it and not add the right parameters. So you need to decompose the address into the parameters
         //you initialize it by passing the parameters and check that the parameters can be compiled into the address. That's how you
         //know those are the right parameters
 
-        parameters = Parameters({tokens: tokens, protocol: params.protocol, cfmm: params.cfmm});
+        cfmm = params.cfmm;
+        protocol = params.protocol;
         pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
-        delete parameters;
+        cfmm = address(0);
+        protocol = 0;
+        delete tokens;
 
         getPool[key] = pool;
         allPools.push(pool);
-        //emit PoolCreated(token0, token1, protocol, pool, allPools.length);
+        emit PoolCreated(pool, params.cfmm, params.protocol, allPools.length);
     }
 
     function setFee(uint _fee) external {
-        require(msg.sender == feeToSetter, 'FACTORY.setFee: FORBIDDEN');
+        require(msg.sender == feeToSetter);//'FACTORY.setFee: FORBIDDEN');
         fee = _fee;
     }
 
     function setFeeTo(address _feeTo) external {
-        require(msg.sender == feeToSetter, 'FACTORY.setFeeTo: FORBIDDEN');
+        require(msg.sender == feeToSetter);//'FACTORY.setFeeTo: FORBIDDEN');
         feeTo = _feeTo;
     }
 
     function setFeeToSetter(address _feeToSetter) external {
-        require(msg.sender == feeToSetter, 'FACTORY.setFeeToSetter: FORBIDDEN');
+        require(msg.sender == feeToSetter);//'FACTORY.setFeeToSetter: FORBIDDEN');
         feeToSetter = _feeToSetter;
     }
 
-    function isContract(address account) internal view returns (bool) {
-        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
-        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
-        // for accounts without code, i.e. keccak256('')
-        bytes32 codehash;
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
-        // solhint-disable-next-line no-inline-assembly
-        assembly { codehash := extcodehash(account) }
-        return (codehash != accountHash && codehash != 0x0);
-    }
 }
