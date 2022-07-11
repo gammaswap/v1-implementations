@@ -11,7 +11,7 @@ import "./base/GammaPoolERC20.sol";
 
 contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     uint internal constant ONE = 10**18;
-    uint public constant MINIMUM_LIQUIDITY = 10**3;
+    uint internal constant MINIMUM_LIQUIDITY = 10**3;
 
     address public factory;
     address[] private _tokens;
@@ -25,14 +25,8 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     uint256 public LAST_BLOCK_NUMBER;
     uint256 public YEAR_BLOCK_COUNT = 2252571;
 
-    uint256 public BASE_RATE = 10**16;
-    uint256 public OPTIMAL_UTILIZATION_RATE = 8*(10**17);
-    uint256 public SLOPE1 = 10**18;
-    uint256 public SLOPE2 = 10**18;
-
     //TODO: We should test later if we can make save on gas by making public variables internal and using external getter functions
     uint256 public borrowRate;
-    uint256 public utilizationRate;
     uint256 public accFeeIndex;
     uint256 public lastFeeIndex;
     uint256 public lastCFMMFeeIndex;
@@ -76,17 +70,8 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
             -PosManager pays back this Invariant difference
     */
 
-
     function updateBorrowRate() internal {
-        utilizationRate = (LP_TOKEN_BORROWED * ONE) / (LP_TOKEN_BALANCE + LP_TOKEN_BORROWED);
-        if(utilizationRate <= OPTIMAL_UTILIZATION_RATE) {
-            uint256 variableRate = (utilizationRate * SLOPE1) / OPTIMAL_UTILIZATION_RATE;
-            borrowRate = BASE_RATE + variableRate;
-        } else {
-            uint256 utilizationRateDiff = utilizationRate - OPTIMAL_UTILIZATION_RATE;
-            uint256 variableRate = (utilizationRateDiff * SLOPE2) / (ONE - OPTIMAL_UTILIZATION_RATE);
-            borrowRate = BASE_RATE + SLOPE1 + variableRate;
-        }
+        borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
     }
 
     function updateFeeIndex() internal {
@@ -172,6 +157,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         require(liquidity > 0, 'GP.mint: 0 liquidity');
         _mint(to, liquidity);
         LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
+        updateBorrowRate();
         //emit Mint(msg.sender, amountA, amountB);
     }
 
@@ -202,6 +188,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         _burn(address(this), amount);
 
         LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
+        updateBorrowRate();
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 

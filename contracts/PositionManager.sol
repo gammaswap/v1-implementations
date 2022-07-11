@@ -18,7 +18,6 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
 
     uint256 MAX_SLIPPAGE = 10**17;//10%
 
-    bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
     /// @dev IDs of pools assigned by this contract
     //mapping(address => uint80) private _poolIds;
 
@@ -30,9 +29,6 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
     /// @dev The ID of the next pool that is used for the first time. Skips 0
     uint80 private _nextPoolId = 1;
 
-    mapping(address => mapping(address => address)) public getPool;
-
-    address[] public  allPools;
     address public owner;
 
     uint256 ONE = 10**18;//1
@@ -49,7 +45,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
     //uint80 private _nextPoolId = 1;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(_isApprovedOrOwner(msg.sender, tokenId), 'PositionManager: NOT_AUTHORIZED');
+        require(_isApprovedOrOwner(msg.sender, tokenId), 'PM: NOT_AUTHORIZED');
         _;
     }
 
@@ -110,7 +106,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
 
     function addLiquidityCallback(address payee, address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external override {// Only in Uni. In Bal we use this to transfer to ourselves then the mint function finishes the transfer from the other side.
         AddLiquidityCallbackData memory decoded = abi.decode(data, (AddLiquidityCallbackData));
-        require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PositionManager.addLiquidityCallback: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
+        require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PM.addLiq: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
 
         for (uint i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0 ) pay(tokens[i], decoded.payer, payee, amounts[i]);
@@ -119,12 +115,12 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
 
     // **** REMOVE LIQUIDITY **** //
     function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts) {
-        require(params.amount > 0, 'PositionManager.removeLiquidity: ZERO_AMOUNT');
+        require(params.amount > 0, 'PM.remLiq: 0 amount');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
         amounts = IGammaPool(gammaPool).burn(params.to);
         for (uint i = 0; i < amounts.length; i++) {
-            require(amounts[i] >= params.amountsMin[i], 'PositionManager.removeLiquidity: INSUFFICIENT_AMOUNT');
+            require(amounts[i] >= params.amountsMin[i], 'PM.remLiq: amount < min');
         }
     }
 

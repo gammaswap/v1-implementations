@@ -39,6 +39,10 @@ contract BalancerModule is IProtocolModule {
         salt = 0;/**/
     }
 
+    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) external virtual override view returns(uint256 borrowRate) {
+        return 0;
+    }
+
     function getKey(address _cfmm) external view override returns(bytes32 key) {
     }
 

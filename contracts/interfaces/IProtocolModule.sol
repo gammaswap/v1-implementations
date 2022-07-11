@@ -8,7 +8,7 @@ interface IProtocolModule {
     function validateCFMM(address[] calldata _tokens, address _cfmm)  external view returns(address[] memory tokens, bytes32 key);
     function getKey(address _cfmm) external view returns(bytes32);
     function getCFMMTotalInvariant(address cfmm) external view returns(uint256);
-    //function getCFMMInvariantChanges(address cfmm, uint256 prevLPBal, uint256 curLPBal) external view returns(uint256, uint256);
+    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) external view returns(uint256);
     function addLiquidity(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) external returns (uint[] memory amounts, address payee);
     function mint(address cfmm, uint[] calldata amounts) external returns(uint liquidity);
     function burn(address cfmm, address to, uint256 amount) external returns(uint[] memory amounts);

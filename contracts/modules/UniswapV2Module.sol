@@ -18,6 +18,11 @@ contract UniswapV2Module is IProtocolModule {
     address public immutable override protocolFactory;//protocol factory
     uint24 public override protocol;
 
+    uint256 public BASE_RATE = 10**16;
+    uint256 public OPTIMAL_UTILIZATION_RATE = 8*(10**17);
+    uint256 public SLOPE1 = 10**18;
+    uint256 public SLOPE2 = 10**18;
+
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'M1: EXPIRED');
         _;
@@ -79,6 +84,18 @@ contract UniswapV2Module is IProtocolModule {
         require(amountA > 0, 'M1: INSUFFICIENT_AMOUNT');
         require(reserveA > 0 && reserveB > 0, 'M1: INSUFFICIENT_LIQUIDITY');
         amountB = (amountA * reserveB) / reserveA;
+    }
+
+    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) external virtual override view returns(uint256) {
+        uint256 utilizationRate = (lpBorrowed * ONE) / (lpBalance + lpBorrowed);
+        if(utilizationRate <= OPTIMAL_UTILIZATION_RATE) {
+            uint256 variableRate = (utilizationRate * SLOPE1) / OPTIMAL_UTILIZATION_RATE;
+            return (BASE_RATE + variableRate);
+        } else {
+            uint256 utilizationRateDiff = utilizationRate - OPTIMAL_UTILIZATION_RATE;
+            uint256 variableRate = (utilizationRateDiff * SLOPE2) / (ONE - OPTIMAL_UTILIZATION_RATE);
+            return(BASE_RATE + SLOPE1 + variableRate);
+        }
     }
 
     function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256) {
