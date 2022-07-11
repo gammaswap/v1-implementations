@@ -4,13 +4,12 @@ pragma abicoder v2;
 
 import "../interfaces/external/IUniswapV2PairMinimal.sol";
 import "../interfaces/IProtocolModule.sol";
-import "../interfaces/IAddLiquidityCallback.sol";
+import "../interfaces/IRemoveLiquidityCallback.sol";
 import "../PositionManager.sol";
 import "../interfaces/IPositionManager.sol";
 import "../libraries/GammaSwapLibrary.sol";
 import "../libraries/PoolAddress.sol";
 import "../libraries/Math.sol";
-import "../interfaces/IAddLiquidityCallback.sol";
 
 contract UniswapV2Module is IProtocolModule {
 
@@ -83,16 +82,6 @@ contract UniswapV2Module is IProtocolModule {
         }
     }
 
-    /*function transferTokens(address payer, address payee, address[] memory tokens, uint[] memory amounts) internal virtual {
-        uint balance0Before;
-        uint balance1Before;
-        if (amounts[0] > 0) balance0Before = GammaSwapLibrary.balanceOf(tokens[0], payee);
-        if (amounts[1] > 0) balance1Before = GammaSwapLibrary.balanceOf(tokens[1], payee);
-        IAddLiquidityCallback(msg.sender).addLiquidityCallback(protocol, tokens, amounts, payer, payee);
-        if (amounts[0] > 0) require(balance0Before + amounts[0] <= GammaSwapLibrary.balanceOf(tokens[0], payee), 'M0');
-        if (amounts[1] > 0) require(balance1Before + amounts[1] <= GammaSwapLibrary.balanceOf(tokens[1], payee), 'M1');
-    }/**/
-
     function addLiquidity(
         address cfmm,
         uint[] calldata amountsDesired,
@@ -125,7 +114,11 @@ contract UniswapV2Module is IProtocolModule {
         liquidity = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
     }
 
-    function burn(address cfmm, address to) external virtual override returns(uint[] memory amounts) {
-
+    function burn(address cfmm, address to, uint256 amount) external virtual override returns(uint[] memory amounts) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(gammaPool == msg.sender, "UniswapV2Module.burn: FORBIDDEN");
+        IRemoveLiquidityCallback(gammaPool).removeLiquidityCallback(cfmm, amount);
+        amounts = new uint[](2);
+        (amounts[0], amounts[1]) = IUniswapV2PairMinimal(cfmm).burn(to);
     }
 }

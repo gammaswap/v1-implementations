@@ -12,5 +12,5 @@ interface IProtocolModule {
     function addLiquidity(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) external returns (uint[] memory);
     function getPayee(address cfmm) external view returns(address);
     function mint(address cfmm, uint[] calldata amounts) external returns(uint liquidity);
-    function burn(address cfmm, address to) external returns(uint[] memory amounts);
+    function burn(address cfmm, address to, uint256 amount) external returns(uint[] memory amounts);
 }

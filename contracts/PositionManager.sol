@@ -100,7 +100,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
             *Will the pool ever need to know the CFMM?
     **/
 
-    // **** ADD LIQUIDITY ****
+    // **** ADD LIQUIDITY **** //
     function addLiquidity(AddLiquidityParams calldata params) external returns (uint[] memory amounts, uint liquidity) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
@@ -117,15 +117,6 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
         }
     }
 
-    /*
-     struct RemoveLiquidityParams {
-        address cfmm;
-        uint[] amountsMin;
-        address to;
-        uint24 protocol;
-        uint deadline;
-    }
-    */
     // **** REMOVE LIQUIDITY **** //
     function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts) {
         require(params.amount > 0, 'PositionManager.removeLiquidity: ZERO_AMOUNT');
@@ -134,7 +125,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, PeripheryPa
         amounts = IGammaPool(gammaPool).burn(params.to);
         for (uint i = 0; i < amounts.length; i++) {
             require(amounts[i] >= params.amountsMin[i], 'PositionManager.removeLiquidity: INSUFFICIENT_AMOUNT');
-        }/**/
+        }
     }
 
 }

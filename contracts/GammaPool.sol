@@ -23,8 +23,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     uint256 public LP_TOKEN_BALANCE;
     uint256 public BORROWED_INVARIANT;
 
-    bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
-
     address public owner;
 
     uint private unlocked = 1;
@@ -38,7 +36,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
 
     function tokens() external view virtual override returns(address[] memory) {
         return _tokens;
-    }/**/
+    }
 
     constructor() {
         (factory, _tokens, protocol, cfmm) = IGammaPoolFactory(msg.sender).getParameters();
@@ -46,8 +44,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     }
 
     /*
-
-        *PosManager uses modules to do all calculations. GammaPools only calc interest rates in Pool (but needs inputs from PosManager) and hold funds.
+        PosManager uses modules to do all calculations. GammaPools only calc interest rates in Pool (but needs inputs from PosManager) and hold funds.
             -Therefore PosManager is GPL v3, GammaPool is BSD since GammaPool never deals with none of the open source code
 
         borrowLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
@@ -63,8 +60,18 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
             -PosManager calculates how much payment is equal in invariant terms of loan
             -PosManager calculates P/L (Invariant difference)
             -PosManager pays back this Invariant difference
-
     */
+
+    /*function getUtilizationRate() external view returns(uint256 _utilizationRate) {
+        uint256 totalLPShares = totalUniLiquidity.add(UNI_LP_BORROWED);
+        _utilizationRate = UNI_LP_BORROWED.mul(10**18).div(totalLPShares);
+
+
+
+        uint256 cfmmTotalInvariant = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).getCFMMTotalInvariant(cfmm);
+        uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        uint256 totalInvariant = ((LP_TOKEN_BALANCE * cfmmTotalInvariant) / cfmmTotalSupply) + BORROWED_INVARIANT;
+    }/**/
 
     function updateFeeIndex() internal {
         //updates fee index and also BORROWED_INVARIANT
@@ -85,7 +92,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         IAddLiquidityCallback(msg.sender).addLiquidityCallback(payee, _tokens, amounts, data);
 
         for (uint i = 0; i < _tokens.length; i++) {
-            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] <= GammaSwapLibrary.balanceOf(_tokens[i], payee), 'M0');
+            if (amounts[i] > 0) require(balanceBefore[i] + amounts[i] <= GammaSwapLibrary.balanceOf(_tokens[i], payee), 'GammaPool.addLiquidity: EXCESSIVE_AMOUNT');
         }
 
         //In Uni/Suh mint [CFMM -> GP] single tx
@@ -119,11 +126,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         //emit Mint(msg.sender, amountA, amountB);
     }
 
-
-    function convertGSTokensToLP(uint amount) internal view returns(uint lpTokens) {
-
-    }
-
     /*
         burn() Strategy:
             -PosManager gets totalInvariant in CFMM
@@ -154,22 +156,17 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         //Uni/Sus: U -> GP -> CFMM -> U
         //                    just call module and ask module to use callback to transfer to CFMM then module calls burn
         //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> U
-        //                    No need for callbacks here
-        IERC20(cfmm).transfer(address(module), withdrawLPTokens);//maybe create a GammaSwapLibrary function for it to decrease cost (look it up)
-        amounts = module.burn(cfmm, to);
+        //                    just call module and ask module to use callback to transfer to Module then to CFMM
+        amounts = module.burn(cfmm, to, withdrawLPTokens);
         _burn(address(this), amount);
 
         LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
-    function removeLiquidityCallback(
-        address payee,
-        address[] calldata tokens,
-        uint[] calldata amounts,
-        bytes calldata data
-    ) external virtual override {
-
+    function removeLiquidityCallback(address to, uint256 amount) external virtual override {
+        require(msg.sender == IGammaPoolFactory(factory).getModule(protocol), 'GammaPool.removeLiquidityCallback: FORBIDDEN');
+        GammaSwapLibrary.transfer(cfmm, to, amount);
     }
 
     /*

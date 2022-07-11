@@ -68,7 +68,16 @@ contract BalancerModule is IProtocolModule {
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
     }
 
-    function burn(address cfmm, address to) external virtual override returns(uint[] memory amounts) {
-
+    function burn(address cfmm, address to, uint256 amount) external virtual override returns(uint[] memory amounts) {
+        /*address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(gammaPool == msg.sender, "UniswapV2Module.burn: FORBIDDEN");
+        IRemoveLiquidityCallback(gammaPool).removeLiquidityCallback(address(this), amount);
+        address[] _tokens = IGammaPool(gammaPool).tokens();
+        amounts = new uint[](_tokens.length);
+        IBPoolMinimal(cfmm).exitPool(amount, amounts);
+        for (uint i = 0; i < _tokens.length; i++) {
+            amounts[i] = GammaSwapLibrary.balanceOf(_tokens[i], address(this));
+            GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
+        }/**/
     }
 }
