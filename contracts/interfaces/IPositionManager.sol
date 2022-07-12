@@ -34,16 +34,4 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint deadline;
     }
 
-    struct Position {
-        // the nonce for permits
-        uint96 nonce;
-        address operator;
-        address poolId;
-        address[] tokens;
-        uint256[] tokensHeld;
-        uint256 liquidity;
-        uint256 rateIndex;
-        uint256 blockNum;
-        bytes32 hash;
-    }
 }

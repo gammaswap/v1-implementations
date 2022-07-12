@@ -5,12 +5,24 @@ pragma solidity ^0.8.0;
 
 interface IGammaPool {//is IERC20 {
 
+    struct Loan {
+        // the nonce for permits
+        uint96 nonce;
+        uint256 posId;
+        address operator;
+        address poolId;
+        address[] tokens;
+        uint256[] tokensHeld;
+        uint256 liquidity;
+        uint256 rateIndex;
+        uint256 blockNum;
+    }
+
     function tokens() external view returns(address[] memory);
     function cfmm() external view returns(address);
     function mint(address to) external returns(uint);
     function burn(address to) external returns(uint[] memory);
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
-    function addCollateral(uint[] calldata amounts, bytes calldata data) external;
-    function borrowLiquidity(uint256 liquidity) external returns(uint[] memory amounts, uint accFeeIndex);
+    function borrowLiquidity(uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts, uint tokenId);
 
 }

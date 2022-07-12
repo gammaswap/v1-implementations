@@ -80,4 +80,15 @@ contract BalancerModule is IProtocolModule {
             GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
         }/**/
     }
+
+    function calcInvariant(address cfmm, uint[] calldata amounts) external virtual override view returns(uint) {
+        return 0;//return Math.sqrt(amounts[0] * amounts[1]);//This is wrong for balancer. We must check what the weights should be by asking the cfmm. Or maybe we should pass the expected ratio here.
+        //probably not because this weighting is assuming geometric mean market maker. We could instead use some other function or a summation.
+    }
+
+    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
+        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
+        return true;
+    }
 }

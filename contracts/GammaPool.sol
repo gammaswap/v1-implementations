@@ -26,6 +26,9 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     uint256 public LAST_BLOCK_NUMBER;
     uint256 public YEAR_BLOCK_COUNT = 2252571;
 
+    /// @dev The token ID position data
+    mapping(uint256 => Loan) internal _loans;
+
     //TODO: We should test later if we can make save on gas by making public variables internal and using external getter functions
     uint256 public borrowRate;
     uint256 public accFeeIndex;
@@ -35,6 +38,9 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     uint256 public lastCFMMTotalSupply;
 
     address public owner;
+
+    /// @dev The ID of the next token that will be minted. Skips 0
+    uint176 private _nextId = 1;
 
     uint private unlocked = 1;
 
@@ -184,7 +190,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
     }
 
     //********* Long Gamma Functions *********//
-    function addCollateral(uint[] calldata amounts, bytes calldata data) external virtual override {
+    function addCollateral(uint[] calldata amounts, bytes calldata data) internal {
         uint[] memory balanceBefore = new uint[](_tokens.length);
         for (uint i = 0; i < _tokens.length; i++) {
             if (amounts[i] > 0) balanceBefore[i] = GammaSwapLibrary.balanceOf(_tokens[i], address(this));
@@ -197,35 +203,63 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         }
     }
 
-    /*
-        borrowLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
-            -PosManager calculates interest Rate (gets total invariant, updates BorrowedInvariant, etc.)
-            -PosManager calculates what amount requested means in invariant terms, then in LP Shares
-            -PosManager withdraws LP Shares and holds funds in place, increases BorrowedInvariant
-            -PosManager issues NFT with description of position to borrower
-            -PosManager updates state (LPShares in Pool, BorrowedInvariant, feeIndex with new value)
-            *Check credit worthiness before borrowing
+    function loans(uint256 tokenId) external view returns (uint96 nonce, address operator, address poolId, address[] memory tokens,
+        uint256[] memory tokensHeld, uint256 liquidity, uint256 rateIndex, uint256 blockNum) {
+        Loan memory loan = _loans[tokenId];
+        return (loan.nonce, loan.operator, loan.poolId, loan.tokens, loan.tokensHeld, loan.liquidity, loan.rateIndex, loan.blockNum);
+    }
 
+    /*
         repayLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
             -PosManager calculates interest Rate
             -PosManager calculates how much payment is equal in invariant terms of loan
             -PosManager calculates P/L (Invariant difference)
             -PosManager pays back this Invariant difference
     */
-    function borrowLiquidity(uint256 liquidity) external virtual override returns(uint[] memory amounts, uint accFeeIndex){
-        //Could check that the position manager is the one that made the call.
-        //Or I could store the tokenId here instead of in PositionManager
-        //or call the module and check that the module asked for it. PM -> Mod -> GP (checks it's MOD)
+    function borrowLiquidity(uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external virtual override returns(uint[] memory amounts, uint tokenId){
+        require(lpTokens < LP_TOKEN_BALANCE, "GP.burn: exceeds liquidity");
 
-        //Only owner or operator of loan should be allowed to increase the liability
-        //How do you increase the liability? withdraw money from it.
-        //if we store the owner in the position, then we can check msg.sender == owner
-        //but what if the request comes from positionManager?
-        //there also has to be a cost. Perhaps, create the tokenId here and add the collateral here too
-        //How is the tokenId created here though? Callback to positionManager to create TokenId and store details in gammaPool?
-        //That can be done in the same callback to addCollateral
-        //but how do you prevent someone from impersonating the PositionManager and creating a tokenId that doesn't exist.
-        //and storing that tokenId here?
+        updateFeeIndex();
 
+        addCollateral(collateralAmounts, data);
+
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
+
+        //Uni/Sus: U -> GP -> CFMM -> GP
+        //                    just call module and ask module to use callback to transfer to CFMM then module calls burn
+        //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> GP
+        //                    just call module and ask module to use callback to transfer to Module then to CFMM
+        amounts = module.burn(cfmm, address(this), lpTokens);
+        uint256 invariantBorrowed = module.calcInvariant(cfmm, amounts);
+
+        BORROWED_INVARIANT = BORROWED_INVARIANT + invariantBorrowed;
+        LP_TOKEN_BORROWED = LP_TOKEN_BORROWED + lpTokens;
+        LP_TOKEN_BALANCE = LP_TOKEN_BALANCE - lpTokens;
+        require(LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)));
+
+        updateBorrowRate();
+
+        uint[] memory tokensHeld = new uint[](_tokens.length);
+        for(uint i = 0; i < _tokens.length; i++) {
+            tokensHeld[i] = amounts[i] + collateralAmounts[i];
+        }
+
+        require(module.checkCollateral(cfmm, tokensHeld, invariantBorrowed));//TODO: Finish this implementation
+
+        uint256 posId = _nextId++;
+        tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), posId)));
+
+        _loans[tokenId] = Loan({
+            nonce: 0,
+            posId: posId,
+            operator: address(0),
+            poolId: address(this),
+            tokens: _tokens,
+            tokensHeld: tokensHeld,
+            liquidity: invariantBorrowed,
+            rateIndex: accFeeIndex,
+            blockNum: block.number
+        });
     }
+
 }

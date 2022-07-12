@@ -155,4 +155,16 @@ contract UniswapV2Module is IProtocolModule {
         amounts = new uint[](2);
         (amounts[0], amounts[1]) = IUniswapV2PairMinimal(cfmm).burn(to);
     }
+
+    function calcInvariant(address cfmm, uint[] calldata amounts) external virtual override view returns(uint) {
+        return Math.sqrt(amounts[0] * amounts[1]);
+    }
+
+    //TODO: Finish this
+    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
+        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
+        return true;
+    }
+
 }

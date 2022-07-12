@@ -12,5 +12,7 @@ interface IProtocolModule {
     function addLiquidity(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) external returns (uint[] memory amounts, address payee);
     function mint(address cfmm, uint[] calldata amounts) external returns(uint liquidity);
     function burn(address cfmm, address to, uint256 amount) external returns(uint[] memory amounts);
+    function calcInvariant(address cfmm, uint[] calldata amounts) external view returns(uint invariant);
+    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint invariantBorrowed) external view returns(bool);
     function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply);
 }
