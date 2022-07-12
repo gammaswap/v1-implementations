@@ -44,5 +44,6 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint256 liquidity;
         uint256 rateIndex;
         uint256 blockNum;
+        bytes32 hash;
     }
 }

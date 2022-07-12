@@ -161,12 +161,18 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
 
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
-        gammaPool.addCollateral(params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
+        //gammaPool.addCollateral(params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
 
+
+        /*
+            TODO: move the creation of the unique tokenId to GammaPool. The TokenId will be the hash of nextId + msg.sender. Typically this will be the PosMgr but if someone creates
+            their own PosMgr, they can, since it's independent of this PosMgr. That is because PosMgr is just periphery code to help you move your coins around. This shouldn't be
+            a problem for the subgraph because the subgraph will be similar to the unV2 subgraph with a Factory and a template that creates GammaPools to track dynamically.
+        */
+        /*_safeMint(params.to, (tokenId = _nextId++));
+        //addr2,tokenId
         uint256 accFeeIndex;
-        (amounts, accFeeIndex) = gammaPool.borrowLiquidity(params.liquidity);
-
-        _mint(params.to, (tokenId = _nextId++));
+        (amounts, accFeeIndex) = gammaPool.borrowLiquidity(tokenId, params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
 
         _positions[tokenId] = Position({
             nonce: 0,
@@ -176,12 +182,18 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
             tokensHeld: amounts,
             liquidity: params.liquidity,
             rateIndex: accFeeIndex,
-            blockNum: block.number
+            blockNum: block.number,
+            hash: keccak256(abi.encode(address(this), tokenId))
         });
 
-        Position storage position = _positions[tokenId];
+        Position storage position = _positions[tokenId];/**/
 
         //GammaswapPosLibrary.checkCollateral(position, 750);
+
+
+
+
+
 
         /*address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool

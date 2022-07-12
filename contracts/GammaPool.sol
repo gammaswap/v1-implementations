@@ -216,5 +216,16 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         //Could check that the position manager is the one that made the call.
         //Or I could store the tokenId here instead of in PositionManager
         //or call the module and check that the module asked for it. PM -> Mod -> GP (checks it's MOD)
+
+        //Only owner or operator of loan should be allowed to increase the liability
+        //How do you increase the liability? withdraw money from it.
+        //if we store the owner in the position, then we can check msg.sender == owner
+        //but what if the request comes from positionManager?
+        //there also has to be a cost. Perhaps, create the tokenId here and add the collateral here too
+        //How is the tokenId created here though? Callback to positionManager to create TokenId and store details in gammaPool?
+        //That can be done in the same callback to addCollateral
+        //but how do you prevent someone from impersonating the PositionManager and creating a tokenId that doesn't exist.
+        //and storing that tokenId here?
+
     }
 }
