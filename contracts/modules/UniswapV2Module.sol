@@ -167,4 +167,12 @@ contract UniswapV2Module is IProtocolModule {
         return true;
     }
 
+    function convertLiquidityToAmounts(address cfmm, uint256 liquidity) external virtual override view returns(uint256[] memory amounts) {
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+        amounts = new uint256[](2);
+        uint256 cfmmInvariant = Math.sqrt(reserveA * reserveB);
+        amounts[0] = liquidity * reserveA / cfmmInvariant;
+        amounts[1] = liquidity * reserveB / cfmmInvariant;
+    }
+
 }

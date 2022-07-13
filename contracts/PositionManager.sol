@@ -92,14 +92,14 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
     **/
 
     // **** ADD LIQUIDITY **** //
-    function addLiquidity(AddLiquidityParams calldata params) external returns (uint[] memory amounts, uint liquidity) {
+    function addLiquidity(AddLiquidityParams calldata params) external virtual returns (uint[] memory amounts, uint liquidity) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
         amounts = gammaPool.addLiquidity(params.amountsDesired, params.amountsMin, abi.encode(AddLiquidityCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
         liquidity = gammaPool.mint(params.to);
     }
 
-    function addLiquidityCallback(address payee, address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external override {// Only in Uni. In Bal we use this to transfer to ourselves then the mint function finishes the transfer from the other side.
+    function addLiquidityCallback(address payee, address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external virtual override {// Only in Uni. In Bal we use this to transfer to ourselves then the mint function finishes the transfer from the other side.
         AddLiquidityCallbackData memory decoded = abi.decode(data, (AddLiquidityCallbackData));
         require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PM.addLiq: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
 
@@ -109,7 +109,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
     }
 
     // **** REMOVE LIQUIDITY **** //
-    function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts) {
+    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual returns (uint[] memory amounts) {
         require(params.amount > 0, 'PM.remLiq: 0 amount');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
@@ -132,16 +132,48 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
      * TODO: Instead of portfolio value use invariant to measure liquidity. This will enable to also increase the position size based on liquidity
      * Also the liquidity desired should probably be measured in terms of an invariant.
      */
-    //TODO: When we mint and increase positions we have to track the funds that we're holding for the pool
-    /// inheritdoc IVegaswapV1Position
-    //function mint(MintParams calldata params) internal returns (uint256 tokenId) {
-    function borrowLiquidity(BorrowLiquidityParams calldata params) internal returns (uint[] memory amounts, uint256 tokenId) {
+    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual returns (uint[] memory amounts, uint256 tokenId) {
         require(params.liquidity > 0, 'PM.borLiq: 0 amount');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
         (amounts, tokenId) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowLiquidity(params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
         _safeMint(params.to, tokenId);
     }
 
+    function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external virtual returns (uint[] memory amounts) {
+        require(params.liquidity > 0, 'PM.borLiq: 0 amount');
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowMoreLiquidity(tokenId, params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
+    }
 
+    /*
+         * TODO: Instead of portfolio value use invariant to measure liquidity. This will enable to also increase the position size based on liquidity
+         * Also the liquidity desired should probably be measured in terms of an invariant.
+
+        repayLiquidity() Strategy: (might have to use some callbacks to gammapool here from posManager since posManager doesn't have permissions to move gammaPool's LP Shares. It's to avoid approvals)
+            -PosManager calculates interest Rate
+            -PosManager calculates how much payment is equal in invariant terms of loan
+            -PosManager calculates P/L (Invariant difference)
+            -PosManager pays back this Invariant difference
+
+         */
+    //TODO: When we mint and increase positions we have to track the funds that we're holding for the pool
+    /// inheritdoc IVegaswapV1Position
+    //function mint(MintParams calldata params) internal returns (uint256 tokenId) {
+    function repayLiquidity(RepayLiquidityParams calldata params) external returns (uint[] memory amounts) {
+        require(params.liquidity > 0, 'PM.repLiq: 0 amount');
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).repayLiquidity(params.tokenId, params.liquidity, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
+    }
+
+    function increaseCollateral(ChangeCollateralParams calldata params) external virtual {
+        require(params.tokenId > 0, 'PM.incColl: 0 tokenId');
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        IGammaPool(PoolAddress.computeAddress(factory, poolKey)).increaseCollateral(params.tokenId, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
+    }
+
+    function decreaseCollateral(ChangeCollateralParams calldata params) external virtual {
+        require(params.tokenId > 0, 'PM.decColl: 0 tokenId');
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        IGammaPool(PoolAddress.computeAddress(factory, poolKey)).decreaseCollateral(params.tokenId, params.amounts, params.to);
+    }
 }

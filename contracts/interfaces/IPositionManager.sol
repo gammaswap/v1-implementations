@@ -34,4 +34,23 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint deadline;
     }
 
+    struct ChangeCollateralParams {
+        address cfmm;
+        uint24 protocol;
+        uint256 tokenId;
+        uint[] amounts;
+        address to;
+        uint deadline;
+    }
+
+    struct RepayLiquidityParams {
+        address cfmm;
+        uint24 protocol;
+        uint256 tokenId;
+        uint256 liquidity;
+        uint[] amounts;
+        address to;
+        uint deadline;
+    }
+
 }

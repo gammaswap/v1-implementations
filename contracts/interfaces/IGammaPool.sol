@@ -8,7 +8,7 @@ interface IGammaPool {//is IERC20 {
     struct Loan {
         // the nonce for permits
         uint96 nonce;
-        uint256 posId;
+        uint256 id;
         address operator;
         address poolId;
         address[] tokens;
@@ -24,5 +24,9 @@ interface IGammaPool {//is IERC20 {
     function burn(address to) external returns(uint[] memory);
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
     function borrowLiquidity(uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts, uint tokenId);
+    function borrowMoreLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts);
+    function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external;
+    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external;
+    function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint256[] memory amounts);
 
 }
