@@ -168,11 +168,16 @@ contract UniswapV2Module is IProtocolModule {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
 
-    //TODO: Finish this
-    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+    function checkOpenMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
         //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
         //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
-        return true;
+        return Math.sqrt(tokensHeld[0] * tokensHeld[1]) * 800 / 1000 >= invariantBorrowed;// we open at 80, maintenance is 90
+    }
+
+    function checkMaintenanceMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
+        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
+        return Math.sqrt(tokensHeld[0] * tokensHeld[1]) * 900 / 1000 >= invariantBorrowed;// we open at 80, maintenance is 90
     }
 
     function convertLiquidityToAmounts(address cfmm, uint256 liquidity) external virtual override view returns(uint256[] memory amounts) {
@@ -197,7 +202,7 @@ contract UniswapV2Module is IProtocolModule {
             require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], 'repay: tokensHeld < amounts');
         }
 
-        ISendTokensCallback(msg.sender).sendTokensCallback(amounts);
+        ISendTokensCallback(msg.sender).sendTokensCallback(amounts, cfmm);
 
         _lpTokensPaid = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
         (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
@@ -207,6 +212,7 @@ contract UniswapV2Module is IProtocolModule {
         _tokensHeld[0] = tokensHeld[0] - amounts[0];
         _tokensHeld[1] = tokensHeld[1] - amounts[1];
     }
+
 
     //TODO: use inAmounts instead of deltaAmts
     //_tokensHeld is our new updated amounts and amounts is the amounts we are going to deposit
@@ -241,61 +247,47 @@ contract UniswapV2Module is IProtocolModule {
         }
         _tokensHeld[0] = tokensHeld[0] + inAmts[0] - outAmts[0];
         _tokensHeld[1] = tokensHeld[1] + inAmts[1] - outAmts[1];
-        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts);
+        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
         IUniswapV2PairMinimal(cfmm).swap(inAmts[0],inAmts[1], gammaPool, new bytes(0));
-        //This would have an effect on the invariant so new amounts would need to be calculated
-        //IUniswapV2PairMinimal(cfmm).swap(inAmts[0],inAmts[1], gammaPool, new bytes(0));
     }
 
-    /*function getPositionAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts){
+    function rebalancePosition(address cfmm, uint256[] calldata posDeltas, uint256[] calldata negDeltas, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
         require(msg.sender == gammaPool);
 
         uint256[] memory reserves = new uint256[](2);
         (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
-        uint256 currPx = reserves[1] * ONE / reserves[0];
-        uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
 
-        amounts = new uint256[](2);
-        uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
-        amounts[0] = liquidity * reserves[0] / cfmmInvariant;
-        amounts[1] = liquidity * reserves[1] / cfmmInvariant;
-
-        deltaAmts = new uint256[](2);
-        if(amounts[0] > tokensHeld[0]) {
-
-        } else if(amounts[1] > tokensHeld[1]) {
-
+        uint256[] memory inAmts = new uint256[](2);//this gets added to tokensHeld
+        uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
+        _tokensHeld = new uint256[](2);
+        if(posDeltas.length > 0) {
+            require((posDeltas[0] > 0 && posDeltas[1] == 0) || (posDeltas[0] == 0 && posDeltas[1] > 0));
+            if(posDeltas[0] > 0) {//buy token0
+                inAmts[0] = posDeltas[0];
+                outAmts[1] = getAmountOut(inAmts[0], reserves[1], reserves[0]);//sell token1
+            } else {//buy token1
+                inAmts[1] = posDeltas[1];
+                outAmts[0]= getAmountOut(inAmts[1], reserves[0], reserves[1]);//sell token0
+            }
+        } else if(negDeltas.length > 0) {
+            require((negDeltas[0] > 0 && negDeltas[1] == 0) || (negDeltas[0] == 0 && negDeltas[1] > 0));
+            if(negDeltas[0] > 0) {//sell token0
+                outAmts[0] = negDeltas[0];
+                inAmts[1] = getAmountIn(outAmts[0], reserves[0], reserves[1]);//buy token1
+            } else {//sell token1
+                outAmts[1] = negDeltas[1];
+                inAmts[0]= getAmountIn(outAmts[1], reserves[1], reserves[0]);//buy token0
+            }
         }
-        if (currPx > initPx) {//we sell token0
-            deltaAmts[1] = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
-            deltaAmts[0]= getAmountIn(deltaAmts[1], reserves[0], reserves[1]);
-        } else if(currPx < initPx) {//we sell token1
-            deltaAmts[0] = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
-            deltaAmts[1] = getAmountIn(deltaAmts[0], reserves[1], reserves[0]);
-        }
-        //IUniswapV2PairMinimal(cfmm).swap(deltaAmts[0],deltaAmts[1], gammaPool, new bytes(0));
-    }/**/
-
-    // **** SWAP ****
-    // requires the initial amount to have already been sent to the first pair
-    function swapTokensForExactTokens(
-        address cfmm,
-        uint amountOut,
-        uint amountInMax,
-        bool isToken0,
-        address tokenIn,
-        uint256 reserveIn,
-        uint256 reserveOut,
-        address to
-    ) internal virtual returns (uint amountIn) {
-        amountIn = getAmountOut(amountOut, reserveIn, reserveOut);
-        require(amountIn <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(tokenIn, msg.sender, cfmm, amountIn);//This has to work with a callback to GP
-        (uint amount0Out, uint amount1Out) = isToken0 ? (uint(0), amountOut) : (amountOut, uint(0));
-        IUniswapV2PairMinimal(cfmm).swap(amount0Out, amount1Out, to, new bytes(0));
+        require(outAmts[0] <= tokensHeld[0] && outAmts[1] <= tokensHeld[1]);
+        _tokensHeld[0] = tokensHeld[0] + inAmts[0] - outAmts[0];
+        _tokensHeld[1] = tokensHeld[1] + inAmts[1] - outAmts[1];
+        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
+        IUniswapV2PairMinimal(cfmm).swap(inAmts[0],inAmts[1], gammaPool, new bytes(0));
     }
 
+    // selling exactly amountOut
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountIn(uint amountOut, uint reserveOut, uint reserveIn) internal pure returns (uint amountIn) {
         require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
@@ -306,6 +298,7 @@ contract UniswapV2Module is IProtocolModule {
         amountIn = numerator / denominator;
     }
 
+    // buying exactly amountIn
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
     function getAmountOut(uint amountIn, uint reserveOut, uint reserveIn) internal pure returns (uint amountOut) {
         require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');

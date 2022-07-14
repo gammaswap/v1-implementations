@@ -92,7 +92,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
     **/
 
     // **** ADD LIQUIDITY **** //
-    function addLiquidity(AddLiquidityParams calldata params) external virtual returns (uint[] memory amounts, uint liquidity) {
+    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns (uint[] memory amounts, uint liquidity) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
         amounts = gammaPool.addLiquidity(params.amountsDesired, params.amountsMin, abi.encode(AddLiquidityCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
@@ -109,7 +109,7 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
     }
 
     // **** REMOVE LIQUIDITY **** //
-    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual returns (uint[] memory amounts) {
+    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
         require(params.amount > 0, 'PM.remLiq: 0 amount');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
@@ -128,50 +128,46 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
         }
     }
 
-    /*
-     * TODO: Instead of portfolio value use invariant to measure liquidity. This will enable to also increase the position size based on liquidity
-     * Also the liquidity desired should probably be measured in terms of an invariant.
-     */
-    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual returns (uint[] memory amounts, uint256 tokenId) {
+    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual override returns (uint[] memory amounts, uint256 tokenId) {
         require(params.liquidity > 0, 'PM.borLiq: 0 amount');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         (amounts, tokenId) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowLiquidity(params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
         _safeMint(params.to, tokenId);
     }
 
-    function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external virtual returns (uint[] memory amounts) {
+    function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
         require(params.liquidity > 0, 'PM.borLiq: 0 amount');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowMoreLiquidity(tokenId, params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
     }
 
-    function repayLiquidity(RepayLiquidityParams calldata params) external returns (uint liquidityPaid, uint[] memory amounts) {
+    function repayLiquidity(RepayLiquidityParams calldata params) external virtual override returns (uint liquidityPaid, uint[] memory amounts) {
         require(params.liquidity > 0, 'PM.repLiq: 0 amount');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         (liquidityPaid, amounts) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).repayLiquidity(params.tokenId, params.liquidity, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
     }
 
-    function increaseollateral(AddRemoveCollateralParams calldata params) external virtual returns(uint[] memory tokensHeld){
+    function increaseollateral(AddRemoveCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
         require(params.tokenId > 0, 'PM.incColl: 0 tokenId');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).increaseCollateral(params.tokenId, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
     }
 
-    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual returns(uint[] memory tokensHeld){
+    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld){
         require(params.tokenId > 0, 'PM.incColl: 0 tokenId');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).decreaseCollateral(params.tokenId, params.amounts, params.to);
     }
 
-    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual returns(uint[] memory tokensHeld) {
+    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
         require(params.tokenId > 0, 'PM.decColl: 0 tokenId');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateral(params.tokenId, params.posDeltas, params.negDeltas);
     }
 
-    function rebalanceCollateralByLiquidity(RebalanceCollateralParams calldata params) external virtual returns(uint[] memory tokensHeld) {
+    function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
         require(params.tokenId > 0, 'PM.decColl: 0 tokenId');
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateralByLiquidity(params.tokenId, params.liquidity);
+        tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateralWithLiquidity(params.tokenId, params.liquidity);
     }
 }

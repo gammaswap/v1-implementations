@@ -13,9 +13,11 @@ interface IProtocolModule {
     function mint(address cfmm, uint[] calldata amounts) external returns(uint liquidity);
     function burn(address cfmm, address to, uint256 amount) external returns(uint[] memory amounts);
     function calcInvariant(address cfmm, uint[] calldata amounts) external view returns(uint invariant);
-    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint invariantBorrowed) external view returns(bool);
+    function checkMaintenanceMargin(address cfmm, uint[] calldata tokensHeld, uint invariantBorrowed) external view returns(bool);
+    function checkOpenMargin(address cfmm, uint[] calldata tokensHeld, uint invariantBorrowed) external view returns(bool);
     function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply);
     function convertLiquidityToAmounts(address cfmm, uint256 liquidity) external view returns(uint256[] memory amounts);
     function rebalancePosition(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external returns(uint256[] memory _tokensHeld);
+    function rebalancePosition(address cfmm, uint256[] calldata posDeltas, uint256[] calldata negDeltas, uint256[] calldata tokensHeld) external returns(uint256[] memory _tokensHeld);
     function repayLiquidity(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external returns(uint256[] memory _tokensHeld, uint256[] memory _amounts, uint256 _lpTokens, uint256 _liquidity);
 }

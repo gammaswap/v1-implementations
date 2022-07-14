@@ -86,7 +86,13 @@ contract BalancerModule is IProtocolModule {
         //probably not because this weighting is assuming geometric mean market maker. We could instead use some other function or a summation.
     }
 
-    function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+    function checkOpenMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
+        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
+        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
+        return true;
+    }
+
+    function checkMaintenanceMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
         //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
         //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
         return true;
@@ -101,6 +107,10 @@ contract BalancerModule is IProtocolModule {
     }
 
     function rebalancePosition(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
+
+    }
+
+    function rebalancePosition(address cfmm, uint256[] calldata posDeltas, uint256[] calldata negDeltas, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
 
     }
 

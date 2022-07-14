@@ -30,5 +30,5 @@ interface IGammaPool {//is IERC20 {
     function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external returns(uint[] memory tokensHeld);
     function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external returns(uint[] memory tokensHeld);
     function rebalanceCollateral(uint256 tokenId, uint256[] calldata posDeltas, uint256[] calldata negDeltas) external returns(uint[] memory tokensHeld);
-    function rebalanceCollateralByLiquidity(uint256 tokenId, uint256 liquidity) external returns(uint[] memory tokensHeld);
+    function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external returns(uint[] memory tokensHeld);
 }

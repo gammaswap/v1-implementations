@@ -239,7 +239,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
-        require(IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));
+        require(IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).checkMaintenanceMargin(cfmm, _loan.tokensHeld, _loan.liquidity));
         tokensHeld = _loan.tokensHeld;
     }
 
@@ -279,7 +279,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
             tokensHeld[i] = amounts[i] + collateralAmounts[i];
         }
 
-        require(module.checkCollateral(cfmm, tokensHeld, invariantBorrowed));//TODO: Finish this implementation
+        require(module.checkOpenMargin(cfmm, tokensHeld, invariantBorrowed));
 
         uint256 id = _nextId++;
         tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
@@ -331,13 +331,13 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
             _loan.tokensHeld[i] = _loan.tokensHeld[i] + amounts[i] + collateralAmounts[i];
         }
 
-        require(module.checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+        require(module.checkMaintenanceMargin(cfmm, _loan.tokensHeld, _loan.liquidity));
     }
 
-    function sendTokensCallback(uint[] calldata amounts) external virtual override {
+    function sendTokensCallback(uint[] calldata amounts, address to) external virtual override {
         require(msg.sender == IGammaPoolFactory(factory).getModule(protocol), 'GP: FORBIDDEN');
         for (uint i = 0; i < _tokens.length; i++) {
-            if (amounts[i] > 0) GammaSwapLibrary.transfer(_tokens[i], cfmm, amounts[i]);
+            if (amounts[i] > 0) GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
         }
     }
 
@@ -380,7 +380,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
             LP_TOKEN_BORROWED= LP_TOKEN_BORROWED - loanLpTokensPaid;//subtract here different amount
             _loan.liquidity = _loan.liquidity - liquidityPaid;
             _loan.lpTokens = _loan.lpTokens - loanLpTokensPaid;
-            require(module.checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));//TODO: Finish this implementation
         }
 
         LP_TOKEN_BALANCE = LP_TOKEN_BALANCE + lpTokensPaid;
@@ -403,15 +402,17 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
 
-        //tokensHeld = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).rebalancePosition(cfmm, liquidity, posDeltas, negDeltas, _loan.tokensHeld);
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
 
-        //require(module.checkCollateral(cfmm, tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+        tokensHeld = module.rebalancePosition(cfmm, posDeltas, negDeltas, _loan.tokensHeld);
 
-        //_loan.tokensHeld = tokensHeld;
+        require(module.checkMaintenanceMargin(cfmm, tokensHeld, _loan.liquidity));
+
+        _loan.tokensHeld = tokensHeld;
     }
 
 
-    function rebalanceCollateralByLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
+    function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
         Loan storage _loan = _loans[tokenId];
         require(_loan.id > 0, "GP: NOT_EXISTS");
         require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
@@ -420,9 +421,11 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
 
-        tokensHeld = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).rebalancePosition(cfmm, liquidity, _loan.tokensHeld);
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
 
-        require(module.checkCollateral(cfmm, tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+        tokensHeld = module.rebalancePosition(cfmm, liquidity, _loan.tokensHeld);
+
+        require(module.checkMaintenanceMargin(cfmm, tokensHeld, _loan.liquidity));
 
         _loan.tokensHeld = tokensHeld;
     }
