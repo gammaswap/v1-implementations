@@ -14,6 +14,7 @@ interface IGammaPool {//is IERC20 {
         address[] tokens;
         uint256[] tokensHeld;
         uint256 liquidity;
+        uint256 lpTokens;
         uint256 rateIndex;
         uint256 blockNum;
     }
@@ -25,8 +26,9 @@ interface IGammaPool {//is IERC20 {
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
     function borrowLiquidity(uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts, uint tokenId);
     function borrowMoreLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts);
-    function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external;
-    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external;
-    function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint256[] memory amounts);
-
+    function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint256 liquidityPaid, uint256[] memory amounts);
+    function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external returns(uint[] memory tokensHeld);
+    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external returns(uint[] memory tokensHeld);
+    function rebalanceCollateral(uint256 tokenId, uint256[] calldata posDeltas, uint256[] calldata negDeltas) external returns(uint[] memory tokensHeld);
+    function rebalanceCollateralByLiquidity(uint256 tokenId, uint256 liquidity) external returns(uint[] memory tokensHeld);
 }

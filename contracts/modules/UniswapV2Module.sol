@@ -118,14 +118,8 @@ contract UniswapV2Module is IProtocolModule {
         }
     }
 
-    function addLiquidity(
-        address cfmm,
-        uint[] calldata amountsDesired,
-        uint[] calldata amountsMin
-    ) external virtual override returns (uint[] memory amounts, address payee) {
-        payee = cfmm;
+    function _addLiquidity(uint reserveA, uint reserveB, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal returns(uint[] memory amounts) {
         amounts = new uint[](2);
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
         if (reserveA == 0 && reserveB == 0) {
             (amounts[0], amounts[1]) = (amountsDesired[0], amountsDesired[1]);
         } else {
@@ -140,6 +134,17 @@ contract UniswapV2Module is IProtocolModule {
                 (amounts[0], amounts[1]) = (amountAOptimal, amountsDesired[1]);
             }
         }
+    }
+
+    function addLiquidity(
+        address cfmm,
+        uint[] calldata amountsDesired,
+        uint[] calldata amountsMin
+    ) external virtual override returns (uint[] memory amounts, address payee) {
+        payee = cfmm;
+        amounts = new uint[](2);
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+        amounts = _addLiquidity(reserveA, reserveB, amountsDesired, amountsMin);
     }
 
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
@@ -178,7 +183,35 @@ contract UniswapV2Module is IProtocolModule {
         amounts[1] = liquidity * reserveB / cfmmInvariant;
     }
 
-    function getPositionDeltaAndAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts){
+    function repayLiquidity(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(msg.sender == gammaPool);
+
+        amounts = new uint256[](2);
+        uint256[] memory reserves = new uint256[](2);
+        {
+            (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+            uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
+            amounts[0] = liquidity * reserves[0] / cfmmInvariant;
+            amounts[1] = liquidity * reserves[1] / cfmmInvariant;
+            require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], 'repay: tokensHeld < amounts');
+        }
+
+        ISendTokensCallback(msg.sender).sendTokensCallback(amounts);
+
+        _lpTokensPaid = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
+        (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+        _liquidityPaid = _lpTokensPaid * Math.sqrt(reserves[0] * reserves[1]) / GammaSwapLibrary.totalSupply(cfmm);
+
+        _tokensHeld = new uint256[](2);
+        _tokensHeld[0] = tokensHeld[0] - amounts[0];
+        _tokensHeld[1] = tokensHeld[1] - amounts[1];
+    }
+
+    //TODO: use inAmounts instead of deltaAmts
+    //_tokensHeld is our new updated amounts and amounts is the amounts we are going to deposit
+    //Why don't we do both here. Rebalance and deposit quantities. We'll save gas. No you have to do it separately. Uni doesn't like that
+    function rebalancePosition(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld){
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
         require(msg.sender == gammaPool);
 
@@ -187,20 +220,31 @@ contract UniswapV2Module is IProtocolModule {
         uint256 currPx = reserves[1] * ONE / reserves[0];
         uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
 
-        amounts = new uint256[](2);
-        uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
-        amounts[0] = liquidity * reserves[0] / cfmmInvariant;
-        amounts[1] = liquidity * reserves[1] / cfmmInvariant;
-
-        deltaAmts = new uint256[](2);
-        if (currPx > initPx) {//we sell token0
-            deltaAmts[1] = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
-            deltaAmts[0]= getAmountIn(deltaAmts[1], reserves[0], reserves[1]);
-        } else if(currPx < initPx) {//we sell token1
-            deltaAmts[0] = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
-            deltaAmts[1] = getAmountIn(deltaAmts[0], reserves[1], reserves[0]);
+        uint256[] memory amounts = new uint256[](2);
+        {
+            uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
+            amounts[0] = liquidity * reserves[0] / cfmmInvariant;
+            amounts[1] = liquidity * reserves[1] / cfmmInvariant;
         }
-        //IUniswapV2PairMinimal(cfmm).swap(deltaAmts[0],deltaAmts[1], gammaPool, new bytes(0));
+
+        uint256[] memory inAmts = new uint256[](2);//this gets added to tokensHeld
+        uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
+        _tokensHeld = new uint256[](2);
+        if (currPx > initPx) {//we sell token0
+            inAmts[1] = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
+            outAmts[0]= getAmountOut(inAmts[1], reserves[0], reserves[1]);
+            require(outAmts[0] <= tokensHeld[0] - amounts[0], 'M: > OUT_AMT');
+        } else if(currPx < initPx) {//we sell token1
+            inAmts[0] = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
+            outAmts[1] = getAmountOut(inAmts[0], reserves[1], reserves[0]);
+            require(outAmts[1] <= tokensHeld[1] - amounts[1], 'M: > OUT_AMT');
+        }
+        _tokensHeld[0] = tokensHeld[0] + inAmts[0] - outAmts[0];
+        _tokensHeld[1] = tokensHeld[1] + inAmts[1] - outAmts[1];
+        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts);
+        IUniswapV2PairMinimal(cfmm).swap(inAmts[0],inAmts[1], gammaPool, new bytes(0));
+        //This would have an effect on the invariant so new amounts would need to be calculated
+        //IUniswapV2PairMinimal(cfmm).swap(inAmts[0],inAmts[1], gammaPool, new bytes(0));
     }
 
     /*function getPositionAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts){
@@ -245,7 +289,7 @@ contract UniswapV2Module is IProtocolModule {
         uint256 reserveOut,
         address to
     ) internal virtual returns (uint amountIn) {
-        amountIn = getAmountIn(amountOut, reserveIn, reserveOut);
+        amountIn = getAmountOut(amountOut, reserveIn, reserveOut);
         require(amountIn <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(tokenIn, msg.sender, cfmm, amountIn);//This has to work with a callback to GP
         (uint amount0Out, uint amount1Out) = isToken0 ? (uint(0), amountOut) : (amountOut, uint(0));
@@ -253,21 +297,21 @@ contract UniswapV2Module is IProtocolModule {
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
+    function getAmountIn(uint amountOut, uint reserveOut, uint reserveIn) internal pure returns (uint amountIn) {
         require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
-        uint amountInWithFee = amountIn * tradingFee2;
-        uint numerator = amountInWithFee * reserveOut;
-        uint denominator = (reserveIn * tradingFee1) + amountInWithFee;
-        amountOut = numerator / denominator;
+        require(reserveOut > 0 && reserveIn > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        uint amountOutWithFee = amountOut * tradingFee2;
+        uint numerator = amountOutWithFee * reserveIn;
+        uint denominator = (reserveOut * tradingFee1) + amountOutWithFee;
+        amountIn = numerator / denominator;
     }
 
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
-        require(amountOut > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
-        uint numerator = (reserveIn * amountOut) * tradingFee1;
-        uint denominator = (reserveOut - amountOut) * tradingFee2;
-        amountIn = (numerator / denominator) + 1;
+    function getAmountOut(uint amountIn, uint reserveOut, uint reserveIn) internal pure returns (uint amountOut) {
+        require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(reserveOut > 0 && reserveIn > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        uint numerator = (reserveOut * amountIn) * tradingFee1;
+        uint denominator = (reserveIn - amountIn) * tradingFee2;
+        amountOut = (numerator / denominator) + 1;
     }
 }

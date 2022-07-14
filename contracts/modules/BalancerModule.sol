@@ -100,7 +100,11 @@ contract BalancerModule is IProtocolModule {
         amounts[1] = liquidity * reserveB / cfmmInvariant;/**/
     }
 
-    function getPositionDeltaAndAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts) {
+    function rebalancePosition(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
+
+    }
+
+    function repayLiquidity(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokens, uint256 _liquidity) {
 
     }
 }

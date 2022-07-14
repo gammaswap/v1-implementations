@@ -8,9 +8,10 @@ import "./interfaces/IProtocolModule.sol";
 import "./interfaces/IAddLiquidityCallback.sol";
 import "./interfaces/IRemoveLiquidityCallback.sol";
 import "./interfaces/IAddCollateralCallback.sol";
+import "./interfaces/ISendTokensCallback.sol";
 import "./base/GammaPoolERC20.sol";
 
-contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
+contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISendTokensCallback {
     uint internal constant ONE = 10**18;
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
 
@@ -211,7 +212,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         }
     }
 
-    function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external virtual override {
+    function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external virtual override returns(uint[] memory tokensHeld) {
         Loan storage _loan = _loans[tokenId];
         require(_loan.id > 0, "GP: NOT_EXISTS");
 
@@ -220,9 +221,10 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         for(uint i = 0; i < _loan.tokensHeld.length; i++) {
             _loan.tokensHeld[i] = _loan.tokensHeld[i] + amounts[i];
         }
+        tokensHeld = _loan.tokensHeld;
     }
 
-    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override {
+    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override returns(uint[] memory tokensHeld){
         Loan storage _loan = _loans[tokenId];
         require(_loan.id > 0, "GP: NOT_EXISTS");
         require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
@@ -238,6 +240,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
         require(IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));
+        tokensHeld = _loan.tokensHeld;
     }
 
     /*
@@ -289,6 +292,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
             tokens: _tokens,
             tokensHeld: tokensHeld,
             liquidity: invariantBorrowed,
+            lpTokens: lpTokens,
             rateIndex: accFeeIndex,
             blockNum: block.number
         });
@@ -315,6 +319,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         uint256 invariantBorrowed = module.calcInvariant(cfmm, amounts);
         _loan.liquidity = ((_loan.liquidity * accFeeIndex) / _loan.rateIndex) + invariantBorrowed;
         _loan.rateIndex = accFeeIndex;
+        _loan.lpTokens = _loan.lpTokens + lpTokens;
 
         BORROWED_INVARIANT = BORROWED_INVARIANT + invariantBorrowed;
         LP_TOKEN_BORROWED = LP_TOKEN_BORROWED + lpTokens;
@@ -329,7 +334,14 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         require(module.checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));//TODO: Finish this implementation
     }
 
-    function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external virtual override returns(uint256[] memory amounts) {
+    function sendTokensCallback(uint[] calldata amounts) external virtual override {
+        require(msg.sender == IGammaPoolFactory(factory).getModule(protocol), 'GP: FORBIDDEN');
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0) GammaSwapLibrary.transfer(_tokens[i], cfmm, amounts[i]);
+        }
+    }
+
+    function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
         //require(lpTokens < LP_TOKEN_BALANCE, "GP.borLiq: > avail liquidity");
         Loan storage _loan = _loans[tokenId];
         require(_loan.id > 0, "GP: NOT_EXISTS");
@@ -339,41 +351,79 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
 
-        if(liquidity > _loan.liquidity) {
-            liquidity = _loan.liquidity;
-        }
+        //if(liquidity > _loan.liquidity) {
+        //    liquidity = _loan.liquidity;
+        //}
 
         addCollateral(collateralAmounts, data);
 
         IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
-        amounts = module.convertLiquidityToAmounts(cfmm, liquidity);//amounts I will pay
 
-        //module.rebalancePosition(cfmm, liquidity, _tokens, _loan.tokensHeld);
-        /*
-            User decides whether he wants to close proportionally or not. If closing proportionally then need to swap.
-            If not closing proportionally then only swap if need to.
+        //Maybe user should rebalance his position before calling repaying. We shouldn't do that here
+        //_loan.tokensHeld = module.rebalancePosition(cfmm, liquidity, _tokens, _loan.tokensHeld);
+        //issue is because after rebalancing, fees will accumualte to the CFMM so we would have to recalculate his loan. That's expensive for what might be a very small difference
+        //If people want automatic rebalancing then we'll do that but it will cost more. Maybe have it as an option. (A separate function, rebalanceAndRepayLiquidity()
 
-            If closing proportionally, calculate percentage that is closing and take that same percentage from collateral.
-            Then work with only that percentage of collateral to calculate the amounts needed to swap
+        //we have to recalculate the amounts because the amounts will change after rebalancing. Even if we do a heuristic they'll change a bit
 
-            If not closing proportionally, just swap as you need
+        uint256 lpTokensPaid;
+        (_loan.tokensHeld, amounts, lpTokensPaid, liquidityPaid) = module.repayLiquidity(cfmm, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
 
-            call module.rebalancePosition(amounts,tokensHeld,percentage)//percentage = ONE means use the whole thing. < 1 means proportional.
-                //this function does a callback to GP to send the tokens necessary to CFMM (in Uni/Sushi) or Module (Bal/Crv)
-                //then this function does the swap and gives back the tokens to GP (in Bal/Crv) (no need for Uni/Sushi since the swap does it automatically
-                //This function checks that it is called by GP
-            then call module.mint() just add the amounts to get the LP Tokens you want and pay the liquidity
-            then update LP_TOKEN_BORROWED, LP_TOKEN_BALANCE, BORROWED_INVARIANT, borrowRate, and accFeeIndex
-            //We'll probably move a lot of code to libraries and call them using "using for" like UniV3 does to save memory
+        if(liquidityPaid > _loan.liquidity) {
+            BORROWED_INVARIANT = BORROWED_INVARIANT - _loan.liquidity;
+            LP_TOKEN_BORROWED= LP_TOKEN_BORROWED - _loan.lpTokens;
+            _loan.liquidity = 0;
+            _loan.lpTokens = 0;
+        } else {
+            BORROWED_INVARIANT = BORROWED_INVARIANT - liquidityPaid;
+            uint256 loanLpTokensPaid = (liquidityPaid * _loan.lpTokens / _loan.liquidity);
+            LP_TOKEN_BORROWED= LP_TOKEN_BORROWED - loanLpTokensPaid;//subtract here different amount
+            _loan.liquidity = _loan.liquidity - liquidityPaid;
+            _loan.lpTokens = _loan.lpTokens - loanLpTokensPaid;
+            require(module.checkCollateral(cfmm, _loan.tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+        }
 
-            if p' > p we sell token0
-            if p' < p we sell token1
-        */
+        LP_TOKEN_BALANCE = LP_TOKEN_BALANCE + lpTokensPaid;
+
+        updateBorrowRate();
 
         //Do I have the amounts in the tokensHeld?
         //so to swap you send the amount you want to swap to CFMM
         //Uni/Sushi/UniV3: GP -> CFMM -> GP
         //Bal/Crv: GP -> Module -> CFMM -> Module -> GP
         //UniV3
+    }
+
+    function rebalanceCollateral(uint256 tokenId, uint[] calldata posDeltas, uint256[] calldata negDeltas) external virtual override returns(uint256[] memory tokensHeld) {
+        Loan storage _loan = _loans[tokenId];
+        require(_loan.id > 0, "GP: NOT_EXISTS");
+        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+
+        updateFeeIndex();
+        _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
+        _loan.rateIndex = accFeeIndex;
+
+        //tokensHeld = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).rebalancePosition(cfmm, liquidity, posDeltas, negDeltas, _loan.tokensHeld);
+
+        //require(module.checkCollateral(cfmm, tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+
+        //_loan.tokensHeld = tokensHeld;
+    }
+
+
+    function rebalanceCollateralByLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
+        Loan storage _loan = _loans[tokenId];
+        require(_loan.id > 0, "GP: NOT_EXISTS");
+        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+
+        updateFeeIndex();
+        _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
+        _loan.rateIndex = accFeeIndex;
+
+        tokensHeld = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).rebalancePosition(cfmm, liquidity, _loan.tokensHeld);
+
+        require(module.checkCollateral(cfmm, tokensHeld, _loan.liquidity));//TODO: Finish this implementation
+
+        _loan.tokensHeld = tokensHeld;
     }
 }
