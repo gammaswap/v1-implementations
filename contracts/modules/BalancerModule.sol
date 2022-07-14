@@ -99,4 +99,8 @@ contract BalancerModule is IProtocolModule {
         amounts[0] = liquidity * reserveA / cfmmInvariant;
         amounts[1] = liquidity * reserveB / cfmmInvariant;/**/
     }
+
+    function getPositionDeltaAndAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts) {
+
+    }
 }

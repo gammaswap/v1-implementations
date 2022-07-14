@@ -16,4 +16,5 @@ interface IProtocolModule {
     function checkCollateral(address cfmm, uint[] calldata tokensHeld, uint invariantBorrowed) external view returns(bool);
     function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply);
     function convertLiquidityToAmounts(address cfmm, uint256 liquidity) external view returns(uint256[] memory amounts);
+    function getPositionDeltaAndAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external view returns(uint256[] memory deltaAmts, uint256[] memory amounts);
 }

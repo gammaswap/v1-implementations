@@ -18,6 +18,9 @@ contract UniswapV2Module is IProtocolModule {
     address public immutable override protocolFactory;//protocol factory
     uint24 public override protocol;
 
+    uint16 public immutable tradingFee1 = 1000;
+    uint16 public immutable tradingFee2 = 997;
+
     uint256 public BASE_RATE = 10**16;
     uint256 public OPTIMAL_UTILIZATION_RATE = 8*(10**17);
     uint256 public SLOPE1 = 10**18;
@@ -175,4 +178,96 @@ contract UniswapV2Module is IProtocolModule {
         amounts[1] = liquidity * reserveB / cfmmInvariant;
     }
 
+    function getPositionDeltaAndAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts){
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(msg.sender == gammaPool);
+
+        uint256[] memory reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+        uint256 currPx = reserves[1] * ONE / reserves[0];
+        uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
+
+        amounts = new uint256[](2);
+        uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
+        amounts[0] = liquidity * reserves[0] / cfmmInvariant;
+        amounts[1] = liquidity * reserves[1] / cfmmInvariant;
+
+        deltaAmts = new uint256[](2);
+        if (currPx > initPx) {//we sell token0
+            deltaAmts[1] = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
+            deltaAmts[0]= getAmountIn(deltaAmts[1], reserves[0], reserves[1]);
+        } else if(currPx < initPx) {//we sell token1
+            deltaAmts[0] = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
+            deltaAmts[1] = getAmountIn(deltaAmts[0], reserves[1], reserves[0]);
+        }
+        //IUniswapV2PairMinimal(cfmm).swap(deltaAmts[0],deltaAmts[1], gammaPool, new bytes(0));
+    }
+
+    /*function getPositionAmounts(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override view returns(uint256[] memory deltaAmts, uint256[] memory amounts){
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(msg.sender == gammaPool);
+
+        uint256[] memory reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+        uint256 currPx = reserves[1] * ONE / reserves[0];
+        uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
+
+        amounts = new uint256[](2);
+        uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
+        amounts[0] = liquidity * reserves[0] / cfmmInvariant;
+        amounts[1] = liquidity * reserves[1] / cfmmInvariant;
+
+        deltaAmts = new uint256[](2);
+        if(amounts[0] > tokensHeld[0]) {
+
+        } else if(amounts[1] > tokensHeld[1]) {
+
+        }
+        if (currPx > initPx) {//we sell token0
+            deltaAmts[1] = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
+            deltaAmts[0]= getAmountIn(deltaAmts[1], reserves[0], reserves[1]);
+        } else if(currPx < initPx) {//we sell token1
+            deltaAmts[0] = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
+            deltaAmts[1] = getAmountIn(deltaAmts[0], reserves[1], reserves[0]);
+        }
+        //IUniswapV2PairMinimal(cfmm).swap(deltaAmts[0],deltaAmts[1], gammaPool, new bytes(0));
+    }/**/
+
+    // **** SWAP ****
+    // requires the initial amount to have already been sent to the first pair
+    function swapTokensForExactTokens(
+        address cfmm,
+        uint amountOut,
+        uint amountInMax,
+        bool isToken0,
+        address tokenIn,
+        uint256 reserveIn,
+        uint256 reserveOut,
+        address to
+    ) internal virtual returns (uint amountIn) {
+        amountIn = getAmountIn(amountOut, reserveIn, reserveOut);
+        require(amountIn <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(tokenIn, msg.sender, cfmm, amountIn);//This has to work with a callback to GP
+        (uint amount0Out, uint amount1Out) = isToken0 ? (uint(0), amountOut) : (amountOut, uint(0));
+        IUniswapV2PairMinimal(cfmm).swap(amount0Out, amount1Out, to, new bytes(0));
+    }
+
+    // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
+        require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        uint amountInWithFee = amountIn * tradingFee2;
+        uint numerator = amountInWithFee * reserveOut;
+        uint denominator = (reserveIn * tradingFee1) + amountInWithFee;
+        amountOut = numerator / denominator;
+    }
+
+    // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
+        require(amountOut > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        uint numerator = (reserveIn * amountOut) * tradingFee1;
+        uint denominator = (reserveOut - amountOut) * tradingFee2;
+        amountIn = (numerator / denominator) + 1;
+    }
 }

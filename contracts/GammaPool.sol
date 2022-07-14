@@ -348,6 +348,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
         amounts = module.convertLiquidityToAmounts(cfmm, liquidity);//amounts I will pay
 
+        //module.rebalancePosition(cfmm, liquidity, _tokens, _loan.tokensHeld);
         /*
             User decides whether he wants to close proportionally or not. If closing proportionally then need to swap.
             If not closing proportionally then only swap if need to.
@@ -364,6 +365,9 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
             then call module.mint() just add the amounts to get the LP Tokens you want and pay the liquidity
             then update LP_TOKEN_BORROWED, LP_TOKEN_BALANCE, BORROWED_INVARIANT, borrowRate, and accFeeIndex
             //We'll probably move a lot of code to libraries and call them using "using for" like UniV3 does to save memory
+
+            if p' > p we sell token0
+            if p' < p we sell token1
         */
 
         //Do I have the amounts in the tokensHeld?
@@ -371,6 +375,5 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback {
         //Uni/Sushi/UniV3: GP -> CFMM -> GP
         //Bal/Crv: GP -> Module -> CFMM -> Module -> GP
         //UniV3
-
     }
 }
