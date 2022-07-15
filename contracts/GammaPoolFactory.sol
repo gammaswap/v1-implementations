@@ -23,6 +23,7 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
     address[] private tokens;
     address private cfmm;
+    address private module;
     uint24 private protocol;
 
     constructor(address _feeToSetter) {
@@ -31,10 +32,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
         owner = msg.sender;
     }
 
-    function getParameters() external virtual override view returns(address[] memory _tokens, uint24 _protocol, address _cfmm) {
+    function getParameters() external virtual override view returns(address[] memory _tokens, uint24 _protocol, address _cfmm, address _module) {
         _tokens = tokens;
         _protocol = protocol;
         _cfmm = cfmm;
+        _module = module;
     }
 
     function allPoolsLength() external virtual override view returns (uint) {
@@ -57,9 +59,9 @@ contract GammaPoolFactory is IGammaPoolFactory{
         require(getModule[params.protocol] != address(0), 'GPF: NOT_SET');
         require(isProtocolRestricted[params.protocol] == false || msg.sender == owner, 'GPF: RESTRICTED');
 
-        IProtocolModule module = IProtocolModule(getModule[params.protocol]);
+        IProtocolModule _module = IProtocolModule(getModule[params.protocol]);
         bytes32 key;
-        (tokens, key) = module.validateCFMM(params.tokens, params.cfmm);
+        (tokens, key) = _module.validateCFMM(params.tokens, params.cfmm);
 
         require(getPool[key] == address(0), 'GPF: EXISTS');
         //Maybe the protocol should be the module address. That way it is tied to the module.
@@ -69,9 +71,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
         cfmm = params.cfmm;
         protocol = params.protocol;
+        module = address(_module);
         pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
         cfmm = address(0);
         protocol = 0;
+        module = address(0);
         delete tokens;
 
         getPool[key] = pool;

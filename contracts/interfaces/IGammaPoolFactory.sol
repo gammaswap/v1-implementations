@@ -36,6 +36,7 @@ interface IGammaPoolFactory {
     returns (
         address[] memory tokens,
         uint24 protocol,
-        address cfmm
+        address cfmm,
+        address module
     );
 }

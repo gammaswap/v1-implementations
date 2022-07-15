@@ -11,7 +11,7 @@ interface IGammaPool {//is IERC20 {
         uint256 id;
         address operator;
         address poolId;
-        address[] tokens;
+        //address[] tokens;
         uint256[] tokensHeld;
         uint256 liquidity;
         uint256 lpTokens;
@@ -23,6 +23,8 @@ interface IGammaPool {//is IERC20 {
     function cfmm() external view returns(address);
     function mint(address to) external returns(uint);
     function burn(address to) external returns(uint[] memory);
+    function loans(uint256 tokenId) external view returns (uint96 nonce, address operator, uint256 id, address poolId,
+        uint256[] memory tokensHeld, uint256 liquidity, uint256 rateIndex, uint256 blockNum);
     function addLiquidity(uint[] calldata amountsDesired, uint[] calldata amountsMin, bytes calldata data) external returns(uint[] memory);
     function borrowLiquidity(uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts, uint tokenId);
     function borrowMoreLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external returns(uint[] memory amounts);

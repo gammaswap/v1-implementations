@@ -26,8 +26,10 @@ contract UniswapV2Module is IProtocolModule {
     uint256 public SLOPE1 = 10**18;
     uint256 public SLOPE2 = 10**18;
 
+    uint256 public YEAR_BLOCK_COUNT = 2252571;
+
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'M1: EXPIRED');
+        require(deadline >= block.timestamp);//, 'M1: EXPIRED');
         _;
     }
 
@@ -49,14 +51,14 @@ contract UniswapV2Module is IProtocolModule {
     }/**/
 
     function validateCFMM(address[] calldata _tokens, address _cfmm) external view override returns(address[] memory tokens, bytes32 key){
-        require(_cfmm != address(0), 'M1: CFMM_ZERO_ADDRESS');
-        require(isContract(_cfmm) == true, 'M1: CFMM_DOES_NOT_EXIST');/**/
-        require(_tokens.length == 2, 'M1: INVALID_NUMBER_OF_TOKENS');
-        require(_tokens[0] != _tokens[1], 'M1: IDENTICAL_ADDRESSES');
-        require(_tokens[0] != address(0) && _tokens[1] != address(0), 'M1: ZERO_ADDRESS');
+        require(_cfmm != address(0));//, 'M1: CFMM_ZERO_ADDRESS');
+        require(isContract(_cfmm) == true);//, 'M1: CFMM_DOES_NOT_EXIST');/**/
+        require(_tokens.length == 2);//, 'M1: INVALID_NUMBER_OF_TOKENS');
+        require(_tokens[0] != _tokens[1]);//, 'M1: IDENTICAL_ADDRESSES');
+        require(_tokens[0] != address(0) && _tokens[1] != address(0));//, 'M1: ZERO_ADDRESS');
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[1]);//For Uniswap and its clones the user passes the parameters
-        require(_cfmm == pairFor(tokens[0], tokens[1]), 'M1: INVALID_PROTOCOL_FOR_CFMM');
+        require(_cfmm == pairFor(tokens[0], tokens[1]));//, 'M1: INVALID_PROTOCOL_FOR_CFMM');
         key = PoolAddress.getPoolKey(_cfmm, protocol);
     }
 
@@ -84,8 +86,8 @@ contract UniswapV2Module is IProtocolModule {
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
-        require(amountA > 0, 'M1: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'M1: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0);//, 'M1: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0);//, 'M1: INSUFFICIENT_LIQUIDITY');
         amountB = (amountA * reserveB) / reserveA;
     }
 
@@ -101,21 +103,41 @@ contract UniswapV2Module is IProtocolModule {
         }
     }
 
+    function calcNewDevShares(address cfmm, uint256 devFee, uint256 lastFeeIndex, uint256 totalSupply, uint256 LP_TOKEN_BALANCE, uint256 BORROWED_INVARIANT) external view virtual override returns(uint256) {
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+        uint256 cfmmTotalInvariant = Math.sqrt(reserveA * reserveB);
+        uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        uint256 totalInvariantInCFMM = ((LP_TOKEN_BALANCE * cfmmTotalInvariant) / cfmmTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
+        uint256 factor = ((lastFeeIndex - ONE) * devFee) / lastFeeIndex;//Percentage of the current growth that we will give to devs
+        uint256 accGrowth = (factor * BORROWED_INVARIANT) / (BORROWED_INVARIANT + totalInvariantInCFMM);
+        return (totalSupply * accGrowth) / (ONE - accGrowth);
+    }
+
     function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256) {
         (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
          return Math.sqrt(reserveA * reserveB);
     }
 
-    function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view virtual override returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply) {
+    function getCFMMYield(address cfmm, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 borrowRate, uint256 lastBlockNum) external view virtual override
+        returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
         (uint256 reserveA, uint256 reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
-        lastInvariant = Math.sqrt(reserveA * reserveB);//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
-        lastTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
-        if(lastTotalSupply > 0) {
-            uint256 denominator = (prevInvariant * lastTotalSupply) / ONE;
-            lastFeeIndex = (lastInvariant * prevTotalSupply) / denominator;
+        lastCFMMInvariant = Math.sqrt(reserveA * reserveB);//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
+        lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        if(lastCFMMTotalSupply > 0) {
+            uint256 denominator = (prevCFMMInvariant * lastCFMMTotalSupply) / ONE;
+            lastCFMMFeeIndex = (lastCFMMInvariant * prevCFMMTotalSupply) / denominator;
+        } else {
+            lastCFMMFeeIndex = ONE;
+        }
+
+        if(lastCFMMFeeIndex > 0) {
+            uint256 blockDiff = block.number - lastBlockNum;
+            uint256 adjBorrowRate = (blockDiff * borrowRate) / YEAR_BLOCK_COUNT;
+            lastFeeIndex = lastCFMMFeeIndex + adjBorrowRate;
         } else {
             lastFeeIndex = ONE;
         }
+
     }
 
     function _addLiquidity(uint reserveA, uint reserveB, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal returns(uint[] memory amounts) {
@@ -125,12 +147,12 @@ contract UniswapV2Module is IProtocolModule {
         } else {
             uint amountBOptimal = quote(amountsDesired[0], reserveA, reserveB);
             if (amountBOptimal <= amountsDesired[1]) {
-                require(amountBOptimal >= amountsMin[1], 'M1: INSUFFICIENT_B_AMOUNT');
+                require(amountBOptimal >= amountsMin[1]);//, 'M1: INSUFFICIENT_B_AMOUNT');
                 (amounts[0], amounts[1]) = (amountsDesired[0], amountBOptimal);
             } else {
                 uint amountAOptimal = quote(amountsDesired[1], reserveB, reserveA);
                 assert(amountAOptimal <= amountsDesired[0]);
-                require(amountAOptimal >= amountsMin[0], 'M1: INSUFFICIENT_A_AMOUNT');
+                require(amountAOptimal >= amountsMin[0]);//, 'M1: INSUFFICIENT_A_AMOUNT');
                 (amounts[0], amounts[1]) = (amountAOptimal, amountsDesired[1]);
             }
         }
@@ -153,13 +175,13 @@ contract UniswapV2Module is IProtocolModule {
     }
 
     function burn(address cfmm, address to, uint256 amount) external virtual override returns(uint[] memory amounts) {
-        require(amount > 0, 'M1: ZERO_AMOUNT');
+        require(amount > 0);//, 'M1: ZERO_AMOUNT');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
         uint256 balance0Before = GammaSwapLibrary.balanceOf(cfmm, cfmm);//maybe we can check here that the GP balance also decreased
         uint256 balance1Before = GammaSwapLibrary.balanceOf(cfmm, gammaPool);
         IRemoveLiquidityCallback(msg.sender).removeLiquidityCallback(cfmm, amount);
-        require(balance0Before + amount <= GammaSwapLibrary.balanceOf(cfmm, cfmm), "M1: NO_TRANSFER0");
-        require(balance1Before - amount <= GammaSwapLibrary.balanceOf(cfmm, gammaPool), "M1: NO_TRANSFER1");
+        require(balance0Before + amount <= GammaSwapLibrary.balanceOf(cfmm, cfmm));//, "M1: NO_TRANSFER0");
+        require(balance1Before - amount <= GammaSwapLibrary.balanceOf(cfmm, gammaPool));//, "M1: NO_TRANSFER1");
         amounts = new uint[](2);
         (amounts[0], amounts[1]) = IUniswapV2PairMinimal(cfmm).burn(to);
     }
@@ -199,7 +221,7 @@ contract UniswapV2Module is IProtocolModule {
             uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
             amounts[0] = liquidity * reserves[0] / cfmmInvariant;
             amounts[1] = liquidity * reserves[1] / cfmmInvariant;
-            require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], 'repay: tokensHeld < amounts');
+            require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1]);//, 'repay: tokensHeld < amounts');
         }
 
         ISendTokensCallback(msg.sender).sendTokensCallback(amounts, cfmm);
@@ -290,8 +312,8 @@ contract UniswapV2Module is IProtocolModule {
     // selling exactly amountOut
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountIn(uint amountOut, uint reserveOut, uint reserveIn) internal pure returns (uint amountIn) {
-        require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveOut > 0 && reserveIn > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0);//, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveOut > 0 && reserveIn > 0);//, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
         uint amountOutWithFee = amountOut * tradingFee2;
         uint numerator = amountOutWithFee * reserveIn;
         uint denominator = (reserveOut * tradingFee1) + amountOutWithFee;
@@ -301,8 +323,8 @@ contract UniswapV2Module is IProtocolModule {
     // buying exactly amountIn
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
     function getAmountOut(uint amountIn, uint reserveOut, uint reserveIn) internal pure returns (uint amountOut) {
-        require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
-        require(reserveOut > 0 && reserveIn > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0);//, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(reserveOut > 0 && reserveIn > 0);//, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
         uint numerator = (reserveOut * amountIn) * tradingFee1;
         uint denominator = (reserveIn - amountIn) * tradingFee2;
         amountOut = (numerator / denominator) + 1;

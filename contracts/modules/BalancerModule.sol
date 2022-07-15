@@ -50,7 +50,16 @@ contract BalancerModule is IProtocolModule {
         invariant = uint160(cfmm);
     }
 
-    function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view virtual override returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply) {
+    //function getCFMMYield(address cfmm, uint256 prevInvariant, uint256 prevTotalSupply) external view virtual override returns(uint256 lastFeeIndex, uint256 lastInvariant, uint256 lastTotalSupply) {
+    //}
+
+    function calcNewDevShares(address cfmm, uint256 devFee, uint256 lastFeeIndex, uint256 totalSupply, uint256 LP_TOKEN_BALANCE, uint256 BORROWED_INVARIANT) external view virtual override returns(uint256) {
+        return 0;
+    }
+
+    function getCFMMYield(address cfmm, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 borrowRate, uint256 lastBlockNum) external view virtual override
+        returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
+
     }
 
     // **** ADD LIQUIDITY ****
