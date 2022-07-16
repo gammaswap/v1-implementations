@@ -53,22 +53,10 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         factory = msg.sender;
         (_tokens, protocol, cfmm, _module) = IGammaPoolFactory(msg.sender).getParameters();
         poolInfo.init(cfmm, _module);
-        /*poolInfo = PoolInfo({
-            LP_TOKEN_BALANCE: 0,//
-            LP_TOKEN_BORROWED: 0,//
-            BORROWED_INVARIANT: 0,//
-            borrowRate: 0,//
-            accFeeIndex: 1,//
-            lastFeeIndex: 1,//
-            lastCFMMFeeIndex: 1,//
-            lastCFMMInvariant: 0,//
-            lastCFMMTotalSupply: 0,//
-            LAST_BLOCK_NUMBER: block.number//
-        });/**/
         owner = msg.sender;
     }
 
-    /*function updateBorrowRate() internal {
+    function updateBorrowRate() internal {
         //borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
         poolInfo.borrowRate = IProtocolModule(_module).calcBorrowRate(poolInfo.LP_TOKEN_BALANCE, poolInfo.LP_TOKEN_BORROWED);
     }/**/
@@ -159,7 +147,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         require(liquidity > 0);//, 'GP.mint: 0 liquidity');
         _mint(to, liquidity);
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
-        poolInfo.updateBorrowRate();
+        updateBorrowRate();
         //emit Mint(msg.sender, amountA, amountB);
     }
 
@@ -195,7 +183,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         _burn(address(this), amount);
 
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
-        poolInfo.updateBorrowRate();
+        updateBorrowRate();
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
@@ -226,8 +214,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function increaseCollateral(uint256 tokenId, uint256[] calldata amounts, bytes calldata data) external virtual override returns(uint[] memory tokensHeld) {
-        Loan storage _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
+        Loan storage _loan = getLoan(tokenId);
 
         addCollateral(amounts, data);
 
@@ -238,9 +225,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override returns(uint[] memory tokensHeld){
-        Loan storage _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+        Loan storage _loan = getLoan(tokenId);
 
         for(uint i = 0; i < _tokens.length; i++) {
             require(_loan.tokensHeld[i] > amounts[i]);
@@ -280,7 +265,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)));
         //TODO: Should probably also put a check for the amounts we withdrew
 
-        poolInfo.updateBorrowRate();
+        updateBorrowRate();
         uint[] memory tokensHeld = new uint[](_tokens.length);
         for(uint i = 0; i < _tokens.length; i++) {
             tokensHeld[i] = amounts[i] + collateralAmounts[i];
@@ -307,13 +292,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
     function borrowMoreLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata collateralAmounts, bytes calldata data) external virtual override returns(uint[] memory amounts){
         require(lpTokens < poolInfo.LP_TOKEN_BALANCE);//, "GP.borLiq: > avail liquidity");
-        Loan storage _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
-
-        //updateFeeIndex();
-        //_loan.liquidity = ((_loan.liquidity * accFeeIndex) / _loan.rateIndex);
-        //_loan.rateIndex = accFeeIndex;
+        Loan storage _loan = getLoan(tokenId);
 
         updateLoan(_loan);
 
@@ -339,7 +318,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
         require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)));
 
-        poolInfo.updateBorrowRate();
+        updateBorrowRate();
         for(uint i = 0; i < _tokens.length; i++) {
             _loan.tokensHeld[i] = _loan.tokensHeld[i] + amounts[i] + collateralAmounts[i];
         }
@@ -356,9 +335,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function repayLiquidity(uint256 tokenId, uint256 liquidity, uint256[] calldata collateralAmounts, bytes calldata data) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
-        Loan storage _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+        Loan storage _loan = getLoan(tokenId);
 
         updateLoan(_loan);
 
@@ -390,7 +367,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
         //poolInfo.LP_TOKEN_BALANCE = poolInfo.LP_TOKEN_BALANCE + lpTokensPaid;
 
-        poolInfo.updateBorrowRate();
+        updateBorrowRate();
 
         //Do I have the amounts in the tokensHeld?
         //so to swap you send the amount you want to swap to CFMM
@@ -400,9 +377,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function rebalanceCollateral(uint256 tokenId, uint[] calldata posDeltas, uint256[] calldata negDeltas) external virtual override returns(uint256[] memory tokensHeld) {
-        Loan storage _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+        Loan storage _loan = getLoan(tokenId);
 
         updateLoan(_loan);
 
@@ -414,15 +389,17 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         _loan.tokensHeld = tokensHeld;
     }
 
-
-    function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
-        Loan storage _loan = _loans[tokenId];
+    function getLoan(uint256 tokenId) internal returns(Loan storage _loan) {
+        _loan = _loans[tokenId];
         require(_loan.id > 0);//, "GP: NOT_EXISTS");
         require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+    }
+
+    function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
+        Loan storage _loan = getLoan(tokenId);
 
         updateLoan(_loan);
 
-        //IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol));
         IProtocolModule module = IProtocolModule(_module);
 
         tokensHeld = module.rebalancePosition(cfmm, liquidity, _loan.tokensHeld);

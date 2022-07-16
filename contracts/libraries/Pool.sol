@@ -23,11 +23,11 @@ library Pool {
         uint256 LAST_BLOCK_NUMBER;
     }
 
-    function updateBorrowRate(Info storage self) internal {
+    //function updateBorrowRate(Info storage self) public {
         //Info memory _self = self;
         //borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
-        self.borrowRate = self.module.calcBorrowRate(self.LP_TOKEN_BALANCE, self.LP_TOKEN_BORROWED);
-    }
+    //    self.borrowRate = self.module.calcBorrowRate(self.LP_TOKEN_BALANCE, self.LP_TOKEN_BORROWED);
+    //}
 
     function openLoan(Info storage self, uint256 liquidity, uint256 lpTokens) internal {
         self.BORROWED_INVARIANT = self.BORROWED_INVARIANT + liquidity;
@@ -72,7 +72,7 @@ library Pool {
         self.LAST_BLOCK_NUMBER = block.number;
     }
 
-    function init(Info storage self, address cfmm, address module) internal {
+    function init(Info storage self, address cfmm, address module) public {
         self.cfmm = cfmm;
         self.module = IProtocolModule(module);
         self.LP_TOKEN_BALANCE = 0;//
