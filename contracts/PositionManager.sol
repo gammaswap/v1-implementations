@@ -23,7 +23,7 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
     uint256 ONE = 10**18;//1
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(_isApprovedOrOwner(msg.sender, tokenId), 'PM: NOT_AUTHORIZED');
+        require(_isApprovedOrOwner(msg.sender, tokenId), 'FORBIDDEN');
         _;
     }
 
@@ -59,7 +59,7 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
         amounts = IGammaPool(gammaPool).burn(params.to);
         for (uint i = 0; i < amounts.length; i++) {
-            require(amounts[i] >= params.amountsMin[i], 'PM: amount < min');
+            require(amounts[i] >= params.amountsMin[i], 'amt < min');
         }
     }
 

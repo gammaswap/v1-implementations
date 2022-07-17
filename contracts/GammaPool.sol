@@ -26,8 +26,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     /// @dev The token ID position data
     mapping(uint256 => Pool.Loan) internal _loans;
 
-    //TODO: We should test later if we can make save on gas by making public variables internal and using external getter functions
-
     address public owner;
 
     /// @dev The ID of the next loan that will be minted. Skips 0
@@ -36,7 +34,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     uint private unlocked = 1;
 
     modifier lock() {
-        require(unlocked == 1);//, 'GP: LOCKED');
+        require(unlocked == 1, 'LOCK');
         unlocked = 0;
         _;
         unlocked = 1;
@@ -86,7 +84,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     //********* Short Gamma Functions *********//
     function mint(address to) external virtual override lock returns(uint256 liquidity) {
         uint256 depLPBal = GammaSwapLibrary.balanceOf(cfmm, address(this)) - poolInfo.LP_TOKEN_BALANCE;
-        require(depLPBal > 0);//, 'GP.mint: 0 LPT deposit');
+        require(depLPBal > 0, '0 dep');
 
         updateFeeIndex();
 
@@ -99,7 +97,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         } else {
             liquidity = (depositedInvariant * _totalSupply) / totalInvariant;
         }
-        require(liquidity > 0);//, 'GP.mint: 0 liquidity');
         _mint(to, liquidity);
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
         updateBorrowRate();
@@ -110,7 +107,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     function burn(address to) external virtual override lock returns (uint[] memory amounts) {
         //get the liquidity tokens
         uint256 amount = _balanceOf[address(this)];
-        require(amount > 0);//, "GP.burn: 0 amount");
+        require(amount > 0, '0 dep');
 
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
 
@@ -119,7 +116,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         uint256 totalLPBal = poolInfo.calcTotalLPBalance();
 
         uint256 withdrawLPTokens = (amount * totalLPBal) / totalSupply;
-        require(withdrawLPTokens < poolInfo.LP_TOKEN_BALANCE);//, "GP.burn: exceeds liquidity");
+        require(withdrawLPTokens < poolInfo.LP_TOKEN_BALANCE, '> liq');
 
         //Uni/Sus: U -> GP -> CFMM -> U
         //                    just call module and ask module to use callback to transfer to CFMM then module calls burn
@@ -137,7 +134,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
     //********* Long Gamma Functions *********//
     function checkMargin(Pool.Loan storage _loan, uint24 limit) internal view {
-        require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity);
+        require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, 'margin');
     }
 
     function loans(uint256 tokenId) external virtual override view returns (uint96 nonce, address operator, uint256 id, address poolId,
@@ -167,7 +164,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         Pool.Loan storage _loan = getLoan(tokenId);
 
         for(uint i = 0; i < _tokens.length; i++) {
-            require(_loan.tokensHeld[i] > amounts[i]);
+            require(_loan.tokensHeld[i] > amounts[i], '> amt');
             GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
             _loan.tokensHeld[i] = _loan.tokensHeld[i] - amounts[i];
             poolInfo.TOKEN_BALANCE[i] = poolInfo.TOKEN_BALANCE[i] - amounts[i];
@@ -181,12 +178,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function removeLiquidityCallback(address to, uint256 amount) external virtual override {
-        require(msg.sender == _module);//, 'GP: FORBIDDEN');
+        require(msg.sender == _module, 'FORBIDDEN');
         GammaSwapLibrary.transfer(cfmm, to, amount);
     }
 
     function sendTokensCallback(uint[] calldata amounts, address to) external virtual override {
-        require(msg.sender == _module);//, 'GP: FORBIDDEN');
+        require(msg.sender == _module, 'FORBIDDEN');
         for (uint i = 0; i < _tokens.length; i++) {
             if (amounts[i] > 0) GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
         }
@@ -211,7 +208,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     }
 
     function borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint[] memory amounts){
-        require(lpTokens < poolInfo.LP_TOKEN_BALANCE);//, "GP.borLiq: > avail liquidity");
+        require(lpTokens < poolInfo.LP_TOKEN_BALANCE, '> liq');
 
         updateFeeIndex();
 
@@ -228,7 +225,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         updateCollateral(_loan);
 
         poolInfo.openLoan(_loan, module.calcInvariant(cfmm, amounts), lpTokens);
-        require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)));
+        require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)), 'LP < Bal');
 
         updateBorrowRate();
 
@@ -265,8 +262,8 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
     function getLoan(uint256 tokenId) internal returns(Pool.Loan storage _loan) {
         _loan = _loans[tokenId];
-        require(_loan.id > 0);//, "GP: NOT_EXISTS");
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))));
+        require(_loan.id > 0, '0 id');
+        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), 'FORBIDDEN');
     }
 
     function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256[] memory tokensHeld) {

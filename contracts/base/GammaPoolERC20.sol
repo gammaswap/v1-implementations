@@ -53,15 +53,16 @@ abstract contract GammaPoolERC20 {//is IERC20 {
     }
 
     function _mint(address account, uint256 amount) internal virtual {
+        require(amount > 0, '0 amt');
         totalSupply += amount;
         _balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "GP._burn zero address");
+        require(account != address(0), "0 address");
         uint256 accountBalance = _balanceOf[account];
-        require(accountBalance >= amount, "GP._burn exceeds balance");
+        require(accountBalance >= amount, "> balance");
         unchecked {
             _balanceOf[account] = accountBalance - amount;
         }

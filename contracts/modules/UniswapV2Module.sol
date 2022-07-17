@@ -62,10 +62,6 @@ contract UniswapV2Module is IProtocolModule {
         key = PoolAddress.getPoolKey(_cfmm, protocol);
     }
 
-    function getKey(address _cfmm) external view override returns(bytes32 key) {
-        key = PoolAddress.getPoolKey(_cfmm, protocol);
-    }
-
     // calculates the CREATE2 address for a pair without making any external calls
     function pairFor(address tokenA, address tokenB) internal virtual view returns (address pair) {
         pair = address(uint160(uint256(keccak256(abi.encodePacked(
@@ -140,8 +136,14 @@ contract UniswapV2Module is IProtocolModule {
 
     }
 
-    function _addLiquidity(uint reserveA, uint reserveB, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal returns(uint[] memory amounts) {
+    function addLiquidity(
+        address cfmm,
+        uint[] calldata amountsDesired,
+        uint[] calldata amountsMin
+    ) external virtual override returns (uint[] memory amounts, address payee) {
+        payee = cfmm;
         amounts = new uint[](2);
+        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
         if (reserveA == 0 && reserveB == 0) {
             (amounts[0], amounts[1]) = (amountsDesired[0], amountsDesired[1]);
         } else {
@@ -158,15 +160,9 @@ contract UniswapV2Module is IProtocolModule {
         }
     }
 
-    function addLiquidity(
-        address cfmm,
-        uint[] calldata amountsDesired,
-        uint[] calldata amountsMin
-    ) external virtual override returns (uint[] memory amounts, address payee) {
-        payee = cfmm;
-        amounts = new uint[](2);
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
-        amounts = _addLiquidity(reserveA, reserveB, amountsDesired, amountsMin);
+    function getGammaPoolAddress(address cfmm) internal view returns(address gammaPool){
+        gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        require(msg.sender == gammaPool);
     }
 
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
@@ -190,39 +186,30 @@ contract UniswapV2Module is IProtocolModule {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
 
-    function checkOpenMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
-        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
-        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
-        return Math.sqrt(tokensHeld[0] * tokensHeld[1]) * 800 / 1000 >= invariantBorrowed;// we open at 80, maintenance is 90
-    }
-
-    function checkMaintenanceMargin(address cfmm, uint[] calldata tokensHeld, uint256 invariantBorrowed) external virtual override view returns(bool) {
-        //Must calculate the max loss price of tokensHeld to see how far are we covered. If the liquidity we've provided is sufficient
-        //Must use that formula that checks the ratio of the tokensHeld and calculates the maxLoss price and what the liquidity is at that price to protect against flash loan attacks
-        return Math.sqrt(tokensHeld[0] * tokensHeld[1]) * 900 / 1000 >= invariantBorrowed;// we open at 80, maintenance is 90
-    }
-
-    function convertLiquidityToAmounts(address cfmm, uint256 liquidity) external virtual override view returns(uint256[] memory amounts) {
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+    function convertLiquidityToAmounts(address cfmm, uint256 liquidity) internal view returns(uint256[] memory amounts, uint256[] memory reserves) {
+        reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
         amounts = new uint256[](2);
-        uint256 cfmmInvariant = Math.sqrt(reserveA * reserveB);
-        amounts[0] = liquidity * reserveA / cfmmInvariant;
-        amounts[1] = liquidity * reserveB / cfmmInvariant;
+        uint256 cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
+        amounts[0] = liquidity * reserves[0] / cfmmInvariant;
+        amounts[1] = liquidity * reserves[1] / cfmmInvariant;
     }
 
     function repayLiquidity(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid) {
-        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
-        require(msg.sender == gammaPool);
+        address gammaPool = getGammaPoolAddress(cfmm);
+        //address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        //require(msg.sender == gammaPool);
 
-        amounts = new uint256[](2);
-        uint256[] memory reserves = new uint256[](2);
-        {
-            (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+        //amounts = new uint256[](2);
+        uint256[] memory reserves;// = new uint256[](2);
+        //{
+            /*(reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
             uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
             amounts[0] = liquidity * reserves[0] / cfmmInvariant;
-            amounts[1] = liquidity * reserves[1] / cfmmInvariant;
+            amounts[1] = liquidity * reserves[1] / cfmmInvariant;/**/
+            (amounts,reserves) = convertLiquidityToAmounts(cfmm, liquidity);
             require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1]);//, 'repay: tokensHeld < amounts');
-        }
+        //}
 
         ISendTokensCallback(msg.sender).sendTokensCallback(amounts, cfmm);
 
@@ -240,20 +227,15 @@ contract UniswapV2Module is IProtocolModule {
     //_tokensHeld is our new updated amounts and amounts is the amounts we are going to deposit
     //Why don't we do both here. Rebalance and deposit quantities. We'll save gas. No you have to do it separately. Uni doesn't like that
     function rebalancePosition(address cfmm, uint256 liquidity, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld){
-        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
-        require(msg.sender == gammaPool);
+        //address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
+        //require(msg.sender == gammaPool);
+        address gammaPool = getGammaPoolAddress(cfmm);
 
-        uint256[] memory reserves = new uint256[](2);
-        (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
+        uint256[] memory reserves;
+        uint256[] memory amounts;
+        (amounts, reserves) = convertLiquidityToAmounts(cfmm, liquidity);
         uint256 currPx = reserves[1] * ONE / reserves[0];
         uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
-
-        uint256[] memory amounts = new uint256[](2);
-        {
-            uint cfmmInvariant = Math.sqrt(reserves[0] * reserves[1]);
-            amounts[0] = liquidity * reserves[0] / cfmmInvariant;
-            amounts[1] = liquidity * reserves[1] / cfmmInvariant;
-        }
 
         uint256[] memory inAmts = new uint256[](2);//this gets added to tokensHeld
         uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
@@ -274,8 +256,7 @@ contract UniswapV2Module is IProtocolModule {
     }
 
     function rebalancePosition(address cfmm, uint256[] calldata posDeltas, uint256[] calldata negDeltas, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
-        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
-        require(msg.sender == gammaPool);
+        address gammaPool = getGammaPoolAddress(cfmm);
 
         uint256[] memory reserves = new uint256[](2);
         (reserves[0], reserves[1],) = IUniswapV2PairMinimal(cfmm).getReserves();
