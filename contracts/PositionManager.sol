@@ -11,33 +11,16 @@ import "./base/PeripheryPayments.sol";
 import "./interfaces/IGammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
 import "./libraries/PoolAddress.sol";
-import "./interfaces/IAddLiquidityCallback.sol";
-import "./interfaces/IAddCollateralCallback.sol";
 import "./GammaPool.sol";
 
-contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollateralCallback, PeripheryPayments, ERC721 {
-
-    uint256 MAX_SLIPPAGE = 10**17;//10%
-
-    /// @dev IDs of pools assigned by this contract
-    //mapping(address => uint80) private _poolIds;
-
-    /// @dev Pool keys by pool ID, to save on SSTOREs for position data
-    //mapping(uint80 => PoolAddress.PoolKey) private _poolIdToPoolKey;
+contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
 
     /// @dev The ID of the next token that will be minted. Skips 0
     uint176 private _nextId = 1;
-    /// @dev The ID of the next pool that is used for the first time. Skips 0
-    uint80 private _nextPoolId = 1;
 
     address public owner;
 
     uint256 ONE = 10**18;//1
-
-    /// @dev The ID of the next token that will be minted. Skips 0
-    //uint176 private _nextId = 1;
-    /// @dev The ID of the next pool that is used for the first time. Skips 0
-    //uint80 private _nextPoolId = 1;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), 'PM: NOT_AUTHORIZED');
@@ -48,125 +31,75 @@ contract PositionManager is IPositionManager, IAddLiquidityCallback, IAddCollate
         owner = msg.sender;
     }
 
-    //A GammaPool has its own protocol router. The gammaPool no because we don't want to make the GammaPool code to work specifically with Uniswap
-    //What we do is we update the GammaPool
-    //Use callback to avoid having to approve every deposit pool
-    //the protocolRouter is at PositionManager level because if we need to update we don't want to update every single GammaPool.
-    //PosMgr -> GammaPool -> Router just does calculations of what you need to send. It doesn't do anything else
-    /**
-        -UniSwap, SushiSwap, PancakeSwap, Balancer
-        what they have in common that we need?
-            -add liquidity (transfer funds and mint tokens)
-            -remove liquidity (transfer tokens and retrieve funds)
-            -factory, create a token at a predetermined or non predetermined address
-
-        PosMgr
-            -get GammaPool Addr
-            -module.addLiq
-                -callsBack PosMgr to move assets for user to cfmm
-                -mint liquidity to GammaPool
-                -return invariant info to PosMgr
-                *Balancer and Curve works the old way, they have to transfer to us and us to balancer since their router is embedded
-                 in their pool minting contract (So transfer to GammaPool then GammaPool -> Balancer -> GammaPool). Return
-                 invariant info to PosMgr (Pools are not unique in their system).
-                    *Curve and Balancer mint to the sender. Since PosMgr is the sender because it has control of tokens
-                     then PosMgr will receive the c or b tokens. Then PosMgr has to send the tokens to GammaPool after receiving them.
-                     So whatever tokens PosMGr receives it has to send to GammaPool. Other option is to have GammaPool send the tokens
-                     to Balancer and Curve. But then this will mean GammaPool is not just a holder of tokens but an implementer of this
-                     logic.
-                    *There can be multiple pools for the same tokens
-                        -This changes the factory and getCFMM function of modules.
-                            -modules need to accept a pool address, tokens is not enough
-                            -factory needs to create predetermined address from pool address as salt
-                                -The underlying pool address + protocol is the salt (for non unique protocols) (managed, probalby don't need to manage either but we'll make publicity to only pools we know are real)
-                                    -We'll retain the power to add additional protocols (modules). Then other people can create pools for those modules/protocols
-                                -For unique protocols (2 Token), it's the token addresses and the protocol (non managed)
-                           -Every protocol has its own rules:
-                                -it's unique or not unique
-                                    -If unique it can get CFMM from tokens
-                                    -If not unique it needs CFMM address
-                                    -GS Pool address is obtained fom tokens if Unique
-                                    -GS Pool address is obtained from CFMM address if not Unique
-            -call GammaPool to mint GS Tokens using invariant info
-            *Will the pool ever need to know the CFMM?
-    **/
-
     // **** ADD LIQUIDITY **** //
-    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns (uint[] memory amounts, uint liquidity) {
-        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, poolKey));
-        amounts = gammaPool.addLiquidity(params.amountsDesired, params.amountsMin, abi.encode(AddLiquidityCallbackData({ poolKey: poolKey, payer: msg.sender })));//gammaPool will do the checking afterwards that the right amounts were sent
-        liquidity = gammaPool.mint(params.to);
-    }
+    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns(uint[] memory amounts, uint liquidity){
+        IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(params.protocol));//TODO: could create predetermined addresses for the protocols to not have to call them out like this
+        address payee;
+        (amounts, payee) = module.addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin);
 
-    function addLiquidityCallback(address payee, address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external virtual override {// Only in Uni. In Bal we use this to transfer to ourselves then the mint function finishes the transfer from the other side.
-        AddLiquidityCallbackData memory decoded = abi.decode(data, (AddLiquidityCallbackData));
-        require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PM.addLiq: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
+        IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)));
+        address[] memory _tokens = gammaPool.tokens();
 
-        for (uint i = 0; i < tokens.length; i++) {
-            if (amounts[i] > 0 ) pay(tokens[i], decoded.payer, payee, amounts[i]);
+        //In Uni/Suh transfer U -> CFMM
+        //In Bal/Crv transfer U -> Module
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (amounts[i] > 0 ) pay(_tokens[i], msg.sender, payee, amounts[i]);
         }
+
+        //In Uni/Suh mint [CFMM -> GP] single tx
+        //In Bal/Crv mint [Module -> CFMM -> Module -> GP] single tx
+        //                    Since CFMM has to pull from module, module must always check it has enough approval
+        module.mint(params.cfmm, amounts);
+        liquidity = gammaPool.mint(params.to);
     }
 
     // **** REMOVE LIQUIDITY **** //
     function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
-        require(params.amount > 0, 'PM.remLiq: 0 amount');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
         amounts = IGammaPool(gammaPool).burn(params.to);
         for (uint i = 0; i < amounts.length; i++) {
-            require(amounts[i] >= params.amountsMin[i], 'PM.remLiq: amount < min');
+            require(amounts[i] >= params.amountsMin[i], 'PM: amount < min');
         }
     }
 
-    function addCollateralCallback(address[] calldata tokens, uint[] calldata amounts, bytes calldata data) external virtual override {
-        AddCollateralCallbackData memory decoded = abi.decode(data, (AddCollateralCallbackData));
-        require(msg.sender == PoolAddress.computeAddress(factory, decoded.poolKey), 'PM.addColl: FORBIDDEN');//getPool has all the pools that have been created with the contract. There's no way around that
+    // **** LONG GAMMA **** //
+    function createLoan(address cfmm, uint24 protocol, address to) external virtual override returns(uint256 tokenId) {
+        tokenId = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol))).createLoan();
+        _safeMint(to, tokenId);
+    }
 
-        for (uint i = 0; i < tokens.length; i++) {
-            if (amounts[i] > 0 ) pay(tokens[i], decoded.payer, msg.sender, amounts[i]);
+    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns (uint[] memory amounts) {
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowLiquidity(params.tokenId, params.liquidity);
+    }
+
+    function repayLiquidity(RepayLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns (uint liquidityPaid, uint256 lpTokensPaid, uint[] memory amounts) {
+        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
+        (liquidityPaid, lpTokensPaid, amounts) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).repayLiquidity(params.tokenId, params.liquidity);
+    }
+
+    function increaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
+        address gammaPoolAddr = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        IGammaPool gammaPool = IGammaPool(gammaPoolAddr);
+        address[] memory _tokens = gammaPool.tokens();
+        for (uint i = 0; i < _tokens.length; i++) {
+            if (params.amounts[i] > 0 ) pay(_tokens[i], msg.sender, gammaPoolAddr, params.amounts[i]);
         }
+        tokensHeld = gammaPool.increaseCollateral(params.tokenId);
     }
 
-    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual override returns (uint[] memory amounts, uint256 tokenId) {
-        require(params.liquidity > 0, 'PM.borLiq: 0 amount');
-        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        (amounts, tokenId) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowLiquidity(params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
-        _safeMint(params.to, tokenId);
-    }
-
-    function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
-        require(params.liquidity > 0, 'PM.borLiq: 0 amount');
-        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowMoreLiquidity(tokenId, params.liquidity, params.collateralAmounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
-    }
-
-    function repayLiquidity(RepayLiquidityParams calldata params) external virtual override returns (uint liquidityPaid, uint[] memory amounts) {
-        require(params.liquidity > 0, 'PM.repLiq: 0 amount');
-        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        (liquidityPaid, amounts) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).repayLiquidity(params.tokenId, params.liquidity, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
-    }
-
-    function increaseollateral(AddRemoveCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
-        require(params.tokenId > 0, 'PM.incColl: 0 tokenId');
-        bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).increaseCollateral(params.tokenId, params.amounts, abi.encode(AddCollateralCallbackData({ poolKey: poolKey, payer: msg.sender })));
-    }
-
-    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld){
-        require(params.tokenId > 0, 'PM.incColl: 0 tokenId');
+    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld){
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).decreaseCollateral(params.tokenId, params.amounts, params.to);
     }
 
-    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
-        require(params.tokenId > 0, 'PM.decColl: 0 tokenId');
+    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateral(params.tokenId, params.posDeltas, params.negDeltas);
     }
 
-    function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override returns(uint[] memory tokensHeld) {
-        require(params.tokenId > 0, 'PM.decColl: 0 tokenId');
+    function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
         tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateralWithLiquidity(params.tokenId, params.liquidity);
     }

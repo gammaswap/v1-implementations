@@ -27,6 +27,7 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
     struct BorrowLiquidityParams {
         address cfmm;
         uint24 protocol;
+        uint256 tokenId;
         uint256 liquidity;
         uint[] amountsMin;
         uint[] collateralAmounts;
@@ -64,12 +65,13 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint deadline;
     }
 
+    function createLoan(address cfmm, uint24 protocol, address to) external returns(uint256 tokenId);
     function addLiquidity(AddLiquidityParams calldata params) external returns (uint[] memory amounts, uint liquidity);
     function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts);
-    function borrowLiquidity(BorrowLiquidityParams calldata params) external returns (uint[] memory amounts, uint256 tokenId);
-    function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external returns (uint[] memory amounts);
-    function repayLiquidity(RepayLiquidityParams calldata params) external returns (uint liquidityPaid, uint[] memory amounts);
-    function increaseollateral(AddRemoveCollateralParams calldata params) external returns(uint[] memory tokensHeld);
+    function borrowLiquidity(BorrowLiquidityParams calldata params) external returns (uint[] memory amounts);
+    //function borrowMoreLiquidity(uint256 tokenId, BorrowLiquidityParams calldata params) external returns (uint[] memory amounts);
+    function repayLiquidity(RepayLiquidityParams calldata params) external returns (uint liquidityPaid, uint lpTokensPaid, uint[] memory amounts);
+    function increaseCollateral(AddRemoveCollateralParams calldata params) external returns(uint[] memory tokensHeld);
     function decreaseCollateral(AddRemoveCollateralParams calldata params) external returns(uint[] memory tokensHeld);
     function rebalanceCollateral(RebalanceCollateralParams calldata params) external returns(uint[] memory tokensHeld);
     function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external returns(uint[] memory tokensHeld);

@@ -19,10 +19,11 @@ interface IGammaPoolFactory {
     function createPool(Parameters calldata params) external returns(address);
     function getPool(bytes32 salt) external view returns(address);
     function allPoolsLength() external view returns (uint);
-    function feeTo() external view returns(address);
+    //function feeTo() external view returns(address);
     function feeToSetter() external view returns(address);
     function owner() external view returns(address);
-    function fee() external view returns(uint);
+    //function fee() external view returns(uint);
+    function feeInfo() external view returns(address,uint);
 
     /// @notice Get the parameters to be used in constructing the pool, set transiently during pool creation.
     /// @dev Called by the pool constructor to fetch the parameters of the pool

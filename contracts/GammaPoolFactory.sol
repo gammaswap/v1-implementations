@@ -10,10 +10,10 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
     event PoolCreated(address indexed pool, address indexed cfmm, uint24 indexed protocol, uint256 count);
 
-    address public override feeTo;
     address public override feeToSetter;
     address public override owner;
-    uint256 public override fee = 5 * (10**16); //5% of borrowed interest gains by default
+    address private feeTo;
+    uint256 private fee = 5 * (10**16); //5% of borrowed interest gains by default
 
     mapping(uint24 => address) public override getModule;//there's a module per protocol
     mapping(bytes32 => address) public override getPool;//all GS Pools addresses can be predetermined
@@ -81,6 +81,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
         getPool[key] = pool;
         allPools.push(pool);
         emit PoolCreated(pool, params.cfmm, params.protocol, allPools.length);
+    }
+
+    function feeInfo() external virtual override view returns(address _feeTo, uint _fee) {
+        _feeTo = feeTo;
+        _fee = fee;
     }
 
     function setFee(uint _fee) external {

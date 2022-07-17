@@ -11,6 +11,7 @@ library Pool {
         address cfmm;
         IProtocolModule module;
         // the nonce for permits
+        uint256[] TOKEN_BALANCE;
         uint256 LP_TOKEN_BALANCE;
         uint256 LP_TOKEN_BORROWED;
         uint256 BORROWED_INVARIANT;
@@ -23,32 +24,29 @@ library Pool {
         uint256 LAST_BLOCK_NUMBER;
     }
 
-    //function updateBorrowRate(Info storage self) public {
-        //Info memory _self = self;
-        //borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
-    //    self.borrowRate = self.module.calcBorrowRate(self.LP_TOKEN_BALANCE, self.LP_TOKEN_BORROWED);
-    //}
-
-    function openLoan(Info storage self, uint256 liquidity, uint256 lpTokens) internal {
-        self.BORROWED_INVARIANT = self.BORROWED_INVARIANT + liquidity;
-        self.LP_TOKEN_BORROWED = self.LP_TOKEN_BORROWED + lpTokens;
-        self.LP_TOKEN_BALANCE = self.LP_TOKEN_BALANCE - lpTokens;
+    struct Loan {
+        // the nonce for permits
+        uint96 nonce;
+        uint256 id;
+        address operator;
+        address poolId;
+        //address[] tokens;
+        uint256[] tokensHeld;
+        uint256 heldLiquidity;
+        uint256 liquidity;
+        uint256 lpTokens;
+        uint256 rateIndex;
+        uint256 blockNum;
     }
 
-    function payLoan(Info storage self, uint256 liquidity, uint256 lpTokens, uint256 lpTokensPaid) internal {
-        self.BORROWED_INVARIANT = self.BORROWED_INVARIANT - liquidity;
-        self.LP_TOKEN_BORROWED = self.LP_TOKEN_BORROWED - lpTokens;
-        self.LP_TOKEN_BALANCE = self.LP_TOKEN_BALANCE + lpTokensPaid;
-    }
-
-    function calcTotalLPBalance(Info storage self) public view returns(uint256 totalLPBal) {
+    function calcTotalLPBalance(Info storage self) internal view returns(uint256 totalLPBal) {
         uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
         uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(self.cfmm);
 
         totalLPBal = self.LP_TOKEN_BALANCE + (self.BORROWED_INVARIANT * cfmmTotalSupply) / cfmmTotalInvariant;
     }
 
-    function calcDepositedInvariant(Info storage self, uint256 depLPBal) public view returns(uint256 totalInvariant, uint256 depositedInvariant){
+    function calcDepositedInvariant(Info storage self, uint256 depLPBal) internal view returns(uint256 totalInvariant, uint256 depositedInvariant){
         //Info memory _self = self;
         uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
         uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(self.cfmm);
@@ -58,11 +56,6 @@ library Pool {
     }
 
     function updateIndex(Info storage self) internal {
-        //Info storage _self = self;
-
-        //(self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply) = IProtocolModule(_self.module)
-        //    .getCFMMYield(_self.cfmm, _self.lastCFMMInvariant, _self.lastCFMMTotalSupply, _self.borrowRate, _self.LAST_BLOCK_NUMBER);
-
         (self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply) = self.module
         .getCFMMYield(self.cfmm, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.borrowRate, self.LAST_BLOCK_NUMBER);
 
@@ -72,18 +65,38 @@ library Pool {
         self.LAST_BLOCK_NUMBER = block.number;
     }
 
-    function init(Info storage self, address cfmm, address module) public {
+    function openLoan(Info storage self, Loan storage _loan, uint256 liquidity, uint256 lpTokens) internal {
+        self.BORROWED_INVARIANT = self.BORROWED_INVARIANT + liquidity;
+        self.LP_TOKEN_BORROWED = self.LP_TOKEN_BORROWED + lpTokens;
+        self.LP_TOKEN_BALANCE = self.LP_TOKEN_BALANCE - lpTokens;
+
+        _loan.liquidity = _loan.liquidity + liquidity;
+        _loan.lpTokens = _loan.lpTokens + lpTokens;
+    }
+
+    function payLoan(Info storage self, Loan storage _loan, uint256 liquidity, uint256 lpTokensPaid) internal {
+        uint256 lpTokens = (liquidity * _loan.lpTokens / _loan.liquidity);
+
+        if(liquidity >= _loan.liquidity) {
+            liquidity = _loan.liquidity;
+            lpTokens = _loan.lpTokens;
+        }
+
+        self.BORROWED_INVARIANT = self.BORROWED_INVARIANT - liquidity;
+        self.LP_TOKEN_BORROWED = self.LP_TOKEN_BORROWED - lpTokens;
+        self.LP_TOKEN_BALANCE = self.LP_TOKEN_BALANCE + lpTokensPaid;
+
+        _loan.liquidity = _loan.liquidity - liquidity;
+        _loan.lpTokens = _loan.lpTokens - lpTokens;
+    }
+
+    function init(Info storage self, address cfmm, address module, uint numOfTokens) public {
         self.cfmm = cfmm;
         self.module = IProtocolModule(module);
-        self.LP_TOKEN_BALANCE = 0;//
-        self.LP_TOKEN_BORROWED = 0;//
-        self.BORROWED_INVARIANT = 0;//
-        self.borrowRate = 0;//
+        self.TOKEN_BALANCE = new uint[](numOfTokens);
         self.accFeeIndex = 1;//
         self.lastFeeIndex = 1;//
         self.lastCFMMFeeIndex = 1;//
-        self.lastCFMMInvariant = 0;//
-        self.lastCFMMTotalSupply = 0;//
         self.LAST_BLOCK_NUMBER = block.number;
     }
 }
