@@ -30,7 +30,6 @@ library Pool {
         uint256 id;
         address operator;
         address poolId;
-        //address[] tokens;
         uint256[] tokensHeld;
         uint256 heldLiquidity;
         uint256 liquidity;
@@ -56,8 +55,8 @@ library Pool {
     }
 
     function updateIndex(Info storage self) internal {
-        (self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply) = self.module
-        .getCFMMYield(self.cfmm, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.borrowRate, self.LAST_BLOCK_NUMBER);
+        (self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.borrowRate) = self.module
+        .getCFMMYield(self.cfmm, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.LP_TOKEN_BALANCE, self.LP_TOKEN_BORROWED, self.LAST_BLOCK_NUMBER);
 
         self.BORROWED_INVARIANT = (self.BORROWED_INVARIANT * self.lastFeeIndex) / ONE;
 
@@ -90,7 +89,7 @@ library Pool {
         _loan.lpTokens = _loan.lpTokens - lpTokens;
     }
 
-    function init(Info storage self, address cfmm, address module, uint numOfTokens) public {
+    function init(Info storage self, address cfmm, address module, uint numOfTokens) internal {
         self.cfmm = cfmm;
         self.module = IProtocolModule(module);
         self.TOKEN_BALANCE = new uint[](numOfTokens);

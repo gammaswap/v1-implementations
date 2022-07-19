@@ -5,8 +5,7 @@ import "./UniswapV2Module.sol";
 
 contract SushiSwapModule is UniswapV2Module {
 
-    constructor(address _factory, address _protocolFactory) UniswapV2Module(_factory, _protocolFactory) {
-        protocol = 2;
+    constructor(address _factory, address _protocolFactory, uint24 _protocol) UniswapV2Module(_factory, _protocolFactory, _protocol) {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls

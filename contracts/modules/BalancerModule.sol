@@ -39,9 +39,9 @@ contract BalancerModule is IProtocolModule {
         salt = 0;/**/
     }
 
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) external virtual override view returns(uint256 borrowRate) {
+    /*function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) external virtual override view returns(uint256 borrowRate) {
         return 0;
-    }
+    }/**/
 
     function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256 invariant) {
         invariant = uint160(cfmm);
@@ -54,8 +54,8 @@ contract BalancerModule is IProtocolModule {
         return 0;
     }
 
-    function getCFMMYield(address cfmm, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 borrowRate, uint256 lastBlockNum) external view virtual override
-        returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
+    function getCFMMYield(address cfmm, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lpBalance, uint256 lpBorrowed, uint256 lastBlockNum) external view virtual override
+        returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 borrowRate) {
 
     }
 
@@ -96,7 +96,7 @@ contract BalancerModule is IProtocolModule {
 
     }
 
-    function rebalancePosition(address cfmm, uint256[] calldata posDeltas, uint256[] calldata negDeltas, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
+    function rebalancePosition(address cfmm, int256[] calldata deltas, uint256[] calldata tokensHeld) external virtual override returns(uint256[] memory _tokensHeld) {
 
     }
 

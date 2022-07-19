@@ -20,8 +20,6 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
 
     address public owner;
 
-    uint256 ONE = 10**18;//1
-
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), 'FORBIDDEN');
         _;
@@ -96,7 +94,7 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
 
     function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
         bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateral(params.tokenId, params.posDeltas, params.negDeltas);
+        tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateral(params.tokenId, params.deltas);
     }
 
     function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {

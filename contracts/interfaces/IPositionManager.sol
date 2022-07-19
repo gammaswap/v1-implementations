@@ -58,8 +58,7 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         address cfmm;
         uint24 protocol;
         uint256 tokenId;
-        uint[] posDeltas;
-        uint[] negDeltas;
+        int[] deltas;
         uint256 liquidity;
         address to;
         uint deadline;

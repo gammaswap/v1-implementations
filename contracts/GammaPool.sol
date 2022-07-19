@@ -6,11 +6,11 @@ import './libraries/Pool.sol';
 import "./interfaces/IGammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/IProtocolModule.sol";
-import "./interfaces/IRemoveLiquidityCallback.sol";
+import "./interfaces/ISendLiquidityCallback.sol";
 import "./interfaces/ISendTokensCallback.sol";
 import "./base/GammaPoolERC20.sol";
 
-contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISendTokensCallback {
+contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendTokensCallback {
     using Pool for Pool.Info;
     uint internal constant ONE = 10**18;
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
@@ -40,6 +40,11 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         unlocked = 1;
     }
 
+    /*modifier ensure(uint deadline) {//TODO: Should we use this here or in PosMgr
+        require(deadline >= block.timestamp);//, 'M1: EXPIRED');
+        _;
+    }/**/
+
     constructor() {
         factory = msg.sender;
         (_tokens, protocol, cfmm, _module) = IGammaPoolFactory(msg.sender).getParameters();
@@ -50,11 +55,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
     function tokens() external view virtual override returns(address[] memory) {
         return _tokens;
     }
-
-    function updateBorrowRate() internal {
-        //borrowRate = IProtocolModule(IGammaPoolFactory(factory).getModule(protocol)).calcBorrowRate(LP_TOKEN_BALANCE, LP_TOKEN_BORROWED);
-        poolInfo.borrowRate = IProtocolModule(_module).calcBorrowRate(poolInfo.LP_TOKEN_BALANCE, poolInfo.LP_TOKEN_BORROWED);
-    }/**/
 
     function updateFeeIndex() internal {
         poolInfo.updateIndex();
@@ -99,7 +99,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         }
         _mint(to, liquidity);
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
-        updateBorrowRate();
         //emit Mint(msg.sender, amountA, amountB);
     }
 
@@ -108,8 +107,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         //get the liquidity tokens
         uint256 amount = _balanceOf[address(this)];
         require(amount > 0, '0 dep');
-
-        poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
 
         updateFeeIndex();
 
@@ -128,7 +125,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         _burn(address(this), amount);
 
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
-        updateBorrowRate();
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
@@ -177,7 +173,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         return _loan.tokensHeld;
     }
 
-    function removeLiquidityCallback(address to, uint256 amount) external virtual override {
+    function sendLiquidityCallback(address to, uint256 amount) external virtual override {
         require(msg.sender == _module, 'FORBIDDEN');
         GammaSwapLibrary.transfer(cfmm, to, amount);
     }
@@ -227,8 +223,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         poolInfo.openLoan(_loan, module.calcInvariant(cfmm, amounts), lpTokens);
         require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)), 'LP < Bal');
 
-        updateBorrowRate();
-
         checkMargin(_loan, 800);
     }
 
@@ -241,8 +235,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
 
         poolInfo.payLoan(_loan, liquidityPaid, lpTokensPaid);
 
-        updateBorrowRate();
-
         //Do I have the amounts in the tokensHeld?
         //so to swap you send the amount you want to swap to CFMM
         //Uni/Sushi/UniV3: GP -> CFMM -> GP
@@ -250,12 +242,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool, IRemoveLiquidityCallback, ISen
         //UniV3
     }
 
-    function rebalanceCollateral(uint256 tokenId, uint[] calldata posDeltas, uint256[] calldata negDeltas) external virtual override lock returns(uint256[] memory tokensHeld) {
+    function rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint256[] memory tokensHeld) {
         Pool.Loan storage _loan = getLoan(tokenId);
 
         updateLoan(_loan);
 
-        tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, posDeltas, negDeltas, _loan.tokensHeld);
+        tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, deltas, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
     }
