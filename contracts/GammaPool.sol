@@ -11,6 +11,8 @@ import "./interfaces/ISendTokensCallback.sol";
 import "./base/GammaPoolERC20.sol";
 
 contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendTokensCallback {
+
+
     using Pool for Pool.Info;
     uint internal constant ONE = 10**18;
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
@@ -56,6 +58,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         return _tokens;
     }
 
+    //TODO: Part of delegate contract
     function updateFeeIndex() internal {
         poolInfo.updateIndex();
         if(poolInfo.BORROWED_INVARIANT > 0) {
@@ -63,6 +66,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         }
     }
 
+    //TODO: Part of delegate contract
     function updateLoan(Pool.Loan storage _loan) internal {
         updateFeeIndex();
         _loan.liquidity = (_loan.liquidity * poolInfo.accFeeIndex) / _loan.rateIndex;
@@ -81,6 +85,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         }
     }
 
+    //TODO: Can be delegated (Part of Abstract Contract)
     //********* Short Gamma Functions *********//
     function mint(address to) external virtual override lock returns(uint256 liquidity) {
         uint256 depLPBal = GammaSwapLibrary.balanceOf(cfmm, address(this)) - poolInfo.LP_TOKEN_BALANCE;
@@ -102,6 +107,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         //emit Mint(msg.sender, amountA, amountB);
     }
 
+    //TODO: Can be delegated (Part of Abstract Contract)
     // this low-level function should be called from a contract which performs important safety checks
     function burn(address to) external virtual override lock returns (uint[] memory amounts) {
         //get the liquidity tokens
@@ -133,12 +139,14 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, 'margin');
     }
 
+    //TODO: Can be delegated
     function loans(uint256 tokenId) external virtual override view returns (uint96 nonce, address operator, uint256 id, address poolId,
         uint256[] memory tokensHeld, uint256 liquidity, uint256 rateIndex, uint256 blockNum) {
         Pool.Loan memory loan = _loans[tokenId];
         return (loan.nonce, loan.operator, loan.id, loan.poolId, loan.tokensHeld, loan.liquidity, loan.rateIndex, loan.blockNum);
     }
 
+    //TODO: Shouldn't exist
     function updateCollateral(Pool.Loan storage _loan) internal {
         for (uint i = 0; i < _tokens.length; i++) {
             uint256 tokenBal = GammaSwapLibrary.balanceOf(_tokens[i], address(this)) - poolInfo.TOKEN_BALANCE[i];
@@ -150,12 +158,14 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         _loan.heldLiquidity = IProtocolModule(_module).calcInvariant(cfmm, _loan.tokensHeld);
     }
 
+    //TODO: Can be delegated
     function increaseCollateral(uint256 tokenId) external virtual override lock returns(uint[] memory) {
         Pool.Loan storage _loan = getLoan(tokenId);
         updateCollateral(_loan);
         return _loan.tokensHeld;
     }
 
+    //TODO: Can be delegated
     function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint[] memory){
         Pool.Loan storage _loan = getLoan(tokenId);
 
@@ -173,11 +183,13 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         return _loan.tokensHeld;
     }
 
+    //TODO: Shouldn't Exist
     function sendLiquidityCallback(address to, uint256 amount) external virtual override {
         require(msg.sender == _module, 'FORBIDDEN');
         GammaSwapLibrary.transfer(cfmm, to, amount);
     }
 
+    //TODO: Shouldn't Exist
     function sendTokensCallback(uint[] calldata amounts, address to) external virtual override {
         require(msg.sender == _module, 'FORBIDDEN');
         for (uint i = 0; i < _tokens.length; i++) {
@@ -203,6 +215,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         });
     }
 
+    //TODO: Can be delegated
     function borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint[] memory amounts){
         require(lpTokens < poolInfo.LP_TOKEN_BALANCE, '> liq');
 
@@ -222,10 +235,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
 
         poolInfo.openLoan(_loan, module.calcInvariant(cfmm, amounts), lpTokens);
         require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)), 'LP < Bal');
+        //***************END DELEGATE************//
 
         checkMargin(_loan, 800);
     }
 
+    //TODO: Can be delegated
     function repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
         Pool.Loan storage _loan = getLoan(tokenId);
 
@@ -242,6 +257,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         //UniV3
     }
 
+    //TODO: Can be delegated (Abstract)
     function rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint256[] memory tokensHeld) {
         Pool.Loan storage _loan = getLoan(tokenId);
 
@@ -258,6 +274,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
         require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), 'FORBIDDEN');
     }
 
+    //TODO: Can be delegated (Abstract)
     function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256[] memory tokensHeld) {
         Pool.Loan storage _loan = getLoan(tokenId);
 

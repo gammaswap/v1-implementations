@@ -5,17 +5,10 @@ pragma solidity ^0.8.0;
 library PoolAddress {
     bytes32 internal constant POOL_INIT_CODE_HASH = 0x44d02e958d6e2c08ac7280e9ca2a8e8cb343d473a754e6d4f83e830cb508c9cb;
 
-    /// @notice The identifying key of the pool
-    /*struct PoolKey {
-        address token0;
-        address token1;
-        uint24 protocol;
-    }/**/
-
     /// @notice Returns key: the ordered tokens with the matched fee levels
-    /// @param cfmm The first token of a pool, unsorted
+    /// @param cfmm The pool address
     /// @param protocol The protocol id of the pool
-    /// @return key The pool details with ordered token0 and token1 assignments
+    /// @return key unique identifier of the GammaPool
     function getPoolKey(address cfmm, uint24 protocol) internal pure returns(bytes32 key) {
         key = keccak256(abi.encode(cfmm, protocol));
     }

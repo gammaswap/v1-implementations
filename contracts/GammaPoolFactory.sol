@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import './GammaPool.sol';
+import './GammaPool2.sol';
 import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/IProtocolModule.sol";
 //import "hardhat/console.sol";
@@ -72,7 +72,7 @@ contract GammaPoolFactory is IGammaPoolFactory{
         cfmm = params.cfmm;
         protocol = params.protocol;
         module = address(_module);
-        pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
+        pool = address(new GammaPool2{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
         cfmm = address(0);
         protocol = 0;
         module = address(0);

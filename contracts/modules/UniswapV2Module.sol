@@ -89,6 +89,7 @@ contract UniswapV2Module is IProtocolModule {
         }
     }
 
+    //TODO: Can be delegated
     function calcNewDevShares(address cfmm, uint256 devFee, uint256 lastFeeIndex, uint256 totalSupply, uint256 LP_TOKEN_BALANCE, uint256 BORROWED_INVARIANT) external view virtual override returns(uint256) {
         (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
         uint256 cfmmTotalInvariant = Math.sqrt(reserveA * reserveB);
@@ -104,10 +105,12 @@ contract UniswapV2Module is IProtocolModule {
         return Math.sqrt(reserveA * reserveB);
     }
 
+    //TODO: Can be delegated
     function getCFMMTotalInvariant(address cfmm) external view virtual override returns(uint256) {
         return calcCFMMTotalInvariant(cfmm);
     }
 
+    //TODO: Can be delegated
     function getCFMMYield(address cfmm, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lpBalance, uint256 lpBorrowed, uint256 lastBlockNum) external view virtual override
         returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 borrowRate) {
         borrowRate = calcBorrowRate(lpBalance, lpBorrowed);
@@ -130,6 +133,7 @@ contract UniswapV2Module is IProtocolModule {
 
     }
 
+    //TODO: becomes internal
     function addLiquidity(
         address cfmm,
         uint[] calldata amountsDesired,
@@ -159,11 +163,13 @@ contract UniswapV2Module is IProtocolModule {
         require(msg.sender == gammaPool, 'FORBIDDEN');
     }
 
+    //TODO: Can be delegated
     function mint(address cfmm, uint[] calldata amounts) external virtual override returns(uint liquidity) {
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
         liquidity = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
     }
 
+    //TODO: Can be delegated
     function burn(address cfmm, address to, uint256 amount) external virtual override returns(uint[] memory amounts) {
         require(amount > 0, '0 amount');
         address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol));
@@ -176,6 +182,7 @@ contract UniswapV2Module is IProtocolModule {
         (amounts[0], amounts[1]) = IUniswapV2PairMinimal(cfmm).burn(to);
     }
 
+    //TODO: Can be delegated
     function calcInvariant(address cfmm, uint[] calldata amounts) external virtual override view returns(uint) {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
