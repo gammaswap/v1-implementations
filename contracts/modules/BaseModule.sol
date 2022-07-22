@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../libraries/GammaPoolStorage.sol";
 import "../libraries/GammaSwapLibrary.sol";
+import "../interfaces/ISendTokensCallback.sol";
 
 abstract contract BaseModule {
 
@@ -12,15 +13,20 @@ abstract contract BaseModule {
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual view returns(uint256);
 
-    function mint(address cfmm, uint[] calldata amounts) internal virtual returns(uint liquidity);
+    //function repayLiquidity(address cfmm, uint256 liquidity, address[] storage tokens, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid);
+    function repayLiquidity(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid);
 
-    function burn(address cfmm, address to, uint256 amount) internal virtual returns(uint[] memory amounts);
+    function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
+    //function rebalancePosition(address cfmm, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
 
-    function repayLiquidity(address cfmm, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid);
+    //function rebalancePosition(address cfmm, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
+    function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
 
-    function rebalancePosition(address cfmm, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
+    function calcAmounts(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal virtual returns (uint[] memory amounts, address payee);
 
-    function rebalancePosition(address cfmm, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
+    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual;
+
+    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint[] memory amounts);
 
     function updateIndex(GammaPoolStorage.GammaPoolStore storage store) internal virtual {
         store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
@@ -78,7 +84,7 @@ abstract contract BaseModule {
 
     //TODO: Can be delegated (Part of Abstract Contract)
     //********* Short Gamma Functions *********//
-    function mint(address to) external virtual returns(uint256 liquidity) {
+    function mint(address to) public virtual returns(uint256 liquidity) {
         GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
         uint256 depLPBal = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
         require(depLPBal > 0, '0 dep');
@@ -101,7 +107,7 @@ abstract contract BaseModule {
 
     //TODO: Can be delegated (Part of Abstract Contract)
     // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) external virtual returns (uint[] memory amounts) {
+    function burn(address to) public virtual returns (uint[] memory amounts) {
         //get the liquidity tokens
         GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
         uint256 amount = store.balanceOf[address(this)];
@@ -118,7 +124,7 @@ abstract contract BaseModule {
         //                    just call module and ask module to use callback to transfer to Module then to CFMM
         //                    Since CFMM has to pull from module, module must always check it has enough approval
         //amounts = IProtocolModule(_module).burn(cfmm, to, withdrawLPTokens);
-        amounts = burn(store.cfmm, to, withdrawLPTokens);
+        amounts = withdrawFromCFMM(store.cfmm, to, withdrawLPTokens);
         _burn(address(this), amount);
 
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
@@ -142,6 +148,25 @@ abstract contract BaseModule {
         //totalSupply -= amount;
         //emit Transfer(account, address(0), amount);
     }/**/
+
+    function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual returns(uint256[] memory amounts) {
+        GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
+        address payee;
+        (amounts, payee) = calcAmounts(store.cfmm, amountsDesired, amountsMin);
+
+        uint256[] memory balances = new uint256[](store.tokens.length);
+        for(uint i = 0; i < store.tokens.length; i++) {
+            balances[i] = GammaSwapLibrary.balanceOf(store.tokens[i], address(this));
+        }
+        ISendTokensCallback(msg.sender).sendTokensCallback(store.tokens, amounts, payee, data);
+        for(uint i = 0; i < store.tokens.length; i++) {
+            if(amounts[i] > 0) require(balances[i] + amounts[i] == GammaSwapLibrary.balanceOf(store.tokens[i], address(this)), "WL");
+        }
+
+        depositToCFMM(store.cfmm, amounts, address(this));
+
+        mint(to);
+    }
 
     ////*********Long Gamma**********/////////
 
@@ -210,7 +235,7 @@ abstract contract BaseModule {
         //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> GP
         //                    just call module and ask module to use callback to transfer to Module then to CFMM
         //                    Since CFMM has to pull from module, module must always check it has enough approval
-        amounts = burn(store.cfmm, address(this), lpTokens);
+        amounts = withdrawFromCFMM(store.cfmm, address(this), lpTokens);
 
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         //Pool.Loan storage _loan = getLoan(tokenId);
@@ -218,7 +243,6 @@ abstract contract BaseModule {
 
         openLoan(store, _loan, calcInvariant(store.cfmm, amounts), lpTokens);
         require(store.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(store.cfmm, address(this)), 'LP < Bal');
-        //***************END DELEGATE************//
 
         checkMargin(_loan, 800);
     }
@@ -230,7 +254,7 @@ abstract contract BaseModule {
 
         updateLoan(store,_loan);
 
-        (_loan.tokensHeld, amounts, lpTokensPaid, liquidityPaid) = repayLiquidity(store.cfmm, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
+        (_loan.tokensHeld, amounts, lpTokensPaid, liquidityPaid) = repayLiquidity(store, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
 
         payLoan(store, _loan, liquidityPaid, lpTokensPaid);
 
@@ -248,7 +272,7 @@ abstract contract BaseModule {
 
         updateLoan(store,_loan);
 
-        tokensHeld = rebalancePosition(store.cfmm, deltas, _loan.tokensHeld);
+        tokensHeld = rebalancePosition(store, deltas, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
     }
@@ -260,7 +284,7 @@ abstract contract BaseModule {
 
         updateLoan(store, _loan);
 
-        tokensHeld = rebalancePosition(store.cfmm, liquidity, _loan.tokensHeld);
+        tokensHeld = rebalancePosition(store, liquidity, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
     }

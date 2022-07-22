@@ -25,4 +25,9 @@ contract GammaPool2 {
         GammaPoolStorage.Loan memory loan = GammaPoolStorage.store().loans[tokenId];
         return (loan.id, loan.poolId, loan.tokensHeld, loan.liquidity, loan.rateIndex, loan.blockNum);
     }
+
+    function addLiquidity(address cfmm, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) external virtual {
+
+    }
+
 }

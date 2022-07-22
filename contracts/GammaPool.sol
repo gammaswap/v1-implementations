@@ -10,7 +10,7 @@ import "./interfaces/ISendLiquidityCallback.sol";
 import "./interfaces/ISendTokensCallback.sol";
 import "./base/GammaPoolERC20.sol";
 
-contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendTokensCallback {
+contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, ISendTokensCallback {
 
 
     using Pool for Pool.Info;
@@ -190,12 +190,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback, ISendT
     }
 
     //TODO: Shouldn't Exist
-    function sendTokensCallback(uint[] calldata amounts, address to) external virtual override {
+    /*function sendTokensCallback(uint[] calldata amounts, address to) external virtual override {
         require(msg.sender == _module, 'FORBIDDEN');
         for (uint i = 0; i < _tokens.length; i++) {
             if (amounts[i] > 0) GammaSwapLibrary.transfer(_tokens[i], to, amounts[i]);
         }
-    }
+    }/**/
 
     function createLoan() external virtual override lock returns(uint tokenId) {
         uint256 id = _nextId++;

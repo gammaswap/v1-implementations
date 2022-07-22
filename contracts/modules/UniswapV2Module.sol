@@ -202,7 +202,7 @@ contract UniswapV2Module is IProtocolModule {
         (amounts,,) = convertLiquidityToAmounts(cfmm, liquidity);
         require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], '< amounts');
 
-        ISendTokensCallback(msg.sender).sendTokensCallback(amounts, cfmm);
+        //ISendTokensCallback(msg.sender).sendTokensCallback(amounts, cfmm);
 
         _lpTokensPaid = IUniswapV2PairMinimal(cfmm).mint(gammaPool);
         _liquidityPaid = _lpTokensPaid * calcCFMMTotalInvariant(cfmm) / GammaSwapLibrary.totalSupply(cfmm);
@@ -240,7 +240,7 @@ contract UniswapV2Module is IProtocolModule {
         require(outAmts[i] <= tokensHeld[i] - amounts[i], '> outAmt');
         _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
         _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmts[1];
-        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
+        //ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
         IUniswapV2PairMinimal(cfmm).swap(inAmt0,inAmt1, gammaPool, new bytes(0));
     }
 
@@ -256,7 +256,7 @@ contract UniswapV2Module is IProtocolModule {
         _tokensHeld = new uint256[](2);
         _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
         _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmts[1];
-        ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
+        //ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
         IUniswapV2PairMinimal(cfmm).swap(inAmt0,inAmt1,gammaPool, new bytes(0));
     }
 

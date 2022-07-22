@@ -6,14 +6,14 @@ import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
 import "./interfaces/IPositionManager.sol";
 import "./interfaces/IProtocolModule.sol";
-import "./base/PeripheryImmutableState.sol";
-import "./base/PeripheryPayments.sol";
 import "./interfaces/IGammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
+import "./base/PeripheryImmutableState.sol";
+import "./base/PeripheryPayments.sol";
 import "./libraries/PoolAddress.sol";
 import "./GammaPool.sol";
 
-contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
+contract PositionManager is IPositionManager, ISendTokensCallback, PeripheryPayments, ERC721 {
 
     /// @dev The ID of the next token that will be minted. Skips 0
     uint176 private _nextId = 1;
@@ -29,8 +29,22 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
         owner = msg.sender;
     }
 
+    function sendTokensCallback(address[] calldata tokens, uint256[] calldata amounts, address payee, bytes calldata data) external virtual override {
+        SendTokensCallbackData memory decoded = abi.decode(data, (SendTokensCallbackData));
+        require(msg.sender == PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(decoded.cfmm, decoded.protocol)), 'FORBIDDEN');
+
+        for(uint i = 0; i < tokens.length; i++) {
+            if(amounts[i] > 0) pay(tokens[i], decoded.payer, payee, amounts[i]);
+        }
+    }
+
     // **** ADD LIQUIDITY **** //
-    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns(uint[] memory amounts, uint liquidity){
+    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns(uint[] memory amounts, uint liquidity) {
+        //IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol))).addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin);
+        //abi.encode(SendTokensCallbackData({cfmm: params.cfmm, protocol: params.protocol, payer: msg.sender}))
+    }
+
+    /*function addLiquidityX(AddLiquidityParams calldata params) external virtual returns(uint[] memory amounts, uint liquidity) {
         IProtocolModule module = IProtocolModule(IGammaPoolFactory(factory).getModule(params.protocol));//TODO: could create predetermined addresses for the protocols to not have to call them out like this
         address payee;
         (amounts, payee) = module.addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin);
@@ -38,8 +52,27 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
         IGammaPool gammaPool = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)));
         address[] memory _tokens = gammaPool.tokens();
 
-        //In Uni/Suh transfer U -> CFMM
-        //In Bal/Crv transfer U -> Module
+        //In Uni/Suh transfer U -> CFMM (gammaPool shouldn't have permissions to move your funds. PosMgr should
+        //In Bal/Crv transfer U -> Module (For some projects, funds have to be deposited in GammaPool so that they can be deposited in the pool)
+        //If we have the user deposit the funds himself and get LP Tokens then PosMgr will need permissions over the LP Tokens to deposit in GammaPool
+
+            Since the module decides how the tokens are sent, handle with callback to module.
+            Might be able to embed factory in posMgr to avoid the external call
+
+            u->pm->gp=>module
+                        -calc amounts (internal)
+                        -pm-cfmm (send tokens to CFMM or GP if Bal/Crv callBack) (external)
+                            -encrypted message specifying (tokens, amounts, destination, cfmm, protocol)
+                            -verify that encrypted message comes from gammaPool
+                        -cfmm.mint (internal)
+                        -mint gstokens to user (internal)
+
+            u->pm->module
+                -calc amounts (external)
+                -pm-cfmm (send tokens) (internal)
+                -cfm mint to module (external)
+                -gp => moulde.mint (external)
+
         for (uint i = 0; i < _tokens.length; i++) {
             if (amounts[i] > 0 ) pay(_tokens[i], msg.sender, payee, amounts[i]);
         }
@@ -49,7 +82,7 @@ contract PositionManager is IPositionManager, PeripheryPayments, ERC721 {
         //                    Since CFMM has to pull from module, module must always check it has enough approval
         module.mint(params.cfmm, amounts);
         liquidity = gammaPool.mint(params.to);
-    }
+    }*/
 
     // **** REMOVE LIQUIDITY **** //
     function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
