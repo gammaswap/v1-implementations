@@ -43,11 +43,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
         return allPools.length;
     }
 
-    function addModule(address module) external virtual override {
+    function addModule(address _module) external virtual override {
         require(msg.sender == owner);//'FACTORY.addModule: FORBIDDEN');
-        require(IProtocolModule(module).protocol() > 0);//'FACTORY.addModule: ZERO_PROTOCOL');
-        require(getModule[IProtocolModule(module).protocol()] == address(0));
-        getModule[IProtocolModule(module).protocol()] = module;/**/
+        require(IProtocolModule(_module).protocol() > 0);//'FACTORY.addModule: ZERO_PROTOCOL');
+        require(getModule[IProtocolModule(_module).protocol()] == address(0));
+        getModule[IProtocolModule(_module).protocol()] = _module;/**/
     }
 
     function setIsProtocolRestricted(uint24 _protocol, bool isRestricted) external virtual override {

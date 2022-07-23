@@ -10,8 +10,10 @@ import "../interfaces/external/IUniswapV2PairMinimal.sol";
 
 contract UniswapV2Module2 is BaseModule {
 
-    constructor(address factory, address protocolFactory, uint24 protocol){
-        UniswapV2Storage.init(factory, protocolFactory, protocol);
+    constructor(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash){
+        UniswapV2Storage.init(factory, protocolFactory, protocol, initCodeHash);//bytes32(0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f));//UniswapV2
+        //hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
+        // bytes32(0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303));//SushiSwap
     }
 
     function isContract(address account) internal view returns (bool) {
@@ -29,25 +31,16 @@ contract UniswapV2Module2 is BaseModule {
         require(isContract(_cfmm) == true, 'not contract');
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);//For Uniswap and its clones the user passes the parameters
-        require(_cfmm == pairFor(tokens[0], tokens[1]), 'bad protocol');
-        key = PoolAddress.getPoolKey(_cfmm, UniswapV2Storage.store().protocol);
+        UniswapV2Storage.UniswapV2Store storage store = UniswapV2Storage.store();
+        require(_cfmm == PoolAddress.computeAddress(store.protocolFactory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), 'bad protocol');
+        key = PoolAddress.getPoolKey(_cfmm, store.protocol);
     }
 
-    // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address tokenA, address tokenB) internal virtual view returns (address pair) {
-        pair = address(uint160(uint256(keccak256(abi.encodePacked(
-                hex'ff',
-                UniswapV2Storage.store().protocolFactory,
-                keccak256(abi.encodePacked(tokenA, tokenB)),
-                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-            )))));
+    function updateReserves(GammaPoolStorage.GammaPoolStore storage store) internal virtual override {
+        (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = IUniswapV2PairMinimal(store.cfmm).getReserves();
     }
 
-    function calcCFMMTotalInvariant(address cfmm) internal virtual override view returns(uint256) {
-        (uint256 reserveA, uint256 reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();//TODO: This might need a check to make sure that (reserveA * reserveB) do not overflow
-        return Math.sqrt(reserveA * reserveB);
-    }
-
+    //Protocol specific functionality
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
         UniswapV2Storage.UniswapV2Store storage store = UniswapV2Storage.store();
         uint256 utilizationRate = (lpBorrowed * store.ONE) / (lpBalance + lpBorrowed);
@@ -61,6 +54,7 @@ contract UniswapV2Module2 is BaseModule {
         }
     }
 
+    //TODO:  (Needs to avoid GPL)
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
         require(amountA > 0, '> amount');
@@ -68,18 +62,19 @@ contract UniswapV2Module2 is BaseModule {
         amountB = (amountA * reserveB) / reserveA;
     }
 
-    //TODO: becomes internal
+    //TODO: becomes internal (Needs to avoid GPL)
     function calcAmounts(
-        address cfmm,
+        GammaPoolStorage.GammaPoolStore storage store,
         uint[] calldata amountsDesired,
         uint[] calldata amountsMin
-    ) internal virtual override returns (uint[] memory amounts, address payee) {
-        payee = cfmm;
-        amounts = new uint[](2);
-        (uint reserveA, uint reserveB,) = IUniswapV2PairMinimal(cfmm).getReserves();
+    ) internal virtual override returns (uint256[] memory amounts, address payee) {
+        amounts = new uint256[](2);
+        payee = store.cfmm;
+        (uint256 reserveA, uint256 reserveB) = (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1]);
         if (reserveA == 0 && reserveB == 0) {
-            (amounts[0], amounts[1]) = (amountsDesired[0], amountsDesired[1]);
-        } else {
+            //(amounts[0], amounts[1]) = (amountsDesired[0], amountsDesired[1]);
+            return(amountsDesired, payee);
+        } //else {
             uint amountBOptimal = quote(amountsDesired[0], reserveA, reserveB);
             if (amountBOptimal <= amountsDesired[1]) {
                 require(amountBOptimal >= amountsMin[1], '> amountB');
@@ -90,7 +85,8 @@ contract UniswapV2Module2 is BaseModule {
                 require(amountAOptimal >= amountsMin[0], '> amountA');
                 (amounts[0], amounts[1]) = (amountAOptimal, amountsDesired[1]);
             }
-        }
+        return(amounts, payee);
+        //}
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override {
@@ -108,24 +104,22 @@ contract UniswapV2Module2 is BaseModule {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
 
-    //See if can use separate functions one that returns amoutns only and one reserves too, but without using arrays to save memory in the filesize
-    function convertLiquidityToAmounts(address cfmm, uint256 liquidity) internal view returns(uint256[] memory amounts, uint256 reserve0, uint256 reserve1) {
-        /*(reserve0, reserve1,) = IUniswapV2PairMinimal(cfmm).getReserves();
-        amounts = new uint256[](2);
-        uint256 cfmmInvariant = Math.sqrt(reserve0 * reserve1);
-        amounts[0] = liquidity * reserve0 / cfmmInvariant;
-        amounts[1] = liquidity * reserve1 / cfmmInvariant;/**/
+    function convertLiquidityToAmounts(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity) internal view returns(uint256 amount0, uint256 amount1) {
+        uint256 lastCFMMTotalSupply = store.lastCFMMTotalSupply;
+        amount0 = liquidity * store.CFMM_RESERVES[0] / lastCFMMTotalSupply;
+        amount1 = liquidity * store.CFMM_RESERVES[1] / lastCFMMTotalSupply;
     }
 
     function repayLiquidity(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid) {
-        (amounts,,) = convertLiquidityToAmounts(store.cfmm, liquidity);//TODO: Do this calculation without calling uniswap x=L/sqrt(p), y=L*sqrt(p)
+        amounts = new uint256[](2);
+        (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
         require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], '< amounts');
 
-        TransferHelper.safeTransfer(store.tokens[0], store.cfmm, amounts[0]);
-        TransferHelper.safeTransfer(store.tokens[1], store.cfmm, amounts[1]);
+        address cfmm = store.cfmm;
+        TransferHelper.safeTransfer(store.tokens[0], cfmm, amounts[0]);
+        TransferHelper.safeTransfer(store.tokens[1], cfmm, amounts[1]);
 
-        _lpTokensPaid = IUniswapV2PairMinimal(store.cfmm).mint(address(this));
-        //_liquidityPaid = _lpTokensPaid * calcCFMMTotalInvariant(store.cfmm) / GammaSwapLibrary.totalSupply(store.cfmm);
+        _lpTokensPaid = IUniswapV2PairMinimal(cfmm).mint(address(this));
         _liquidityPaid = _lpTokensPaid * store.lastCFMMInvariant / store.lastCFMMTotalSupply;
 
         _tokensHeld = new uint256[](2);
@@ -134,95 +128,85 @@ contract UniswapV2Module2 is BaseModule {
     }
 
     function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld){
-        uint256 reserve0;
-        uint256 reserve1;
-        uint256[] memory amounts;
-        (amounts, reserve0, reserve1) = convertLiquidityToAmounts(store.cfmm, liquidity);//TODO: Do this calculation without calling uniswap x=L/sqrt(p), y=L*sqrt(p)
-
+        (uint256 amount0, uint256 amount1) = convertLiquidityToAmounts(store, liquidity);
         uint256 ONE = 10**18;
         uint256 inAmt0;
         uint256 inAmt1;
+        uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
         uint8 i;
         {
+            uint256 reserve0 = store.CFMM_RESERVES[0];
+            uint256 reserve1 = store.CFMM_RESERVES[1];
             uint256 currPx = reserve1 * ONE / reserve0;
             uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
             if (currPx > initPx) {//we sell token0
-                inAmt0 = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
+                inAmt1 = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
             } else if(currPx < initPx) {//we sell token1
-                inAmt0 = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
+                inAmt1 = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
                 (reserve0, reserve1, i) = (reserve1, reserve0, 1);
             }
+            outAmts[i] = getAmtOut(inAmt1, reserve0, reserve1);
         }
-        uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
+        if(i == 1) (inAmt0, inAmt1, amount0, amount1) = (inAmt1, inAmt0, amount1, amount0);
+        require(outAmts[i] <= tokensHeld[i] - amount0, '> outAmt');
+        address cfmm = store.cfmm;
         _tokensHeld = new uint256[](2);
-        outAmts[i] = getAmountOut(inAmt0, reserve0, reserve1);
-        if(i == 0) (inAmt0, inAmt1) = (inAmt1, inAmt0);
-        require(outAmts[i] <= tokensHeld[i] - amounts[i], '> outAmt');
         _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
         _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmts[1];
-        sendToken(store.tokens[0], store.cfmm, outAmts[0]);
-        sendToken(store.tokens[1], store.cfmm, outAmts[1]);
-        IUniswapV2PairMinimal(store.cfmm).swap(inAmt0,inAmt1, address(this), new bytes(0));
+        sendToken(store.tokens[0], cfmm, outAmts[0]);
+        sendToken(store.tokens[1], cfmm, outAmts[1]);
+
+        IUniswapV2PairMinimal(cfmm).swap(inAmt0,inAmt1, address(this), new bytes(0));
     }/**/
 
     function sendToken(address token, address to, uint256 amount) internal {
         if(amount > 0) TransferHelper.safeTransfer(token, to, amount);
     }
 
-    //function rebalancePosition(address cfmm, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld) {
     function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld) {
-
-        //address gammaPool = getGammaPoolAddress(cfmm);
-        uint256 inAmt0;
-        uint256 inAmt1;
-        uint256[] memory outAmts;
-        {
-            (uint256 reserve0, uint256 reserve1,) = IUniswapV2PairMinimal(store.cfmm).getReserves();
-            (inAmt0, inAmt1, outAmts) = rebalancePosition(reserve0, reserve1, deltas[0], deltas[1]);
-        }
+        (uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) = rebalancePosition(store.CFMM_RESERVES[0], store.CFMM_RESERVES[1], deltas[0], deltas[1]);
         _tokensHeld = new uint256[](2);
-        _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
-        _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmts[1];
-        //ISendTokensCallback(msg.sender).sendTokensCallback(outAmts, cfmm);
-        sendToken(store.tokens[0], store.cfmm, outAmts[0]);
-        sendToken(store.tokens[1], store.cfmm, outAmts[1]);
-        IUniswapV2PairMinimal(store.cfmm).swap(inAmt0,inAmt1,address(this), new bytes(0));/**/
+
+        _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmt0;
+        _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmt1;
+
+        address cfmm = store.cfmm;
+        sendToken(store.tokens[0], cfmm, outAmt0);
+        sendToken(store.tokens[1], cfmm, outAmt1);
+        IUniswapV2PairMinimal(cfmm).swap(inAmt0,inAmt1,address(this), new bytes(0));/**/
     }
 
-    function rebalancePosition(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1) internal view returns(uint256 inAmt0, uint256 inAmt1, uint256[] memory outAmts) {
+    function rebalancePosition(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1) internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         require((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0), 'bad delta');
-        outAmts = new uint256[](2);
-        uint8 i;
         if(delta0 > 0 || delta1 > 0) {
             inAmt0 = uint256(delta1);//buy token1
-            if(delta0 > 0) (inAmt0, reserve0, reserve1, i) = (uint256(delta0), reserve1, reserve0, 1);//buy token0
-            outAmts[i]= getAmountOut(inAmt0, reserve0, reserve1);
-            if(inAmt0 != uint256(delta0)) (inAmt1, inAmt0) = (inAmt0, inAmt1);
+            if(delta0 > 0) (inAmt0, reserve0, reserve1) = (uint256(delta0), reserve1, reserve0);//buy token0
+            outAmt0 = getAmtOut(inAmt0, reserve0, reserve1);
+            if(inAmt0 != uint256(delta0)) (inAmt1, inAmt0, outAmt0, outAmt1) = (inAmt0, inAmt1, outAmt1, outAmt0);
         } else {
-            uint256 outAmt = uint256(-delta0);//sell token0
-            if(delta1 < 0) (outAmt, reserve0, reserve1, i) = (uint256(-delta1), reserve1, reserve0, 1);//sell token1
-            inAmt1 = getAmountIn(outAmt, reserve0, reserve1);
-            outAmts[i] = outAmt;
-            if(outAmt != uint256(-delta0)) (inAmt0, inAmt1) = (inAmt1, inAmt0);
+            outAmt0 = uint256(-delta0);//sell token0
+            if(delta1 < 0) (outAmt0, reserve0, reserve1) = (uint256(-delta1), reserve1, reserve0);//sell token1
+            inAmt1 = getAmtIn(outAmt0, reserve0, reserve1);
+            if(outAmt0 != uint256(-delta0)) (inAmt0, inAmt1, outAmt0, outAmt1) = (inAmt1, inAmt0, outAmt1, outAmt0);
         }
     }
 
+    //TODO: Needs to avoid GPL
     // selling exactly amountOut
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountIn(uint amountOut, uint reserveOut, uint reserveIn) internal view returns (uint amountIn) {
+    function getAmtIn(uint amountOut, uint reserveOut, uint reserveIn) internal view returns (uint256) {
         require(reserveOut > 0 && reserveIn > 0, '0 reserve');
-        uint amountOutWithFee = amountOut * UniswapV2Storage.store().tradingFee2;
-        uint numerator = amountOutWithFee * reserveIn;
-        uint denominator = (reserveOut * UniswapV2Storage.store().tradingFee1) + amountOutWithFee;
-        amountIn = numerator / denominator;
+        uint256 amountOutWithFee = amountOut * UniswapV2Storage.store().tradingFee2;
+        uint256 denominator = (reserveOut * UniswapV2Storage.store().tradingFee1) + amountOutWithFee;
+        return amountOutWithFee * reserveIn / denominator;
     }
 
+    //TODO: Needs to avoid GPL
     // buying exactly amountIn
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function getAmountOut(uint amountIn, uint reserveOut, uint reserveIn) internal view returns (uint amountOut) {
+    function getAmtOut(uint amountIn, uint reserveOut, uint reserveIn) internal view returns (uint256) {
         require(reserveOut > 0 && reserveIn > 0, '0 reserve');
-        uint numerator = (reserveOut * amountIn) * UniswapV2Storage.store().tradingFee1;
-        uint denominator = (reserveIn - amountIn) * UniswapV2Storage.store().tradingFee2;
-        amountOut = (numerator / denominator) + 1;
+        uint256 denominator = (reserveIn - amountIn) * UniswapV2Storage.store().tradingFee2;
+        return (reserveOut * amountIn * UniswapV2Storage.store().tradingFee1 / denominator) + 1;
     }
 }

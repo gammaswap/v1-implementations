@@ -33,4 +33,26 @@ library PoolAddress {
             )
         );
     }
+
+
+    /// @notice Deterministically computes the pool address given the factory and PoolKey
+    /// @param factory The Uniswap V3 factory contract address
+    /// @param key The PoolKey
+    /// @return pool The contract address of the V3 pool
+    function computeAddress(address factory, bytes32 key, bytes32 initCodeHash) internal pure returns (address) {
+        //require(key.token0 < key.token1);
+        return address(
+            uint160(
+                uint256(keccak256(
+                    abi.encodePacked(
+                        hex'ff',
+                        factory,
+                        key,
+                        initCodeHash
+                    )
+                )
+                )
+            )
+        );
+    }
 }

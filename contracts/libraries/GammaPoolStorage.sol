@@ -32,12 +32,14 @@ library GammaPoolStorage {
         uint256 BORROWED_INVARIANT;
         uint256 LP_INVARIANT;//Invariant from LP Tokens
         uint256 TOTAL_INVARIANT;//BORROWED_INVARIANT + LP_INVARIANT
+        uint256[] CFMM_RESERVES;
         uint256 borrowRate;
         uint256 accFeeIndex;
         uint256 lastFeeIndex;
         uint256 lastCFMMFeeIndex;
         uint256 lastCFMMInvariant;
         uint256 lastCFMMTotalSupply;
+        uint256 lastPx;
         uint256 LAST_BLOCK_NUMBER;
 
         /// @dev The token ID position data
@@ -63,35 +65,36 @@ library GammaPoolStorage {
         uint256 MINIMUM_LIQUIDITY;
     }
 
-    function store() internal pure returns (GammaPoolStore storage store) {
+    function store() internal pure returns (GammaPoolStore storage _store) {
         bytes32 position = STRUCT_POSITION;
         assembly {
-            store.slot := position
+            _store.slot := position
         }
     }
 
     function init() internal {
-        GammaPoolStore storage store = store();
-        store.name = 'GammaSwap V1';
-        store.symbol = 'GAMA-V1';
-        store.decimals = 18;
-        store.factory = msg.sender;
-        (store.tokens, store.protocol, store.cfmm, store.module) = IGammaPoolFactory(msg.sender).getParameters();
-        store.TOKEN_BALANCE = new uint[](store.tokens.length);
-        store.accFeeIndex = 1;
-        store.lastFeeIndex = 1;
-        store.lastCFMMFeeIndex = 1;
-        store.LAST_BLOCK_NUMBER = block.number;
-        store.owner = msg.sender;
-        store.nextId = 1;
-        store.unlocked = 1;
-        store.MINIMUM_LIQUIDITY = 10**3;
+        GammaPoolStore storage _store = store();
+        _store.name = 'GammaSwap V1';
+        _store.symbol = 'GAMA-V1';
+        _store.decimals = 18;
+        _store.factory = msg.sender;
+        (_store.tokens, _store.protocol, _store.cfmm, _store.module) = IGammaPoolFactory(msg.sender).getParameters();
+        _store.TOKEN_BALANCE = new uint[](_store.tokens.length);
+        _store.CFMM_RESERVES = new uint[](_store.tokens.length);
+        _store.accFeeIndex = 1;
+        _store.lastFeeIndex = 1;
+        _store.lastCFMMFeeIndex = 1;
+        _store.LAST_BLOCK_NUMBER = block.number;
+        _store.owner = msg.sender;
+        _store.nextId = 1;
+        _store.unlocked = 1;
+        _store.MINIMUM_LIQUIDITY = 10**3;
     }
 
     function lockit() internal {
-        GammaPoolStore storage store = store();
-        require(store.unlocked == 1, 'LOCK');
-        store.unlocked = 0;
+        GammaPoolStore storage _store = store();
+        require(_store.unlocked == 1, 'LOCK');
+        _store.unlocked = 0;
     }
 
     function unlockit() internal {
@@ -99,18 +102,18 @@ library GammaPoolStorage {
     }
 
     function createLoan() internal returns(uint256 tokenId) {
-        GammaPoolStore storage store = store();
-        uint256 id = store.nextId++;
+        GammaPoolStore storage _store = store();
+        uint256 id = _store.nextId++;
         tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
 
-        store.loans[tokenId] = Loan({
+        _store.loans[tokenId] = Loan({
             id: id,
             poolId: address(this),
-            tokensHeld: new uint[](store.tokens.length),
+            tokensHeld: new uint[](_store.tokens.length),
             heldLiquidity: 0,
             liquidity: 0,
             lpTokens: 0,
-            rateIndex: store.accFeeIndex,
+            rateIndex: _store.accFeeIndex,
             blockNum: block.number
         });
     }

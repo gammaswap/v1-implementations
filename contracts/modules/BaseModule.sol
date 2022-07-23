@@ -9,20 +9,17 @@ abstract contract BaseModule {
 
     function calcInvariant(address cfmm, uint[] memory amounts) internal virtual view returns(uint256);
 
-    function calcCFMMTotalInvariant(address cfmm) internal virtual view returns(uint256);
+    function updateReserves(GammaPoolStorage.GammaPoolStore storage store) internal virtual;
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual view returns(uint256);
 
-    //function repayLiquidity(address cfmm, uint256 liquidity, address[] storage tokens, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid);
     function repayLiquidity(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts, uint256 _lpTokensPaid, uint256 _liquidityPaid);
 
     function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
-    //function rebalancePosition(address cfmm, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
 
-    //function rebalancePosition(address cfmm, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
     function rebalancePosition(GammaPoolStorage.GammaPoolStore storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
 
-    function calcAmounts(address cfmm, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal virtual returns (uint[] memory amounts, address payee);
+    function calcAmounts(GammaPoolStorage.GammaPoolStore storage store, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal virtual returns (uint[] memory amounts, address payee);
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual;
 
@@ -31,7 +28,8 @@ abstract contract BaseModule {
     function updateIndex(GammaPoolStorage.GammaPoolStore storage store) internal virtual {
         store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
         {
-            uint256 lastCFMMInvariant = calcCFMMTotalInvariant(store.cfmm);
+            updateReserves(store);
+            uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
             uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(store.cfmm);
             if(lastCFMMTotalSupply > 0) {
                 uint256 denominator = (store.lastCFMMInvariant * lastCFMMTotalSupply) / (10**18);
@@ -152,7 +150,7 @@ abstract contract BaseModule {
     function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual returns(uint256[] memory amounts) {
         GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
         address payee;
-        (amounts, payee) = calcAmounts(store.cfmm, amountsDesired, amountsMin);
+        (amounts, payee) = calcAmounts(store, amountsDesired, amountsMin);
 
         uint256[] memory balances = new uint256[](store.tokens.length);
         for(uint i = 0; i < store.tokens.length; i++) {
@@ -200,7 +198,7 @@ abstract contract BaseModule {
     }
 
     //TODO: Can be delegated
-    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual returns(uint[] memory tokensHeld){
+    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual returns(uint[] memory tokensHeld) {
         GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 

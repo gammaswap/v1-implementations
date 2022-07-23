@@ -19,6 +19,8 @@ library UniswapV2Storage {
         uint256 SLOPE2;// = 10**18;
 
         uint256 YEAR_BLOCK_COUNT;// = 2252571;
+
+        bytes32 initCodeHash;
     }
 
     function store() internal pure returns (UniswapV2Store storage store) {
@@ -28,7 +30,7 @@ library UniswapV2Storage {
         }
     }
 
-    function init(address factory, address protocolFactory, uint24 protocol) internal {
+    function init(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash) internal {
         UniswapV2Store storage store = store();
         store.protocol = protocol;
         store.protocolFactory = protocolFactory;
@@ -40,5 +42,6 @@ library UniswapV2Storage {
         store.SLOPE1 = 10**18;
         store.SLOPE2 = 10**18;
         store.YEAR_BLOCK_COUNT = 2252571;
+        store.initCodeHash = initCodeHash;
     }
 }
