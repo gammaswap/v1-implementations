@@ -81,7 +81,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
     function mintDevFee() internal {
         (address feeTo, uint devFee) = IGammaPoolFactory(factory).feeInfo();
         if(feeTo != address(0) && devFee > 0) {
-            _mint(feeTo, IProtocolModule(_module).calcNewDevShares(cfmm, devFee, poolInfo.lastFeeIndex, totalSupply, poolInfo.LP_TOKEN_BALANCE, poolInfo.BORROWED_INVARIANT));
+            //_mint(feeTo, IProtocolModule(_module).calcNewDevShares(cfmm, devFee, poolInfo.lastFeeIndex, totalSupply, poolInfo.LP_TOKEN_BALANCE, poolInfo.BORROWED_INVARIANT));
         }
     }
 
@@ -127,7 +127,6 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
         //                    just call module and ask module to use callback to transfer to Module then to CFMM
         //                    Since CFMM has to pull from module, module must always check it has enough approval
         //amounts = IProtocolModule(_module).burn(cfmm, to, withdrawLPTokens);
-        amounts = IProtocolModule(_module).burn(cfmm, to, withdrawLPTokens);
         _burn(address(this), amount);
 
         poolInfo.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
@@ -155,7 +154,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
                 poolInfo.TOKEN_BALANCE[i] = poolInfo.TOKEN_BALANCE[i] + tokenBal;
             }
         }
-        _loan.heldLiquidity = IProtocolModule(_module).calcInvariant(cfmm, _loan.tokensHeld);
+        _loan.heldLiquidity = 0;//IProtocolModule(_module).calcInvariant(cfmm, _loan.tokensHeld);
     }
 
     //TODO: Can be delegated
@@ -177,7 +176,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
         }
 
         updateLoan(_loan);
-        _loan.heldLiquidity = IProtocolModule(_module).calcInvariant(cfmm, _loan.tokensHeld);
+        _loan.heldLiquidity = 0;//IProtocolModule(_module).calcInvariant(cfmm, _loan.tokensHeld);
 
         checkMargin(_loan, 800);
         return _loan.tokensHeld;
@@ -228,12 +227,12 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
         //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> GP
         //                    just call module and ask module to use callback to transfer to Module then to CFMM
         //                    Since CFMM has to pull from module, module must always check it has enough approval
-        amounts = module.burn(cfmm, address(this), lpTokens);
+        //amounts = module.burn(cfmm, address(this), lpTokens);
 
         Pool.Loan storage _loan = getLoan(tokenId);
         updateCollateral(_loan);
 
-        poolInfo.openLoan(_loan, module.calcInvariant(cfmm, amounts), lpTokens);
+        //poolInfo.openLoan(_loan, module.calcInvariant(cfmm, amounts), lpTokens);
         require(poolInfo.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(cfmm, address(this)), 'LP < Bal');
         //***************END DELEGATE************//
 
@@ -246,7 +245,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
 
         updateLoan(_loan);
 
-        (_loan.tokensHeld, amounts, lpTokensPaid, liquidityPaid) = IProtocolModule(_module).repayLiquidity(cfmm, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
+        //(_loan.tokensHeld, amounts, lpTokensPaid, liquidityPaid) = IProtocolModule(_module).repayLiquidity(cfmm, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
 
         poolInfo.payLoan(_loan, liquidityPaid, lpTokensPaid);
 
@@ -263,7 +262,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
 
         updateLoan(_loan);
 
-        tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, deltas, _loan.tokensHeld);
+        //tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, deltas, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
     }
@@ -280,7 +279,7 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
 
         updateLoan(_loan);
 
-        tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, liquidity, _loan.tokensHeld);
+        //tokensHeld = IProtocolModule(_module).rebalancePosition(cfmm, liquidity, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
     }

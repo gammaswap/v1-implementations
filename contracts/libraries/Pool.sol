@@ -39,29 +39,29 @@ library Pool {
     }
 
     function calcTotalLPBalance(Info storage self) internal view returns(uint256 totalLPBal) {
-        uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
+        /*uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
         uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(self.cfmm);
 
-        totalLPBal = self.LP_TOKEN_BALANCE + (self.BORROWED_INVARIANT * cfmmTotalSupply) / cfmmTotalInvariant;
+        totalLPBal = self.LP_TOKEN_BALANCE + (self.BORROWED_INVARIANT * cfmmTotalSupply) / cfmmTotalInvariant;/**/
     }
 
     function calcDepositedInvariant(Info storage self, uint256 depLPBal) internal view returns(uint256 totalInvariant, uint256 depositedInvariant){
         //Info memory _self = self;
-        uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
+        /*uint256 cfmmTotalInvariant = self.module.getCFMMTotalInvariant(self.cfmm);
         uint256 cfmmTotalSupply = GammaSwapLibrary.totalSupply(self.cfmm);
 
         totalInvariant = ((self.LP_TOKEN_BALANCE * cfmmTotalInvariant) / cfmmTotalSupply) + self.BORROWED_INVARIANT;
-        depositedInvariant = (depLPBal * cfmmTotalInvariant) / cfmmTotalSupply;
+        depositedInvariant = (depLPBal * cfmmTotalInvariant) / cfmmTotalSupply;/**/
     }
 
     function updateIndex(Info storage self) internal {
-        (self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.borrowRate) = self.module
+        /*(self.lastFeeIndex, self.lastCFMMFeeIndex, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.borrowRate) = self.module
         .getCFMMYield(self.cfmm, self.lastCFMMInvariant, self.lastCFMMTotalSupply, self.LP_TOKEN_BALANCE, self.LP_TOKEN_BORROWED, self.LAST_BLOCK_NUMBER);
 
         self.BORROWED_INVARIANT = (self.BORROWED_INVARIANT * self.lastFeeIndex) / ONE;
 
         self.accFeeIndex = (self.accFeeIndex * self.lastFeeIndex) / ONE;
-        self.LAST_BLOCK_NUMBER = block.number;
+        self.LAST_BLOCK_NUMBER = block.number;/**/
     }
 
     function openLoan(Info storage self, Loan storage _loan, uint256 liquidity, uint256 lpTokens) internal {
