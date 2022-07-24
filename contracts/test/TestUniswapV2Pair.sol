@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import "../interfaces/external/IUniswapV2PairMinimal.sol";
+import "../interfaces/external/ICPMM.sol";
 
-contract TestUniswapV2Pair is ERC20, IUniswapV2PairMinimal{
+contract TestUniswapV2Pair is ERC20, ICPMM {
     address public token0;
     address public token1;
     uint112 private reserve0;           // uses single storage slot, accessible via getReserves

@@ -1,16 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./BaseModule.sol";
+import "./BaseStrategy.sol";
+import "../../interfaces/strategies/IShortStrategy.sol";
+import "../../interfaces/ISendTokensCallback.sol";
 
-abstract contract ShortGammaModule is BaseModule {
+abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     //ShortGamma
-    function calcDepositAmounts(GammaPoolStorage.GammaPoolStore storage store, uint[] calldata amountsDesired, uint[] calldata amountsMin) internal virtual returns (uint[] memory amounts, address payee);
+    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual returns (uint256[] memory amounts, address payee);
 
-    //TODO: Can be delegated (Part of Abstract Contract)
     //********* Short Gamma Functions *********//
-    function mint(address to) public virtual returns(uint256 liquidity) {
-        GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
+    function mint(address to) public virtual override returns(uint256 liquidity) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 depLPBal = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
         require(depLPBal > 0, '0 dep');
 
@@ -30,11 +32,10 @@ abstract contract ShortGammaModule is BaseModule {
         //emit Mint(msg.sender, amountA, amountB);
     }
 
-    //TODO: Can be delegated (Part of Abstract Contract)
     // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) public virtual returns (uint[] memory amounts) {
+    function burn(address to) public virtual override returns(uint256[] memory amounts) {
         //get the liquidity tokens
-        GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 amount = store.balanceOf[address(this)];
         require(amount > 0, '0 dep');
 
@@ -44,11 +45,10 @@ abstract contract ShortGammaModule is BaseModule {
         require(withdrawLPTokens < store.LP_TOKEN_BALANCE, '> liq');
 
         //Uni/Sus: U -> GP -> CFMM -> U
-        //                    just call module and ask module to use callback to transfer to CFMM then module calls burn
-        //Bal/Crv: U -> GP -> Module -> CFMM -> Module -> U
-        //                    just call module and ask module to use callback to transfer to Module then to CFMM
-        //                    Since CFMM has to pull from module, module must always check it has enough approval
-        //amounts = IProtocolModule(_module).burn(cfmm, to, withdrawLPTokens);
+        //                    just call strategy and ask strategy to use callback to transfer to CFMM then strategy calls burn
+        //Bal/Crv: U -> GP -> Strategy -> CFMM -> Strategy -> U
+        //                    just call strategy and ask strategy to use callback to transfer to Strategy then to CFMM
+        //                    Since CFMM has to pull from strategy, strategy must always check it has enough approval
         amounts = withdrawFromCFMM(store.cfmm, to, withdrawLPTokens);
         _burn(address(this), amount);
 
@@ -56,17 +56,17 @@ abstract contract ShortGammaModule is BaseModule {
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
-    function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual returns(uint256[] memory amounts) {
-        GammaPoolStorage.GammaPoolStore storage store = GammaPoolStorage.store();
+    function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override returns(uint256[] memory amounts) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         address payee;
         (amounts, payee) = calcDepositAmounts(store, amountsDesired, amountsMin);
 
         uint256[] memory balances = new uint256[](store.tokens.length);
-        for(uint i = 0; i < store.tokens.length; i++) {
+        for(uint256 i = 0; i < store.tokens.length; i++) {
             balances[i] = GammaSwapLibrary.balanceOf(store.tokens[i], address(this));
         }
         ISendTokensCallback(msg.sender).sendTokensCallback(store.tokens, amounts, payee, data);
-        for(uint i = 0; i < store.tokens.length; i++) {
+        for(uint256 i = 0; i < store.tokens.length; i++) {
             if(amounts[i] > 0) require(balances[i] + amounts[i] == GammaSwapLibrary.balanceOf(store.tokens[i], address(this)), "WL");
         }
 

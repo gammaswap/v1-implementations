@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-library UniswapV2Storage {
-    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.modules.uniswapv2");
+library CPMMStrategyStorage {
+    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.strategies.cpmm");
 
-    struct UniswapV2Store {
+    struct Store {
         uint256 ONE;// = 10**18;
         uint24 protocol;
         address factory;
@@ -23,25 +23,25 @@ library UniswapV2Storage {
         bytes32 initCodeHash;
     }
 
-    function store() internal pure returns (UniswapV2Store storage store) {
+    function store() internal pure returns (Store storage _store) {
         bytes32 position = STRUCT_POSITION;
         assembly {
-            store.slot := position
+            _store.slot := position
         }
     }
 
     function init(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash) internal {
-        UniswapV2Store storage store = store();
-        store.protocol = protocol;
-        store.protocolFactory = protocolFactory;
-        store.factory = factory;
-        store.tradingFee1 = 1000;
-        store.tradingFee2 = 997;
-        store.BASE_RATE = 10**16;
-        store.OPTIMAL_UTILIZATION_RATE = 8*(10**17);
-        store.SLOPE1 = 10**18;
-        store.SLOPE2 = 10**18;
-        store.YEAR_BLOCK_COUNT = 2252571;
-        store.initCodeHash = initCodeHash;
+        Store storage _store = store();
+        _store.protocol = protocol;
+        _store.protocolFactory = protocolFactory;
+        _store.factory = factory;
+        _store.tradingFee1 = 1000;
+        _store.tradingFee2 = 997;
+        _store.BASE_RATE = 10**16;
+        _store.OPTIMAL_UTILIZATION_RATE = 8*(10**17);
+        _store.SLOPE1 = 10**18;
+        _store.SLOPE2 = 10**18;
+        _store.YEAR_BLOCK_COUNT = 2252571;
+        _store.initCodeHash = initCodeHash;
     }
 }

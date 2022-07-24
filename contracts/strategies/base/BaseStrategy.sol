@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../libraries/GammaPoolStorage.sol";
-import "../libraries/GammaSwapLibrary.sol";
-import "../interfaces/ISendTokensCallback.sol";
+import "../../libraries/storage/GammaPoolStorage.sol";
+import "../../libraries/GammaSwapLibrary.sol";
 
-abstract contract BaseModule {
+abstract contract BaseStrategy {
 
-    function calcInvariant(address cfmm, uint[] memory amounts) internal virtual view returns(uint256);
+    function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
 
-    function updateReserves(GammaPoolStorage.GammaPoolStore storage store) internal virtual;
+    function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual view returns(uint256);
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual returns(uint256 liquidity);
 
@@ -17,7 +16,7 @@ abstract contract BaseModule {
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual view returns(uint256);
 
-    function updateIndex(GammaPoolStorage.GammaPoolStore storage store) internal virtual {
+    function updateIndex(GammaPoolStorage.Store storage store) internal virtual {
         store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
         {
             updateReserves(store);
@@ -52,7 +51,7 @@ abstract contract BaseModule {
         store.LAST_BLOCK_NUMBER = block.number;
 
         if(store.BORROWED_INVARIANT > 0) {
-            (address feeTo, uint devFee) = IGammaPoolFactory(store.factory).feeInfo();
+            (address feeTo, uint256 devFee) = IGammaPoolFactory(store.factory).feeInfo();
             if(feeTo != address(0) && devFee > 0) {
                  //Formula:
                  //        accumulatedGrowth: (1 - [borrowedInvariant/(borrowedInvariant*index)])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
@@ -66,7 +65,7 @@ abstract contract BaseModule {
         }
     }
 
-    function updateLoan(GammaPoolStorage.GammaPoolStore storage store, GammaPoolStorage.Loan storage _loan) internal {
+    function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal {
         updateIndex(store);
         _loan.liquidity = (_loan.liquidity * store.accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = store.accFeeIndex;
@@ -74,19 +73,21 @@ abstract contract BaseModule {
 
     function _mint(address account, uint256 amount) internal virtual {
         require(amount > 0, '0 amt');
-        //totalSupply += amount;
-        //_balanceOf[account] += amount;
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        store.totalSupply += amount;
+        store.balanceOf[account] += amount;
         //emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal virtual {
         require(account != address(0), "0 address");
-        //uint256 accountBalance = _balanceOf[account];
-        //require(accountBalance >= amount, "> balance");
-        //unchecked {
-        //    _balanceOf[account] = accountBalance - amount;
-        //}
-        //totalSupply -= amount;
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        uint256 accountBalance = store.balanceOf[account];
+        require(accountBalance >= amount, "> balance");
+        unchecked {
+            store.balanceOf[account] = accountBalance - amount;
+        }
+        store.totalSupply -= amount;
         //emit Transfer(account, address(0), amount);
     }/**/
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IGammaPoolFactory.sol";
-import "./libraries/GammaPoolStorage.sol";
+import "./libraries/storage/GammaPoolStorage.sol";
 
 contract GammaPool2 {
 

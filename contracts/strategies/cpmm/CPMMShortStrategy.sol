@@ -1,17 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./ShortGammaModule.sol";
-import "./UniswapV2BaseModule.sol";
+import "../base/ShortStrategy.sol";
+import "./CPMMBaseStrategy.sol";
 
-contract UniswapV2ShortGammaModule is UniswapV2BaseModule, ShortGammaModule {
+contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
     constructor(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash){
-        UniswapV2Storage.init(factory, protocolFactory, protocol, initCodeHash);//bytes32(0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f));//UniswapV2
-        //hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-        // bytes32(0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303));//SushiSwap
+        CPMMStrategyStorage.init(factory, protocolFactory, protocol, initCodeHash);
     }
 
-    function calcDepositAmounts(GammaPoolStorage.GammaPoolStore storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
+    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override returns (uint256[] memory amounts, address payee) {
         require(amountsDesired[0] > 0 && amountsDesired[1] > 0, '0 amount');
 
@@ -25,14 +24,14 @@ contract UniswapV2ShortGammaModule is UniswapV2BaseModule, ShortGammaModule {
 
         amounts = new uint256[](2);
 
-        uint optimalAmount1 = (amountsDesired[0] * reserve1) / reserve0;
+        uint256 optimalAmount1 = (amountsDesired[0] * reserve1) / reserve0;
         if (optimalAmount1 <= amountsDesired[1]) {
             checkOptimalAmt(optimalAmount1, amountsMin[1]);
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
             return(amounts, payee);
         }
 
-        uint optimalAmount0 = (amountsDesired[1] * reserve0) / reserve1;
+        uint256 optimalAmount0 = (amountsDesired[1] * reserve0) / reserve1;
         assert(optimalAmount0 <= amountsDesired[0]);
         checkOptimalAmt(optimalAmount0, amountsMin[0]);
         (amounts[0], amounts[1]) = (optimalAmount0, amountsDesired[1]);

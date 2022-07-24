@@ -2,20 +2,19 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "../interfaces/IProtocolModule.sol";
+import "../interfaces/strategies/IProtocol.sol";
 import "../libraries/PoolAddress.sol";
-import "./UniswapV2LongGammaModule.sol";
-import "./UniswapV2ShortGammaModule.sol";
+import "./cpmm/CPMMLongStrategy.sol";
+import "./cpmm/CPMMShortStrategy.sol";
 
-contract UniswapV2Module is IProtocolModule {
+contract CPMMProtocol is IProtocol {
 
     address public immutable override factory;//protocol factory
     address public immutable override protocolFactory;//protocol factory
     uint24 public immutable override protocol;
     bytes32 public immutable override initCodeHash;
-
-    UniswapV2LongGammaModule public longStrategy;
-    UniswapV2ShortGammaModule public shortStrategy;
+    address public immutable override longStrategy;
+    address public immutable override shortStrategy;
 
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
@@ -24,8 +23,8 @@ contract UniswapV2Module is IProtocolModule {
         protocolFactory = _protocolFactory;
         protocol = _protocol;//address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash
         initCodeHash = _initCodeHash;
-        longStrategy = new UniswapV2LongGammaModule(_factory, _protocolFactory, _protocol, _initCodeHash);
-        shortStrategy = new UniswapV2ShortGammaModule(_factory, _protocolFactory, _protocol, _initCodeHash);
+        longStrategy = address(new CPMMLongStrategy(_factory, _protocolFactory, _protocol, _initCodeHash));
+        shortStrategy = address(new CPMMShortStrategy(_factory, _protocolFactory, _protocol, _initCodeHash));
     }
 
     function isContract(address account) internal view returns (bool) {
@@ -43,8 +42,7 @@ contract UniswapV2Module is IProtocolModule {
         require(isContract(_cfmm) == true, 'not contract');
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);//For Uniswap and its clones the user passes the parameters
-        UniswapV2Storage.UniswapV2Store storage store = UniswapV2Storage.store();
-        require(_cfmm == PoolAddress.computeAddress(protocolFactory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), 'bad protocol');
-        key = PoolAddress.getPoolKey(_cfmm, store.protocol);
+        require(_cfmm == PoolAddress.computeAddress(protocolFactory,keccak256(abi.encodePacked(tokens[0], tokens[1])),initCodeHash), 'bad protocol');
+        key = PoolAddress.getPoolKey(_cfmm, protocol);
     }
 }

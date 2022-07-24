@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../interfaces/IGammaPoolFactory.sol";
+import "../../interfaces/IGammaPoolFactory.sol";
 
 library GammaPoolStorage {
     bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.gammapool.store");
@@ -17,12 +17,13 @@ library GammaPoolStorage {
         uint256 blockNum;
     }
 
-    struct GammaPoolStore {
+    struct Store {
         address factory;
         address[] tokens;
         uint24 protocol;
         address cfmm;
-        address module;
+        address longStrategy;
+        address shortStrategy;
 
         uint256[] TOKEN_BALANCE;
         uint256 LP_TOKEN_BALANCE;
@@ -58,14 +59,14 @@ library GammaPoolStorage {
         string symbol;// = 'GAMA-V1';
         uint8 decimals;// = 18;
         uint256 totalSupply;
-        mapping(address => uint) balanceOf;
-        mapping(address => mapping(address => uint)) allowance;
+        mapping(address => uint256) balanceOf;
+        mapping(address => mapping(address => uint256)) allowance;
 
 
         uint256 MINIMUM_LIQUIDITY;
     }
 
-    function store() internal pure returns (GammaPoolStore storage _store) {
+    function store() internal pure returns (Store storage _store) {
         bytes32 position = STRUCT_POSITION;
         assembly {
             _store.slot := position
@@ -73,14 +74,15 @@ library GammaPoolStorage {
     }
 
     function init() internal {
-        GammaPoolStore storage _store = store();
+        Store storage _store = store();
         _store.name = 'GammaSwap V1';
         _store.symbol = 'GAMA-V1';
         _store.decimals = 18;
         _store.factory = msg.sender;
-        (_store.tokens, _store.protocol, _store.cfmm, _store.module) = IGammaPoolFactory(msg.sender).getParameters();
-        _store.TOKEN_BALANCE = new uint[](_store.tokens.length);
-        _store.CFMM_RESERVES = new uint[](_store.tokens.length);
+        //(_store.cfmm, _store.protocol, _store.tokens, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
+        //(_store.cfmm, _store.protocol, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
+        _store.TOKEN_BALANCE = new uint256[](_store.tokens.length);
+        _store.CFMM_RESERVES = new uint256[](_store.tokens.length);
         _store.accFeeIndex = 1;
         _store.lastFeeIndex = 1;
         _store.lastCFMMFeeIndex = 1;
@@ -92,7 +94,7 @@ library GammaPoolStorage {
     }
 
     function lockit() internal {
-        GammaPoolStore storage _store = store();
+        Store storage _store = store();
         require(_store.unlocked == 1, 'LOCK');
         _store.unlocked = 0;
     }
@@ -102,7 +104,7 @@ library GammaPoolStorage {
     }
 
     function createLoan() internal returns(uint256 tokenId) {
-        GammaPoolStore storage _store = store();
+        Store storage _store = store();
         uint256 id = _store.nextId++;
         tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
 

@@ -49,8 +49,8 @@ contract GammaPool is GammaPoolERC20, IGammaPool, ISendLiquidityCallback {//, IS
 
     constructor() {
         factory = msg.sender;
-        (_tokens, protocol, cfmm, _module) = IGammaPoolFactory(msg.sender).getParameters();
-        poolInfo.init(cfmm, _module, _tokens.length);
+        //(_tokens, protocol, cfmm, _module) = IGammaPoolFactory(msg.sender).getParameters();
+        //poolInfo.init(cfmm, _module, _tokens.length);
         owner = msg.sender;
     }
 
