@@ -18,14 +18,14 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
     }
 
     function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override
-        returns(uint256[] memory _tokensHeld, uint256[] memory amounts) { //, uint256 _lpTokensPaid, uint256 _liquidityPaid) {
+        returns(uint256[] memory _tokensHeld, uint256[] memory amounts) {
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
         require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], '< amounts');
 
         address cfmm = store.cfmm;
-        TransferHelper.safeTransfer(store.tokens[0], cfmm, amounts[0]);
-        TransferHelper.safeTransfer(store.tokens[1], cfmm, amounts[1]);
+        GammaSwapLibrary.transfer(store.tokens[0], cfmm, amounts[0]);
+        GammaSwapLibrary.transfer(store.tokens[1], cfmm, amounts[1]);
 
         _tokensHeld = new uint256[](2);
         _tokensHeld[0] = tokensHeld[0] - amounts[0];
@@ -65,7 +65,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
     }/**/
 
     function sendToken(address token, address to, uint256 amount) internal {
-        if(amount > 0) TransferHelper.safeTransfer(token, to, amount);
+        if(amount > 0) GammaSwapLibrary.transfer(token, to, amount);
     }
 
     function rebalancePosition(GammaPoolStorage.Store storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld) {

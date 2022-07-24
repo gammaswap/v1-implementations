@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import '../interfaces/IPayments.sol';
 import '../interfaces/external/IWETH.sol';
+import '../interfaces/external/IERC20.sol';
 import '../libraries/TransferHelper.sol';
-import '../libraries/GammaSwapLibrary.sol';
 
 abstract contract Payments is IPayments {
 
@@ -19,7 +19,7 @@ abstract contract Payments is IPayments {
     }
 
     function unwrapWETH(uint256 minAmt, address to) public payable override {
-        uint256 wethBal = GammaSwapLibrary.balanceOf(WETH, address(this));
+        uint256 wethBal = IERC20(WETH).balanceOf(address(this));
         require(wethBal >= minAmt, 'wethBal < minAmt');
 
         if (wethBal > 0) {
@@ -29,7 +29,7 @@ abstract contract Payments is IPayments {
     }
 
     function clearToken(address token, uint256 minAmt, address to) public payable override {
-        uint256 tokenBal = GammaSwapLibrary.balanceOf(token, address(this));
+        uint256 tokenBal = IERC20(token).balanceOf(address(this));
         require(tokenBal >= minAmt, 'tokenBal < minAmt');
 
         if (tokenBal > 0) TransferHelper.safeTransfer(token, to, tokenBal);

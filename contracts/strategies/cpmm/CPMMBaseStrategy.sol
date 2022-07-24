@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
-import "../../libraries/PoolAddress.sol";
-import "../../libraries/TransferHelper.sol";
 import "../../libraries/storage/CPMMStrategyStorage.sol";
 import "../base/BaseStrategy.sol";
 
@@ -33,7 +31,7 @@ abstract contract CPMMBaseStrategy is BaseStrategy {
     }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
-        TransferHelper.safeTransfer(cfmm, cfmm, amount);
+        GammaSwapLibrary.transfer(cfmm, cfmm, amount);
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }

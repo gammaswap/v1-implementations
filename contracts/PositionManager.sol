@@ -28,7 +28,6 @@ contract PositionManager is IPositionManager, ISendTokensCallback, Payments, ERC
 
     modifier isExpired(uint256 deadline) {
         checkDeadline(deadline);
-        //require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
     }
 
