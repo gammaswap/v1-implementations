@@ -61,13 +61,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         address payee;
         (amounts, payee) = calcDepositAmounts(store, amountsDesired, amountsMin);
 
-        uint256[] memory balances = new uint256[](store.tokens.length);
-        for(uint256 i = 0; i < store.tokens.length; i++) {
-            balances[i] = GammaSwapLibrary.balanceOf(store.tokens[i], address(this));
+        address[] storage tokens = store.tokens;
+        uint256[] memory balances = new uint256[](tokens.length);
+        for(uint256 i = 0; i < tokens.length; i++) {
+            balances[i] = GammaSwapLibrary.balanceOf(tokens[i], address(this));
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(store.tokens, amounts, payee, data);
-        for(uint256 i = 0; i < store.tokens.length; i++) {
-            if(amounts[i] > 0) require(balances[i] + amounts[i] == GammaSwapLibrary.balanceOf(store.tokens[i], address(this)), "WL");
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, payee, data);
+        for(uint256 i = 0; i < tokens.length; i++) {
+            if(amounts[i] > 0) require(balances[i] + amounts[i] == GammaSwapLibrary.balanceOf(tokens[i], address(this)), "WL");
         }
 
         depositToCFMM(store.cfmm, amounts, address(this));

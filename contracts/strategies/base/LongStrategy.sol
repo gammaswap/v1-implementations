@@ -76,7 +76,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         amounts = withdrawFromCFMM(store.cfmm, address(this), lpTokens);
 
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
-        //Pool.Loan storage _loan = getLoan(tokenId);
         updateCollateral(store, _loan);
 
         openLoan(store, _loan, calcInvariant(store.cfmm, amounts), lpTokens);

@@ -1,18 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-//import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+abstract contract GammaPoolERC20 {
 
-abstract contract GammaPoolERC20 {//is IERC20 {
-
-    string public name = 'GammaSwap V1';
-    string public symbol = 'GAMA-V1';
-    uint8 public decimals = 18;
-    uint public totalSupply;
-    mapping(address => uint) internal _balanceOf;
-    mapping(address => mapping(address => uint)) internal _allowance;
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
+    /*event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
     function balanceOf(address account) external view returns (uint256 bal) {
@@ -68,5 +59,5 @@ abstract contract GammaPoolERC20 {//is IERC20 {
         }
         totalSupply -= amount;
         emit Transfer(account, address(0), amount);
-    }
+    }/**/
 }

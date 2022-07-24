@@ -79,8 +79,7 @@ library GammaPoolStorage {
         _store.symbol = 'GAMA-V1';
         _store.decimals = 18;
         _store.factory = msg.sender;
-        //(_store.cfmm, _store.protocol, _store.tokens, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
-        //(_store.cfmm, _store.protocol, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
+        (_store.cfmm, _store.protocol, _store.tokens, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
         _store.TOKEN_BALANCE = new uint256[](_store.tokens.length);
         _store.CFMM_RESERVES = new uint256[](_store.tokens.length);
         _store.accFeeIndex = 1;

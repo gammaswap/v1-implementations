@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./IPeripheryPayments.sol";
-import "./IPeripheryImmutableState.sol";
+import "./IPayments.sol";
 
-interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
+interface IPositionManager  is IPayments {
 
     struct AddLiquidityParams {
         address cfmm;
@@ -64,6 +63,7 @@ interface IPositionManager  is IPeripheryPayments, IPeripheryImmutableState {
         uint deadline;
     }
 
+    function factory() external view returns (address);
     function createLoan(address cfmm, uint24 protocol, address to) external returns(uint256 tokenId);
     function addLiquidity(AddLiquidityParams calldata params) external returns (uint[] memory amounts, uint liquidity);
     function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint[] memory amounts);
