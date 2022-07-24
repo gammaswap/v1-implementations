@@ -32,7 +32,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
                 store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] + tokenBal;
             }
         }
-        _loan.heldLiquidity = calcInvariant(store.cfmm, _loan.tokensHeld);/**/
+        _loan.heldLiquidity = calcInvariant(store.cfmm, _loan.tokensHeld);
     }
 
     function increaseCollateral(uint256 tokenId) external virtual override returns(uint256[] memory) {
@@ -48,7 +48,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         for(uint256 i = 0; i < store.tokens.length; i++) {
             require(_loan.tokensHeld[i] > amounts[i], '> amt');
-            GammaSwapLibrary.transfer(store.tokens[i], to, amounts[i]);//TODO switch to TransferHelper.safeTransfer
+            GammaSwapLibrary.transfer(store.tokens[i], to, amounts[i]);
             _loan.tokensHeld[i] = _loan.tokensHeld[i] - amounts[i];
             store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - amounts[i];
         }

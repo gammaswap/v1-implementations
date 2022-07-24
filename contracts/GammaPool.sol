@@ -2,12 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IGammaPoolFactory.sol";
-import "./interfaces/strategies/ILongStrategy.sol";
-import "./interfaces/strategies/IShortStrategy.sol";
 import "./interfaces/IGammaPool.sol";
-import "./libraries/storage/GammaPoolStorage.sol";
+import "./base/GammaPoolERC20.sol";
 
-contract GammaPool is IGammaPool {
+contract GammaPool is IGammaPool, GammaPoolERC20 {
 
     modifier lock() {
         GammaPoolStorage.lockit();
@@ -19,11 +17,11 @@ contract GammaPool is IGammaPool {
         GammaPoolStorage.init();
     }
 
-    function createLoan() external virtual lock returns(uint tokenId) {
+    function createLoan() external virtual override lock returns(uint tokenId) {
         tokenId = GammaPoolStorage.createLoan();
     }
 
-    function loans(uint256 tokenId) external virtual view returns (uint256 id, address poolId,
+    function loans(uint256 tokenId) external virtual override view returns (uint256 id, address poolId,
         uint256[] memory tokensHeld, uint256 liquidity, uint256 rateIndex, uint256 blockNum) {
         GammaPoolStorage.Loan memory loan = GammaPoolStorage.store().loans[tokenId];
         return (loan.id, loan.poolId, loan.tokensHeld, loan.liquidity, loan.rateIndex, loan.blockNum);
@@ -34,7 +32,6 @@ contract GammaPool is IGammaPool {
         (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("mint(address)", to));
         require(success);
         return abi.decode(result, (uint256));
-
     }
 
     function _burn(address to) external virtual override returns (uint256[] memory amounts) {
@@ -48,7 +45,6 @@ contract GammaPool is IGammaPool {
         require(success);
         return abi.decode(result, (uint256[]));
     }
-
 
     /*****LONG*****/
     function _increaseCollateral(uint256 tokenId) external virtual override returns(uint256[] memory tokensHeld) {

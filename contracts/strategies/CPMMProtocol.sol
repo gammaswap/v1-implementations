@@ -9,8 +9,8 @@ import "./cpmm/CPMMShortStrategy.sol";
 
 contract CPMMProtocol is IProtocol {
 
-    address public immutable override factory;//protocol factory
-    address public immutable override protocolFactory;//protocol factory
+    address public immutable override factory;
+    address public immutable override protocolFactory;
     uint24 public immutable override protocol;
     bytes32 public immutable override initCodeHash;
     address public immutable override longStrategy;

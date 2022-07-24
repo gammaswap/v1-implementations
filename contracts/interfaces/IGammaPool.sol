@@ -2,6 +2,11 @@
 pragma solidity ^0.8.0;
 
 interface IGammaPool {
+
+    function createLoan() external returns(uint tokenId);
+    function loans(uint256 tokenId) external view returns (uint256 id, address poolId,
+        uint256[] memory tokensHeld, uint256 liquidity, uint256 rateIndex, uint256 blockNum);
+
     //Short Gamma
     function _mint(address to) external returns(uint256 liquidity);
     function _burn(address to) external returns (uint256[] memory amounts);
