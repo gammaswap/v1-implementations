@@ -56,7 +56,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
-    function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override returns(uint256[] memory amounts) {
+    function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override returns(uint256[] memory amounts, uint256 liquidity) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         address payee;
         (amounts, payee) = calcDepositAmounts(store, amountsDesired, amountsMin);
@@ -73,6 +73,6 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         depositToCFMM(store.cfmm, amounts, address(this));
 
-        mint(to);
+        liquidity = mint(to);
     }
 }

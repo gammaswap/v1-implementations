@@ -6,6 +6,8 @@ import "../../libraries/GammaSwapLibrary.sol";
 
 abstract contract BaseStrategy {
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual view returns(uint256);
@@ -69,14 +71,14 @@ abstract contract BaseStrategy {
         updateIndex(store);
         _loan.liquidity = (_loan.liquidity * store.accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = store.accFeeIndex;
-    }/**/
+    }
 
     function _mint(address account, uint256 amount) internal virtual {
         require(amount > 0, '0 amt');
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         store.totalSupply += amount;
         store.balanceOf[account] += amount;
-        //emit Transfer(address(0), account, amount);
+        emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal virtual {
@@ -88,7 +90,6 @@ abstract contract BaseStrategy {
             store.balanceOf[account] = accountBalance - amount;
         }
         store.totalSupply -= amount;
-        //emit Transfer(account, address(0), amount);
-    }/**/
-
+        emit Transfer(account, address(0), amount);
+    }
 }

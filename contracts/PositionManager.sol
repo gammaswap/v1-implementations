@@ -22,8 +22,22 @@ contract PositionManager is IPositionManager, ISendTokensCallback, Payments, ERC
     address public immutable override factory;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(_isApprovedOrOwner(msg.sender, tokenId), 'FORBIDDEN');
+        checkAuthorization(tokenId);
         _;
+    }
+
+    modifier isExpired(uint256 deadline) {
+        checkDeadline(deadline);
+        //require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
+        _;
+    }
+
+    function checkAuthorization(uint256 tokenId) internal view {
+        require(_isApprovedOrOwner(msg.sender, tokenId), 'FORBIDDEN');
+    }
+
+    function checkDeadline(uint256 deadline) internal view {
+        require(deadline >= block.timestamp, 'EXPIRED');
     }
 
     constructor(address _factory, address _WETH) ERC721("PositionManager", "POS-MGR-V1") Payments(_WETH) {
@@ -40,60 +54,67 @@ contract PositionManager is IPositionManager, ISendTokensCallback, Payments, ERC
         }
     }
 
-    // **** ADD LIQUIDITY **** //
-    function addLiquidity(AddLiquidityParams calldata params) external virtual override returns(uint[] memory amounts, uint liquidity) {
-        //IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol))).addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin);
-        //abi.encode(SendTokensCallbackData({cfmm: params.cfmm, protocol: params.protocol, payer: msg.sender}))
+    // **** Short Gamma **** //
+    function addLPLiquidity(AddLPLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns(uint256 liquidity) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        pay(params.cfmm, msg.sender, gammaPool, params.lpTokens); // send lp tokens to pool
+        return IGammaPool(gammaPool)._mint(params.to);
     }
 
-    // **** REMOVE LIQUIDITY **** //
-    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override returns (uint[] memory amounts) {
-        /*address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
-        pay(gammaPool, msg.sender, gammaPool, params.amount); // send liquidity to pool
-        amounts = IGammaPool(gammaPool).burn(params.to);
+    //TODO: missing removeLPLiquidity
+
+    function addLiquidity(AddLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns(uint256[] memory amounts, uint256 liquidity) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))
+            ._addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin,
+            abi.encode(SendTokensCallbackData({cfmm: params.cfmm, protocol: params.protocol, payer: msg.sender})));
+    }
+
+    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns (uint256[] memory amounts) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        pay(gammaPool, msg.sender, gammaPool, params.amount); // send gs tokens to pool
+        amounts = IGammaPool(gammaPool)._burn(params.to);
         for (uint i = 0; i < amounts.length; i++) {
             require(amounts[i] >= params.amountsMin[i], 'amt < min');
-        }/**/
+        }
     }
 
     // **** LONG GAMMA **** //
-    function createLoan(address cfmm, uint24 protocol, address to) external virtual override returns(uint256 tokenId) {
-        //tokenId = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol))).createLoan();
-        //_safeMint(to, tokenId);
+    function createLoan(address cfmm, uint24 protocol, address to, uint256 deadline) external virtual override isExpired(deadline) returns(uint256 tokenId) {
+        tokenId = IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol))).createLoan();
+        _safeMint(to, tokenId);
     }
 
-    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns (uint[] memory amounts) {
-        //bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        //amounts = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).borrowLiquidity(params.tokenId, params.liquidity);
+    function loan(address cfmm, uint24 protocol, uint256 tokenId) external virtual override view returns (uint256 id, address poolId, uint256[] memory tokensHeld,
+        uint256 liquidity, uint256 rateIndex, uint256 blockNum) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(cfmm, protocol))).loan(tokenId);
     }
 
-    function repayLiquidity(RepayLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns (uint liquidityPaid, uint256 lpTokensPaid, uint[] memory amounts) {
-        //bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        //(liquidityPaid, lpTokensPaid, amounts) = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).repayLiquidity(params.tokenId, params.liquidity);
+    function borrowLiquidity(BorrowLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns (uint256[] memory amounts) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))._borrowLiquidity(params.tokenId, params.lpTokens);
     }
 
-    function increaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
-        /*address gammaPoolAddr = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
-        IGammaPool gammaPool = IGammaPool(gammaPoolAddr);
-        address[] memory _tokens = gammaPool.tokens();
+    function repayLiquidity(RepayLiquidityParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns (uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))._repayLiquidity(params.tokenId, params.liquidity);
+    }
+
+    function increaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns(uint256[] memory tokensHeld) {
+        address gammaPool = PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        address[] memory _tokens = IGammaPool(gammaPool).tokens();
         for (uint i = 0; i < _tokens.length; i++) {
-            if (params.amounts[i] > 0 ) pay(_tokens[i], msg.sender, gammaPoolAddr, params.amounts[i]);
+            if (params.amounts[i] > 0 ) pay(_tokens[i], msg.sender, gammaPool, params.amounts[i]);
         }
-        tokensHeld = gammaPool.increaseCollateral(params.tokenId);/**/
+        return IGammaPool(gammaPool)._increaseCollateral(params.tokenId);
     }
 
-    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld){
-        //bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        //tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).decreaseCollateral(params.tokenId, params.amounts, params.to);
+    function decreaseCollateral(AddRemoveCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns(uint256[] memory tokensHeld){
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))._decreaseCollateral(params.tokenId, params.amounts, params.to);
     }
 
-    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
-        //bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        //tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateral(params.tokenId, params.deltas);
+    function rebalanceCollateral(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns(uint256[] memory tokensHeld) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))._rebalanceCollateral(params.tokenId, params.deltas);
     }
 
-    function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) returns(uint[] memory tokensHeld) {
-        //bytes32 poolKey = PoolAddress.getPoolKey(params.cfmm, params.protocol);
-        //tokensHeld = IGammaPool(PoolAddress.computeAddress(factory, poolKey)).rebalanceCollateralWithLiquidity(params.tokenId, params.liquidity);
+    function rebalanceCollateralWithLiquidity(RebalanceCollateralParams calldata params) external virtual override isAuthorizedForToken(params.tokenId) isExpired(params.deadline) returns(uint256[] memory tokensHeld) {
+        return IGammaPool(PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))._rebalanceCollateralWithLiquidity(params.tokenId, params.liquidity);
     }
 }

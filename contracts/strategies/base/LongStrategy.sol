@@ -66,8 +66,9 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         require(lpTokens < store.LP_TOKEN_BALANCE, '> liq');
 
-        updateIndex(store);
+        GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
+        updateLoan(store,_loan);
         //Uni/Sus: U -> GP -> CFMM -> GP
         //                    just call strategy and ask strategy to use callback to transfer to CFMM then strategy calls burn
         //Bal/Crv: U -> GP -> Strategy -> CFMM -> Strategy -> GP
@@ -75,7 +76,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         //                    Since CFMM has to pull from strategy, strategy must always check it has enough approval
         amounts = withdrawFromCFMM(store.cfmm, address(this), lpTokens);
 
-        GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         updateCollateral(store, _loan);
 
         openLoan(store, _loan, calcInvariant(store.cfmm, amounts), lpTokens);
