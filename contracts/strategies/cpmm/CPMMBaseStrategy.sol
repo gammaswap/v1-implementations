@@ -3,27 +3,14 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
-import "../../libraries/storage/CPMMStrategyStorage.sol";
-import "../base/BaseStrategy.sol";
+import "../../libraries/storage/strategies/CPMMStrategyStorage.sol";
+import "../base/rates/DoubleLinearRateModel.sol";
+import "../../interfaces/strategies/ICPMMStrategy.sol";
 
-abstract contract CPMMBaseStrategy is BaseStrategy {
+abstract contract CPMMBaseStrategy is ICPMMStrategy, DoubleLinearRateModel {
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
-    }
-
-    //Protocol specific functionality
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
-        CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
-        uint256 utilizationRate = (lpBorrowed * store.ONE) / (lpBalance + lpBorrowed);
-        if(utilizationRate <= store.OPTIMAL_UTILIZATION_RATE) {
-            uint256 variableRate = (utilizationRate * store.SLOPE1) / store.OPTIMAL_UTILIZATION_RATE;
-            return (store.BASE_RATE + variableRate);
-        } else {
-            uint256 utilizationRateDiff = utilizationRate - store.OPTIMAL_UTILIZATION_RATE;
-            uint256 variableRate = (utilizationRateDiff * store.SLOPE2) / (store.ONE - store.OPTIMAL_UTILIZATION_RATE);
-            return(store.BASE_RATE + store.SLOPE1 + variableRate);
-        }
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {
@@ -38,5 +25,22 @@ abstract contract CPMMBaseStrategy is BaseStrategy {
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
         return Math.sqrt(amounts[0] * amounts[1]);
+    }
+
+    //this is the factory of the protocol (Not all protocols have a factory)
+    function factory() external virtual override view returns(address) {
+        return CPMMStrategyStorage.store().factory;
+    }
+
+    function initCodeHash() external virtual override view returns(bytes32) {
+        return CPMMStrategyStorage.store().initCodeHash;
+    }
+
+    function tradingFee1() external virtual override view returns(uint16) {
+        return CPMMStrategyStorage.store().tradingFee1;
+    }
+
+    function tradingFee2() external virtual override view returns(uint16) {
+        return CPMMStrategyStorage.store().tradingFee2;
     }
 }

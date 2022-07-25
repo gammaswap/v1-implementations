@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./BaseStrategy.sol";
-import "../../interfaces/strategies/ILongStrategy.sol";
+import "../../interfaces/strategies/base/ILongStrategy.sol";
 
 abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 

@@ -2,7 +2,9 @@
 pragma solidity ^0.8.0;
 
 interface IGammaPool {
-
+    function cfmm() external view returns(address);
+    function protocolId() external view returns(uint24);
+    function protocol() external view returns(address);
     function tokens() external view returns(address[] memory tokens);
 
     //Short Gamma

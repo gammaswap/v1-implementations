@@ -7,7 +7,7 @@ import "./interfaces/strategies/IProtocol.sol";
 
 contract GammaPoolFactory is IGammaPoolFactory{
 
-    event PoolCreated(address indexed pool, address indexed cfmm, uint24 indexed protocol, uint256 count);
+    event PoolCreated(address indexed pool, address indexed cfmm, uint24 indexed protocolId, address protocol, uint256 count);
 
     address public override feeToSetter;
     address public override owner;
@@ -28,12 +28,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
         owner = msg.sender;
     }
 
-    function parameters() external virtual override view returns(address _cfmm, uint24 _protocol, address[] memory _tokens, address _longStrategy, address _shortStrategy) {
+    function parameters() external virtual override view returns(address _cfmm, uint24 _protocolId, address[] memory _tokens, address _protocol) {
+        _cfmm = _params.cfmm;
+        _protocolId = _params.protocolId;
         _tokens = _params.tokens;
         _protocol = _params.protocol;
-        _cfmm = _params.cfmm;
-        _longStrategy = _params.longStrategy;
-        _shortStrategy = _params.shortStrategy;
     }
 
     function allPoolsLength() external virtual override view returns (uint) {
@@ -58,19 +57,19 @@ contract GammaPoolFactory is IGammaPoolFactory{
     }
 
     function createPool(CreatePoolParams calldata params) external virtual override returns (address pool) {
-        uint24 protocol = params.protocol;
+        uint24 protocolId = params.protocol;
 
-        require(getProtocol[protocol] != address(0), 'PROT_NOT_SET');
-        require(isProtocolRestricted[protocol] == false || msg.sender == owner, 'RESTRICTED');
+        require(getProtocol[protocolId] != address(0), 'PROT_NOT_SET');
+        require(isProtocolRestricted[protocolId] == false || msg.sender == owner, 'RESTRICTED');
 
-        IProtocol _protocol = IProtocol(getProtocol[protocol]);
+        address protocol = getProtocol[protocolId];
 
         address cfmm = params.cfmm;
 
-        _params = Parameters({cfmm: cfmm, protocol: protocol, tokens: new address[](0), longStrategy: _protocol.longStrategy(), shortStrategy: _protocol.shortStrategy()});
+        _params = Parameters({cfmm: cfmm, protocolId: protocolId, tokens: new address[](0), protocol: protocol});
 
         bytes32 key;
-        (_params.tokens, key) = _protocol.validateCFMM(params.tokens, cfmm);
+        (_params.tokens, key) = IProtocol(protocol).validateCFMM(params.tokens, cfmm);
 
         require(getPool[key] == address(0), 'POOL_EXISTS');
         pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
@@ -78,7 +77,7 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
         getPool[key] = pool;
         allPools.push(pool);
-        emit PoolCreated(pool, cfmm, protocol, allPools.length);
+        emit PoolCreated(pool, cfmm, protocolId, protocol, allPools.length);
     }
 
     function feeInfo() external virtual override view returns(address _feeTo, uint _fee) {

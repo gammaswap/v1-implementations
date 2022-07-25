@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./BaseStrategy.sol";
-import "../../interfaces/strategies/IShortStrategy.sol";
+import "../../interfaces/strategies/base/IShortStrategy.sol";
 import "../../interfaces/ISendTokensCallback.sol";
 
 abstract contract ShortStrategy is IShortStrategy, BaseStrategy {

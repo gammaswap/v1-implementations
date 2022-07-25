@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/IGammaPoolFactory.sol";
+import "../../interfaces/strategies/IProtocol.sol";
 
 library GammaPoolStorage {
-    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.gammapool.store");
+    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.gammapool");
 
     struct Loan {
         uint256 id;
@@ -20,7 +21,8 @@ library GammaPoolStorage {
     struct Store {
         address factory;
         address[] tokens;
-        uint24 protocol;
+        uint24 protocolId;
+        address protocol;
         address cfmm;
         address longStrategy;
         address shortStrategy;
@@ -62,7 +64,6 @@ library GammaPoolStorage {
         mapping(address => uint256) balanceOf;
         mapping(address => mapping(address => uint256)) allowance;
 
-
         uint256 MINIMUM_LIQUIDITY;
     }
 
@@ -79,12 +80,15 @@ library GammaPoolStorage {
         _store.symbol = 'GAMA-V1';
         _store.decimals = 18;
         _store.factory = msg.sender;
-        (_store.cfmm, _store.protocol, _store.tokens, _store.longStrategy, _store.shortStrategy) = IGammaPoolFactory(msg.sender).parameters();
+        (_store.cfmm, _store.protocolId, _store.tokens, _store.protocol) = IGammaPoolFactory(msg.sender).parameters();
+        address protocol = _store.protocol;
+        _store.longStrategy = IProtocol(protocol).longStrategy();
+        _store.shortStrategy = IProtocol(protocol).shortStrategy();
         _store.TOKEN_BALANCE = new uint256[](_store.tokens.length);
         _store.CFMM_RESERVES = new uint256[](_store.tokens.length);
-        _store.accFeeIndex = 1;
-        _store.lastFeeIndex = 1;
-        _store.lastCFMMFeeIndex = 1;
+        _store.accFeeIndex = 10**18;
+        _store.lastFeeIndex = 10**18;
+        _store.lastCFMMFeeIndex = 10**18;
         _store.LAST_BLOCK_NUMBER = block.number;
         _store.owner = msg.sender;
         _store.nextId = 1;

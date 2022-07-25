@@ -6,8 +6,7 @@ import "./CPMMBaseStrategy.sol";
 
 contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
-    constructor(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash){
-        CPMMStrategyStorage.init(factory, protocolFactory, protocol, initCodeHash);
+    constructor(){
     }
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)

@@ -17,6 +17,18 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
         GammaPoolStorage.init();
     }
 
+    function cfmm() external virtual override view returns(address) {
+        return GammaPoolStorage.store().cfmm;
+    }
+
+    function protocolId() external virtual override view returns(uint24) {
+        return GammaPoolStorage.store().protocolId;
+    }
+
+    function protocol() external virtual override view returns(address) {
+        return GammaPoolStorage.store().protocol;
+    }
+
     function tokens() external virtual override view returns(address[] memory) {
         return GammaPoolStorage.store().tokens;
     }

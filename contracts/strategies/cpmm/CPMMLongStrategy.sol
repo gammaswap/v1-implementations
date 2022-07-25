@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../libraries/storage/CPMMStrategyStorage.sol";
+//import "../../libraries/storage/CPMMStrategyStorage.sol";
 import "../base/LongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
 contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
-    constructor(address factory, address protocolFactory, uint24 protocol, bytes32 initCodeHash){
-        CPMMStrategyStorage.init(factory, protocolFactory, protocol, initCodeHash);
+    constructor() {
     }
 
     function convertLiquidityToAmounts(GammaPoolStorage.Store storage store, uint256 liquidity) internal view returns(uint256 amount0, uint256 amount1) {

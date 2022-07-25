@@ -10,7 +10,6 @@ import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/ISendTokensCallback.sol";
 import "./libraries/PoolAddress.sol";
 import "./base/Payments.sol";
-import "./GammaPool.sol";
 
 contract PositionManager is IPositionManager, ISendTokensCallback, Payments, ERC721 {
 
