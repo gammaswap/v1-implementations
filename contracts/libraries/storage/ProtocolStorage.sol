@@ -9,6 +9,7 @@ library ProtocolStorage {
         address owner;
         address longStrategy;
         address shortStrategy;
+        bool isSet;
     }
 
     function store() internal pure returns (Store storage _store) {
@@ -20,6 +21,8 @@ library ProtocolStorage {
 
     function init(uint24 protocol, address longStrategy, address shortStrategy, address owner) internal {
         Store storage _store = store();
+        require(_store.isSet == false,'SET');
+        _store.isSet = true;
         _store.protocol = protocol;
         _store.longStrategy = longStrategy;
         _store.shortStrategy = shortStrategy;

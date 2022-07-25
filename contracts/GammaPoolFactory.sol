@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./GammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/strategies/IProtocol.sol";
+import "./libraries/PoolAddress.sol";
+import "./PoolDeployer.sol";
 
 contract GammaPoolFactory is IGammaPoolFactory{
 
@@ -22,10 +24,13 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
     Parameters private _params;
 
+    address public deployer;
+
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
         feeTo = _feeToSetter;
         owner = msg.sender;
+        deployer = address(new PoolDeployer());
     }
 
     function parameters() external virtual override view returns(address _cfmm, uint24 _protocolId, address[] memory _tokens, address _protocol) {
@@ -72,7 +77,11 @@ contract GammaPoolFactory is IGammaPoolFactory{
         (_params.tokens, key) = IProtocol(protocol).validateCFMM(params.tokens, cfmm);
 
         require(getPool[key] == address(0), 'POOL_EXISTS');
-        pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
+
+        (bool success, bytes memory data) = deployer.delegatecall(abi.encodeWithSignature("createPool(bytes32)", key));
+        require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.computeAddress(address(this),key)), 'DEPLOY');
+
+        //pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
         delete _params;
 
         getPool[key] = pool;

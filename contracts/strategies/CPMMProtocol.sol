@@ -15,15 +15,12 @@ import "../interfaces/strategies/base/rates/IDoubleLinearRateModel.sol";
 
 contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
 
-    //If this class takes a delegated call, this should not be here
-
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
-    constructor(address _factory, uint24 _protocol, bytes32 _initCodeHash, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalRate, uint256 _slope1, uint256 _slope2) {
+    constructor(address _factory, uint24 _protocol, bytes32 _initCodeHash, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) {
         ProtocolStorage.init(_protocol, address(new CPMMLongStrategy()), address(new CPMMShortStrategy()), msg.sender);
         CPMMStrategyStorage.init(_factory, _initCodeHash, _tradingFee1, _tradingFee2);
-        DoubleLinearRateStorage.init(_baseRate, _optimalRate, _slope1, _slope2);
-        //(uint256 baseRate, uint256 optimalRate, uint256 slope1, uint256 slope2)
+        DoubleLinearRateStorage.init(_baseRate, _optimalUtilRate, _slope1, _slope2);
     }
 
     function protocol() external virtual override view returns(uint24) {
@@ -71,24 +68,46 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
         return DoubleLinearRateStorage.store().slope2;
     }
 
-    /*function parameters() external virtual override returns(bytes32 memory) {
+    function parameters() external virtual override view returns(bytes memory pParams, bytes memory sParams, bytes memory rParams) {
+        ProtocolStorage.Store storage pStore = ProtocolStorage.store();
+        pParams = abi.encode(ProtocolStorage.Store({
+            protocol: pStore.protocol,
+            longStrategy: pStore.longStrategy,
+            shortStrategy: pStore.shortStrategy,
+            owner: pStore.owner, isSet: false}));
 
-    }/**/
+        CPMMStrategyStorage.Store storage sStore = CPMMStrategyStorage.store();
+        sParams = abi.encode(CPMMStrategyStorage.Store({
+            factory: sStore.factory,
+            initCodeHash: sStore.initCodeHash,
+            tradingFee1: sStore.tradingFee1,
+            tradingFee2: sStore.tradingFee2, isSet: false}));
 
-    //delegated call //TODO:.use params struct here. We'll be able to pass other values that can set the
-    function initialize() external virtual override {
-        /*
-            we only need to pass the protocolFactory, If this is a delegated call then we have access to
-            factory and protocol through GammaPoolStorage.
-            we have no need for initCodeHash or protocolFactory, since those are used for validation, nothing else
-            However we want to set:
-                -interest rate parameters.
-                -strategy parameters (trading fees)
-            We might need to have different interest rate model parameters for different protocols
-            maybe set it in the constructor and we pass it as a struct back to here?
-            //we can pass bytes32 calldata data and convert here, that way we can define our interest rate model however we want
-        */
-        //CPMMStrategyStorage.init(factory, protocolFactory, protocol, new bytes32());
+        DoubleLinearRateStorage.Store storage rStore = DoubleLinearRateStorage.store();
+        rParams = abi.encode(DoubleLinearRateStorage.Store({
+            ONE: 10**18,
+            YEAR_BLOCK_COUNT: 2252571,
+            baseRate: rStore.baseRate,
+            optimalUtilRate: rStore.optimalUtilRate,
+            slope1: rStore.slope1,
+            slope2: rStore.slope2,
+            isSet: false}));
+    }
+
+    //delegated call only
+    function initialize(bytes calldata pData, bytes calldata sData, bytes calldata rData) external virtual override returns(bool) {
+        require(msg.sender == address(this));
+
+        ProtocolStorage.Store memory pParams = abi.decode(pData, (ProtocolStorage.Store));
+        ProtocolStorage.init(pParams.protocol, pParams.longStrategy, pParams.shortStrategy, pParams.owner);
+
+        CPMMStrategyStorage.Store memory sParams = abi.decode(sData, (CPMMStrategyStorage.Store));
+        CPMMStrategyStorage.init(sParams.factory, sParams.initCodeHash, sParams.tradingFee1, sParams.tradingFee2);
+
+        DoubleLinearRateStorage.Store memory rParams = abi.decode(rData, (DoubleLinearRateStorage.Store));
+        DoubleLinearRateStorage.init(rParams.baseRate, rParams.optimalUtilRate, rParams.slope1, rParams.slope2);
+
+        return true;
     }
 
     function isContract(address account) internal virtual view returns (bool) {

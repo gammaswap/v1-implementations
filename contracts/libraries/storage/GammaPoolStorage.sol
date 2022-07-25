@@ -45,6 +45,8 @@ library GammaPoolStorage {
         uint256 lastPx;
         uint256 LAST_BLOCK_NUMBER;
 
+        bool isSet;
+
         /// @dev The token ID position data
         mapping(uint256 => Loan) loans;
 
@@ -76,6 +78,8 @@ library GammaPoolStorage {
 
     function init() internal {
         Store storage _store = store();
+        require(_store.isSet == false,'SET');
+        _store.isSet = true;
         _store.name = 'GammaSwap V1';
         _store.symbol = 'GAMA-V1';
         _store.decimals = 18;

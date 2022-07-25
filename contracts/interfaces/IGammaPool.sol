@@ -5,7 +5,28 @@ interface IGammaPool {
     function cfmm() external view returns(address);
     function protocolId() external view returns(uint24);
     function protocol() external view returns(address);
-    function tokens() external view returns(address[] memory tokens);
+    function tokens() external view returns(address[] memory);
+
+    function factory() external view returns(address);
+    function longStrategy() external view returns(address);
+    function shortStrategy() external view returns(address);
+    function tokenBalances() external view returns(uint256[] memory);
+    function lpTokenBalance() external view returns(uint256);
+    function lpTokenBorrowed() external view returns(uint256);
+    function lpBorrowed() external view returns(uint256);
+    function lpTokenTotal() external view returns(uint256);
+    function borrowedInvariant() external view returns(uint256);
+    function lpInvariant() external view returns(uint256);
+    function totalInvariant() external view returns(uint256);
+    function cfmmReserves() external view returns(uint256[] memory);
+    function borrowRate() external view returns(uint256);
+    function accFeeIndex() external view returns(uint256);
+    function lastFeeIndex() external view returns(uint256);
+    function lastCFMMFeeIndex() external view returns(uint256);
+    function lastCFMMInvariant() external view returns(uint256);
+    function lastCFMMTotalSupply() external view returns(uint256);
+    function lastPx() external view returns(uint256);
+    function lastBlockNumber() external view returns(uint256);
 
     //Short Gamma
     function _mint(address to) external returns(uint256 liquidity);

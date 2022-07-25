@@ -12,6 +12,8 @@ library CPMMStrategyStorage {
         //trading fees
         uint16 tradingFee1;// = 1000;
         uint16 tradingFee2;// = 997;
+
+        bool isSet;//flag to check that variables have been initialized through external function
     }
 
     function store() internal pure returns (Store storage _store) {
@@ -23,6 +25,8 @@ library CPMMStrategyStorage {
 
     function init(address factory, bytes32 initCodeHash, uint16 tradingFee1, uint16 tradingFee2) internal {
         Store storage _store = store();
+        require(_store.isSet == false,'SET');
+        _store.isSet = true;
         _store.factory = factory;
         _store.initCodeHash = initCodeHash;
         _store.tradingFee1 = tradingFee1;

@@ -12,6 +12,8 @@ library DoubleLinearRateStorage {
         uint256 optimalUtilRate;// = 8*(10**17);
         uint256 slope1;// = 10**18;
         uint256 slope2;// = 10**18;
+
+        bool isSet;
     }
 
     function store() internal pure returns (Store storage _store) {
@@ -23,6 +25,7 @@ library DoubleLinearRateStorage {
 
     function init(uint256 baseRate, uint256 optimalUtilRate, uint256 slope1, uint256 slope2) internal {
         Store storage _store = store();
+        require(_store.isSet == false,'SET');
         _store.ONE = 10**18;
         _store.YEAR_BLOCK_COUNT = 2252571;
         _store.baseRate = baseRate;
