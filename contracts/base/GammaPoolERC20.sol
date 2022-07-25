@@ -63,4 +63,24 @@ abstract contract GammaPoolERC20 {
         return true;
     }
 
+    function _mint(address account, uint256 amount) internal virtual {
+        require(amount > 0, '0 amt');
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        store.totalSupply += amount;
+        store.balanceOf[account] += amount;
+        emit Transfer(address(0), account, amount);
+    }
+
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0), "0 address");
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        uint256 accountBalance = store.balanceOf[account];
+        require(accountBalance >= amount, "> balance");
+        unchecked {
+            store.balanceOf[account] = accountBalance - amount;
+        }
+        store.totalSupply -= amount;
+        emit Transfer(account, address(0), amount);
+    }
+
 }
