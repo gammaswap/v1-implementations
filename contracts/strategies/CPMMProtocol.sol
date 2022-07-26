@@ -126,7 +126,7 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);//For Uniswap and its clones the user passes the parameters
         CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
-        require(_cfmm == PoolAddress.computeAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), 'bad protocol');
+        require(_cfmm == PoolAddress.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), 'bad protocol');
         key = PoolAddress.getPoolKey(_cfmm, ProtocolStorage.store().protocol);
     }
 }

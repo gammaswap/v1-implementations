@@ -79,7 +79,7 @@ contract GammaPoolFactory is IGammaPoolFactory{
         require(getPool[key] == address(0), 'POOL_EXISTS');
 
         (bool success, bytes memory data) = deployer.delegatecall(abi.encodeWithSignature("createPool(bytes32)", key));
-        require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.computeAddress(address(this),key)), 'DEPLOY');
+        require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.calcAddress(address(this),key)), 'DEPLOY');
 
         //pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
         delete _params;

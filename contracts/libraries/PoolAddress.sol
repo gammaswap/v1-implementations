@@ -8,7 +8,7 @@ library PoolAddress {
         key = keccak256(abi.encode(cfmm, protocol));
     }
 
-    function computeAddress(address factory, bytes32 key) internal pure returns (address pool) {
+    function calcAddress(address factory, bytes32 key) internal pure returns (address pool) {
         pool = address(
                 uint160(
                     uint256(keccak256(
@@ -24,7 +24,7 @@ library PoolAddress {
         );
     }
 
-    function computeAddress(address factory, bytes32 key, bytes32 initCodeHash) internal pure returns (address) {
+    function calcAddress(address factory, bytes32 key, bytes32 initCodeHash) internal pure returns (address) {
         return address(
             uint160(
                 uint256(keccak256(

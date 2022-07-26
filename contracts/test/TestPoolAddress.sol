@@ -12,6 +12,6 @@ contract TestPoolAddress {
     function getPoolAddress(address factory, address tokenA, address tokenB, uint24 protocol) external pure returns(address pool){
         /*(address token0, address token1) = GammaSwapLibrary.sortTokens(tokenA, tokenB);
         PoolAddress.PoolKey memory key = PoolAddress.getPoolKey(token0, token1, protocol);
-        pool = PoolAddress.computeAddress(factory, key);/**/
+        pool = PoolAddress.calcAddress(factory, key);/**/
     }
 }

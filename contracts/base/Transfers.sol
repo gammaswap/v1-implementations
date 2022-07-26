@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import '../interfaces/IPayments.sol';
+import '../interfaces/ITransfers.sol';
 import '../interfaces/external/IWETH.sol';
 import '../interfaces/external/IERC20.sol';
 import '../libraries/TransferHelper.sol';
 
-abstract contract Payments is IPayments {
+abstract contract Transfers is ITransfers {
 
     address public immutable override WETH;
 
@@ -28,6 +28,10 @@ abstract contract Payments is IPayments {
         }
     }
 
+    function refundETH() external payable override {
+        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
+    }
+
     function clearToken(address token, uint256 minAmt, address to) public payable override {
         uint256 tokenBal = IERC20(token).balanceOf(address(this));
         require(tokenBal >= minAmt, 'tokenBal < minAmt');
@@ -35,21 +39,17 @@ abstract contract Payments is IPayments {
         if (tokenBal > 0) TransferHelper.safeTransfer(token, to, tokenBal);
     }
 
-    function refundETH() external payable override {
-        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
-    }
 
-    function pay(address token, address payer, address to, uint256 amount) internal {
+    function send(address token, address sender, address to, uint256 amount) internal {
         if (token == WETH && address(this).balance >= amount) {
-            // pay with WETH
-            IWETH(WETH).deposit{value: amount}(); // wrap only what is needed to pay
+            IWETH(WETH).deposit{value: amount}(); // wrap only what is needed
             TransferHelper.safeTransfer(WETH, to, amount);
-        } else if (payer == address(this)) {
-            // pay with tokens already in the contract (for the exact input multihop case)
+        } else if (sender == address(this)) {
+            // send with tokens already in the contract
             TransferHelper.safeTransfer(token, to, amount);
         } else {
-            // pull payment
-            TransferHelper.safeTransferFrom(token, payer, to, amount);
+            // pull transfer
+            TransferHelper.safeTransferFrom(token, sender, to, amount);
         }
     }
 }

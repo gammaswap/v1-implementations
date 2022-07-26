@@ -90,9 +90,9 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         updateLoan(store,_loan);
 
-        (_loan.tokensHeld, amounts) = calcRepayAmounts(store, liquidity, _loan.tokensHeld);//calculate amounts and pay all in one call
+        (_loan.tokensHeld, amounts) = calcRepayAmounts(store, liquidity, _loan.tokensHeld);//calculate amounts to send
 
-        lpTokensPaid = depositToCFMM(store.cfmm, amounts, address(this));
+        lpTokensPaid = depositToCFMM(store.cfmm, amounts, address(this));//send
 
         liquidityPaid = lpTokensPaid * store.lastCFMMInvariant / store.lastCFMMTotalSupply;
 
