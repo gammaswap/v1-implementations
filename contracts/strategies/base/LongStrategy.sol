@@ -48,7 +48,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         for(uint256 i = 0; i < store.tokens.length; i++) {
             require(_loan.tokensHeld[i] > amounts[i], '> amt');
-            GammaSwapLibrary.transfer(store.tokens[i], to, amounts[i]);
+            GammaSwapLibrary.safeTransfer(store.tokens[i], to, amounts[i]);
             _loan.tokensHeld[i] = _loan.tokensHeld[i] - amounts[i];
             store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - amounts[i];
         }

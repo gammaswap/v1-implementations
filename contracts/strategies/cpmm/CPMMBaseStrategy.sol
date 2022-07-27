@@ -18,7 +18,7 @@ abstract contract CPMMBaseStrategy is ICPMMStrategy, DoubleLinearRateModel {
     }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
-        GammaSwapLibrary.transfer(cfmm, cfmm, amount);
+        GammaSwapLibrary.safeTransfer(cfmm, cfmm, amount);
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }

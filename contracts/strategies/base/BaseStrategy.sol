@@ -62,7 +62,7 @@ abstract contract BaseStrategy {
                 uint256 totalInvariantInCFMM = ((store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
                 uint256 factor = ((store.lastFeeIndex - (10**18)) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
                 uint256 accGrowth = (factor * store.BORROWED_INVARIANT) / (store.BORROWED_INVARIANT + totalInvariantInCFMM);
-                _mint(feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
+                _mint(store, feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
             }
         }
     }
@@ -73,17 +73,15 @@ abstract contract BaseStrategy {
         _loan.rateIndex = store.accFeeIndex;
     }
 
-    function _mint(address account, uint256 amount) internal virtual {
+    function _mint(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
         require(amount > 0, '0 amt');
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         store.totalSupply += amount;
         store.balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(address account, uint256 amount) internal virtual {
+    function _burn(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
         require(account != address(0), "0 address");
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 accountBalance = store.balanceOf[account];
         require(accountBalance >= amount, "> balance");
         unchecked {

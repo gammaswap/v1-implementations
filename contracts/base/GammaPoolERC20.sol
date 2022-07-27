@@ -37,8 +37,7 @@ abstract contract GammaPoolERC20 {
         emit Approval(owner, spender, value);
     }
 
-    function _transfer(address from, address to, uint value) internal virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+    function _transfer(GammaPoolStorage.Store storage store, address from, address to, uint value) internal virtual {
         store.balanceOf[from] = store.balanceOf[from] - value;
         store.balanceOf[to] = store.balanceOf[to] + value;
         emit Transfer(from, to, value);
@@ -50,7 +49,8 @@ abstract contract GammaPoolERC20 {
     }
 
     function transfer(address to, uint value) external virtual returns (bool) {
-        _transfer(msg.sender, to, value);
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        _transfer(store, msg.sender, to, value);
         return true;
     }
 
@@ -59,21 +59,19 @@ abstract contract GammaPoolERC20 {
         if (store.allowance[from][msg.sender] != type(uint256).max) {
             store.allowance[from][msg.sender] = store.allowance[from][msg.sender] - value;
         }
-        _transfer(from, to, value);
+        _transfer(store, from, to, value);
         return true;
     }
 
-    function _mint(address account, uint256 amount) internal virtual {
+    function _mint(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
         require(amount > 0, '0 amt');
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         store.totalSupply += amount;
         store.balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(address account, uint256 amount) internal virtual {
+    function _burn(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
         require(account != address(0), "0 address");
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 accountBalance = store.balanceOf[account];
         require(accountBalance >= amount, "> balance");
         unchecked {

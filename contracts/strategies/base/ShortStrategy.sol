@@ -10,30 +10,33 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     //ShortGamma
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual returns (uint256[] memory amounts, address payee);
 
+    //TODO: add another function here too, to pass the store. Make current mint internal, would lower gas expenses since it wouldn't be a public function call. Could make mint external rather than public
+    /*function mint(address to) external virtual override returns(uint256 liquidity) {//TODO: Should probably change the name of this function (addReserves)
+
+    }/**/
+
     //********* Short Gamma Functions *********//
-    function mint(address to) public virtual override returns(uint256 liquidity) {
+    function mint(address to) public virtual override returns(uint256 liquidity) {//TODO: Should probably change the name of this function (addReserves)
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 depLPBal = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
         require(depLPBal > 0, '0 dep');
 
         updateIndex(store);
 
-        uint256 depositedInvariant = (depLPBal * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
-
         uint256 _totalSupply = store.totalSupply;
         if (_totalSupply == 0) {
-            liquidity = depositedInvariant - store.MINIMUM_LIQUIDITY;
-            _mint(address(0), store.MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
+            liquidity = depLPBal - store.MINIMUM_LIQUIDITY;
+            _mint(store, address(0), store.MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
-            liquidity = (depositedInvariant * _totalSupply) / store.TOTAL_INVARIANT;
+            liquidity = (depLPBal * _totalSupply) / store.LP_TOKEN_TOTAL;
         }
-        _mint(to, liquidity);
+        _mint(store, to, liquidity);
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
         //emit Mint(msg.sender, amountA, amountB);
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) public virtual override returns(uint256[] memory amounts) {
+    function burn(address to) public virtual override returns(uint256[] memory amounts) {//TODO: Should probably change the name of this function (maybe withdrawReserves)
         //get the liquidity tokens
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 amount = store.balanceOf[address(this)];
@@ -50,12 +53,13 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         //                    just call strategy and ask strategy to use callback to transfer to Strategy then to CFMM
         //                    Since CFMM has to pull from strategy, strategy must always check it has enough approval
         amounts = withdrawFromCFMM(store.cfmm, to, withdrawLPTokens);
-        _burn(address(this), amount);
+        _burn(store, address(this), amount);
 
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
+    //TODO: Should probably change the name of this function (maybe addReserves)
     function addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override returns(uint256[] memory amounts, uint256 liquidity) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         address payee;

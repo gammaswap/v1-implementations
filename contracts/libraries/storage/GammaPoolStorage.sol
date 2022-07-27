@@ -28,9 +28,9 @@ library GammaPoolStorage {
         address shortStrategy;
 
         uint256[] TOKEN_BALANCE;
-        uint256 LP_TOKEN_BALANCE;
-        uint256 LP_TOKEN_BORROWED;
-        uint256 LP_BORROWED;//(BORROWED_INVARIANT as LP Tokens)
+        uint256 LP_TOKEN_BALANCE;//LP Tokens in GS
+        uint256 LP_TOKEN_BORROWED;//LP Tokens that have been borrowed (Principal)
+        uint256 LP_BORROWED;//(LP Tokens that have been borrowed (principal) plus interest in LP Tokens)
         uint256 LP_TOKEN_TOTAL;//LP_TOKEN_BALANCE + LP_BORROWED
         uint256 BORROWED_INVARIANT;
         uint256 LP_INVARIANT;//Invariant from LP Tokens

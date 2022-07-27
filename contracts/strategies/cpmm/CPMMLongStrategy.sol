@@ -23,8 +23,8 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], '< amounts');
 
         address cfmm = store.cfmm;
-        GammaSwapLibrary.transfer(store.tokens[0], cfmm, amounts[0]);
-        GammaSwapLibrary.transfer(store.tokens[1], cfmm, amounts[1]);
+        GammaSwapLibrary.safeTransfer(store.tokens[0], cfmm, amounts[0]);
+        GammaSwapLibrary.safeTransfer(store.tokens[1], cfmm, amounts[1]);
 
         _tokensHeld = new uint256[](2);
         _tokensHeld[0] = tokensHeld[0] - amounts[0];
@@ -64,7 +64,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
     }/**/
 
     function sendToken(address token, address to, uint256 amount) internal {
-        if(amount > 0) GammaSwapLibrary.transfer(token, to, amount);
+        if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);
     }
 
     function rebalancePosition(GammaPoolStorage.Store storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld) {
