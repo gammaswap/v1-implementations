@@ -6,6 +6,12 @@ import "../../interfaces/strategies/base/ILongStrategy.sol";
 
 abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
+    modifier lock() {
+        GammaPoolStorage.lockit();
+        _;
+        GammaPoolStorage.unlockit();
+    }
+
     //LongGamma
     function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld)
         internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts);
@@ -35,14 +41,14 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         _loan.heldLiquidity = calcInvariant(store.cfmm, _loan.tokensHeld);
     }
 
-    function increaseCollateral(uint256 tokenId) external virtual override returns(uint256[] memory) {
+    function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint256[] memory) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         updateCollateral(store, _loan);
         return _loan.tokensHeld;/**/
     }
 
-    function decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override returns(uint256[] memory tokensHeld) {
+    function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory tokensHeld) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
@@ -61,7 +67,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return _loan.tokensHeld;
     }
 
-    function borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override returns(uint256[] memory amounts) {
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
 
         require(lpTokens < store.LP_TOKEN_BALANCE, '> liq');
@@ -84,7 +90,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         checkMargin(_loan, 800);
     }
 
-    function repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
+    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
@@ -105,7 +111,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         //UniV3
     }
 
-    function rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override returns(uint256[] memory tokensHeld) {
+    function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint256[] memory tokensHeld) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
@@ -116,7 +122,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         _loan.tokensHeld = tokensHeld;
     }
 
-    function rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256[] memory tokensHeld) {
+    function _rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256[] memory tokensHeld) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 

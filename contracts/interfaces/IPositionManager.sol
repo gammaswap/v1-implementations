@@ -78,8 +78,8 @@ interface IPositionManager  is ITransfers {
     function factory() external view returns (address);
 
     //Short Gamma
-    function deposit(DepositParams calldata params) external returns(uint256 shares);
-    function withdraw(WithdrawParams calldata params) external returns(uint256 assets);
+    function depositNoPull(DepositParams calldata params) external returns(uint256 shares);
+    function withdrawNoPull(WithdrawParams calldata params) external returns(uint256 assets);
     function depositReserves(DepositReservesParams calldata params) external returns (uint256[] memory reserves, uint256 shares);
     function withdrawReserves(WithdrawReservesParams calldata params) external returns (uint256[] memory reserves, uint256 assets);
 
