@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./ITransfers.sol";
 
 interface IPositionManager  is ITransfers {
-    struct AddLPLiquidityParams {
+    struct DepositParams {
         address cfmm;
         uint24 protocol;
         uint256 lpTokens;
@@ -12,7 +12,15 @@ interface IPositionManager  is ITransfers {
         uint256 deadline;
     }
 
-    struct AddLiquidityParams {
+    struct WithdrawParams {
+        address cfmm;
+        uint24 protocol;
+        uint256 lpTokens;
+        address to;
+        uint256 deadline;
+    }
+
+    struct DepositReservesParams {
         address cfmm;
         uint256[] amountsDesired;
         uint256[] amountsMin;
@@ -21,7 +29,7 @@ interface IPositionManager  is ITransfers {
         uint256 deadline;
     }
 
-    struct RemoveLiquidityParams {
+    struct WithdrawReservesParams {
         address cfmm;
         uint24 protocol;
         uint256 amount;
@@ -70,9 +78,10 @@ interface IPositionManager  is ITransfers {
     function factory() external view returns (address);
 
     //Short Gamma
-    function addLPLiquidity(AddLPLiquidityParams calldata params) external returns(uint256 liquidity);
-    function addLiquidity(AddLiquidityParams calldata params) external returns (uint256[] memory amounts, uint256 liquidity);
-    function removeLiquidity(RemoveLiquidityParams calldata params) external returns (uint256[] memory amounts);
+    function deposit(DepositParams calldata params) external returns(uint256 shares);
+    function withdraw(WithdrawParams calldata params) external returns(uint256 assets);
+    function depositReserves(DepositReservesParams calldata params) external returns (uint256[] memory reserves, uint256 shares);
+    function withdrawReserves(WithdrawReservesParams calldata params) external returns (uint256[] memory reserves, uint256 assets);
 
     //Long Gamma
     function createLoan(address cfmm, uint24 protocol, address to, uint256 deadline) external returns(uint256 tokenId);

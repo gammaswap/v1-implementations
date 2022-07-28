@@ -19,37 +19,36 @@ abstract contract BaseStrategy {
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual view returns(uint256);
 
     function updateIndex(GammaPoolStorage.Store storage store) internal virtual {
+        uint256 ONE = store.ONE;
         store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
         {
             updateReserves(store);
             uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
             uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(store.cfmm);
             if(lastCFMMTotalSupply > 0) {
-                uint256 denominator = (store.lastCFMMInvariant * lastCFMMTotalSupply) / (10**18);
+                uint256 denominator = (store.lastCFMMInvariant * lastCFMMTotalSupply) / ONE;
                 store.lastCFMMFeeIndex = (lastCFMMInvariant * store.lastCFMMTotalSupply) / denominator;
             } else {
-                store.lastCFMMFeeIndex = 10**18;
+                store.lastCFMMFeeIndex = ONE;
             }
             store.lastCFMMInvariant = lastCFMMInvariant;
             store.lastCFMMTotalSupply = lastCFMMTotalSupply;
         }
 
-        if(store.lastCFMMFeeIndex > 0) {
+        {
             uint256 blockDiff = block.number - store.LAST_BLOCK_NUMBER;
             uint256 adjBorrowRate = (blockDiff * store.borrowRate) / 2252571;//2252571 year block count
             store.lastFeeIndex = store.lastCFMMFeeIndex + adjBorrowRate;
-        } else {
-            store.lastFeeIndex = 10**18;
         }
 
-        store.BORROWED_INVARIANT = (store.BORROWED_INVARIANT * store.lastFeeIndex) / (10**18);
+        store.BORROWED_INVARIANT = (store.BORROWED_INVARIANT * store.lastFeeIndex) / ONE;
 
-        store.LP_BORROWED = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply ) / store.lastCFMMInvariant;
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply ) / store.lastCFMMInvariant;
         store.LP_INVARIANT = (store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
-        store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_BORROWED;
+        store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 
-        store.accFeeIndex = (store.accFeeIndex * store.lastFeeIndex) / (10**18);
+        store.accFeeIndex = (store.accFeeIndex * store.lastFeeIndex) / ONE;
         store.LAST_BLOCK_NUMBER = block.number;
 
         if(store.BORROWED_INVARIANT > 0) {
@@ -60,9 +59,11 @@ abstract contract BaseStrategy {
                  //        accumulatedGrowth: (1 - [1/index])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
                  //        sharesToIssue: totalGammaTokenSupply*accGrowth/(1-accGrowth)
                 uint256 totalInvariantInCFMM = ((store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
-                uint256 factor = ((store.lastFeeIndex - (10**18)) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
+                //uint256 factor = ((store.lastFeeIndex - (10**18)) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
+                uint256 factor = ((store.lastFeeIndex - ONE) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
                 uint256 accGrowth = (factor * store.BORROWED_INVARIANT) / (store.BORROWED_INVARIANT + totalInvariantInCFMM);
-                _mint(store, feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
+                //_mint(store, feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
+                _mint(store, feeTo, (store.totalSupply * accGrowth) / (ONE - accGrowth));
             }
         }
     }

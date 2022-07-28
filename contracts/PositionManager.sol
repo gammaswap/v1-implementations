@@ -53,26 +53,32 @@ contract PositionManager is IPositionManager, ISendTokensCallback, Transfers, ER
     }
 
     // **** Short Gamma **** //
-    function addLPLiquidity(AddLPLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns(uint256 liquidity) {
+    function deposit(DepositParams calldata params) external virtual override isExpired(params.deadline) returns(uint256 shares) {
         address gammaPool = PoolAddress.calcAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         send(params.cfmm, msg.sender, gammaPool, params.lpTokens); // send lp tokens to pool
         return IGammaPool(gammaPool)._mint(params.to);
     }
 
+    //withdraw(uint256 assets, address receiver, address owner)
+    function withdraw(WithdrawParams calldata params) external virtual override isExpired(params.deadline) returns(uint256 shares) {
+        /*address gammaPool = PoolAddress.calcAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
+        //send(params.cfmm, msg.sender, gammaPool, params.lpTokens); // send lp tokens to pool
+        return IGammaPool(gammaPool).withdraw(params.lpTokens, params.to, msg.sender);/**/
+    }
     //TODO: missing removeLPLiquidity
 
-    function addLiquidity(AddLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns(uint256[] memory amounts, uint256 liquidity) {
+    function depositReserves(DepositReservesParams calldata params) external virtual override isExpired(params.deadline) returns(uint256[] memory reserves, uint256 shares) {
         return IGammaPool(PoolAddress.calcAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol)))
-            ._addLiquidity(params.cfmm, params.amountsDesired, params.amountsMin,
+            ._depositReserves(params.cfmm, params.amountsDesired, params.amountsMin,
             abi.encode(SendTokensCallbackData({cfmm: params.cfmm, protocol: params.protocol, payer: msg.sender})));
     }
 
-    function removeLiquidity(RemoveLiquidityParams calldata params) external virtual override isExpired(params.deadline) returns (uint256[] memory amounts) {
+    function withdrawReserves(WithdrawReservesParams calldata params) external virtual override isExpired(params.deadline) returns (uint256[] memory reserves, uint256 assets) {
         address gammaPool = PoolAddress.calcAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         send(gammaPool, msg.sender, gammaPool, params.amount); // send gs tokens to pool
-        amounts = IGammaPool(gammaPool)._burn(params.to);
-        for (uint i = 0; i < amounts.length; i++) {
-            require(amounts[i] >= params.amountsMin[i], 'amt < min');
+        (reserves, assets) = IGammaPool(gammaPool)._withdrawReserves(params.to);
+        for (uint i = 0; i < reserves.length; i++) {
+            require(reserves[i] >= params.amountsMin[i], 'amt < min');
         }
     }
 

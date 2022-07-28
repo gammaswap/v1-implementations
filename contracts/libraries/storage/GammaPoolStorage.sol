@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/IGammaPoolFactory.sol";
 import "../../interfaces/strategies/IProtocol.sol";
+import "../../interfaces/strategies/base/IShortStrategy.sol";
+import "../../interfaces/strategies/base/ILongStrategy.sol";
 
 library GammaPoolStorage {
     bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.gammapool");
@@ -30,8 +32,8 @@ library GammaPoolStorage {
         uint256[] TOKEN_BALANCE;
         uint256 LP_TOKEN_BALANCE;//LP Tokens in GS
         uint256 LP_TOKEN_BORROWED;//LP Tokens that have been borrowed (Principal)
-        uint256 LP_BORROWED;//(LP Tokens that have been borrowed (principal) plus interest in LP Tokens)
-        uint256 LP_TOKEN_TOTAL;//LP_TOKEN_BALANCE + LP_BORROWED
+        uint256 LP_TOKEN_BORROWED_PLUS_INTEREST;//(LP Tokens that have been borrowed (principal) plus interest in LP Tokens)
+        uint256 LP_TOKEN_TOTAL;//LP_TOKEN_BALANCE + LP_TOKEN_BORROWED_PLUS_INTEREST
         uint256 BORROWED_INVARIANT;
         uint256 LP_INVARIANT;//Invariant from LP Tokens
         uint256 TOTAL_INVARIANT;//BORROWED_INVARIANT + LP_INVARIANT
@@ -45,6 +47,7 @@ library GammaPoolStorage {
         uint256 lastPx;
         uint256 LAST_BLOCK_NUMBER;
 
+        uint256 ONE;
         bool isSet;
 
         /// @dev The token ID position data
@@ -65,8 +68,6 @@ library GammaPoolStorage {
         uint256 totalSupply;
         mapping(address => uint256) balanceOf;
         mapping(address => mapping(address => uint256)) allowance;
-
-        uint256 MINIMUM_LIQUIDITY;
     }
 
     function store() internal pure returns (Store storage _store) {
@@ -97,7 +98,7 @@ library GammaPoolStorage {
         _store.owner = msg.sender;
         _store.nextId = 1;
         _store.unlocked = 1;
-        _store.MINIMUM_LIQUIDITY = 10**3;
+        _store.ONE = 10**18;
     }
 
     function lockit() internal {

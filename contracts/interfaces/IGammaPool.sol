@@ -13,7 +13,7 @@ interface IGammaPool {
     function tokenBalances() external view returns(uint256[] memory);
     function lpTokenBalance() external view returns(uint256);
     function lpTokenBorrowed() external view returns(uint256);
-    function lpBorrowed() external view returns(uint256);
+    function lpTokenBorrowedPlusInterest() external view returns(uint256);
     function lpTokenTotal() external view returns(uint256);
     function borrowedInvariant() external view returns(uint256);
     function lpInvariant() external view returns(uint256);
@@ -29,9 +29,10 @@ interface IGammaPool {
     function lastBlockNumber() external view returns(uint256);
 
     //Short Gamma
-    function _mint(address to) external returns(uint256 liquidity);
-    function _burn(address to) external returns (uint256[] memory amounts);
-    function _addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external returns(uint256[] memory amounts, uint256 liquidity);
+    function _mint(address to) external returns(uint256 shares);
+    //function _withdraw(address to) external returns(uint256 assets);
+    function _withdrawReserves(address to) external returns (uint256[] memory reserves, uint256 assets);
+    function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external returns(uint256[] memory reserves, uint256 shares);
 
     //Long Gamma
     function createLoan() external returns(uint tokenId);

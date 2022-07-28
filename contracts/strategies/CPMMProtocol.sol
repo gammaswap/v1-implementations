@@ -17,10 +17,20 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
 
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
-    constructor(address _factory, uint24 _protocol, bytes32 _initCodeHash, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) {
-        ProtocolStorage.init(_protocol, address(new CPMMLongStrategy()), address(new CPMMShortStrategy()), msg.sender);
+    address public immutable owner;
+
+    constructor(address gsFactory, address _factory, uint24 _protocol, bytes32 _initCodeHash, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) {
+        owner = gsFactory;
         CPMMStrategyStorage.init(_factory, _initCodeHash, _tradingFee1, _tradingFee2);
         DoubleLinearRateStorage.init(_baseRate, _optimalUtilRate, _slope1, _slope2);
+        bytes memory sParams = strategyParams();
+        bytes memory rParams = rateParams();
+        //address longStrategy = address(new CPMMLongStrategy(sParams,rParams));
+        //address shortStrategy = address(new CPMMShortStrategy(sParams,rParams));
+        ProtocolStorage.init(_protocol,
+            address(new CPMMLongStrategy(sParams,rParams)),
+            address(new CPMMShortStrategy(sParams,rParams)),
+            msg.sender);
     }
 
     function protocol() external virtual override view returns(uint24) {
@@ -68,6 +78,27 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
         return DoubleLinearRateStorage.store().slope2;
     }
 
+    function strategyParams() internal virtual view returns(bytes memory) {
+        CPMMStrategyStorage.Store storage sStore = CPMMStrategyStorage.store();
+        return abi.encode(CPMMStrategyStorage.Store({
+            factory: sStore.factory,
+            initCodeHash: sStore.initCodeHash,
+            tradingFee1: sStore.tradingFee1,
+            tradingFee2: sStore.tradingFee2, isSet: false }));
+    }
+
+    function rateParams() internal virtual view returns(bytes memory) {
+        DoubleLinearRateStorage.Store storage rStore = DoubleLinearRateStorage.store();
+        return abi.encode(DoubleLinearRateStorage.Store({
+            ONE: 10**18,
+            YEAR_BLOCK_COUNT: 2252571,
+            baseRate: rStore.baseRate,
+            optimalUtilRate: rStore.optimalUtilRate,
+            slope1: rStore.slope1,
+            slope2: rStore.slope2,
+            isSet: false }));
+    }
+
     function parameters() external virtual override view returns(bytes memory pParams, bytes memory sParams, bytes memory rParams) {
         ProtocolStorage.Store storage pStore = ProtocolStorage.store();
         pParams = abi.encode(ProtocolStorage.Store({
@@ -96,7 +127,7 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
 
     //delegated call only
     function initialize(bytes calldata pData, bytes calldata sData, bytes calldata rData) external virtual override returns(bool) {
-        require(msg.sender == address(this));
+        require(msg.sender == owner);//This checks the factory can only call this. It's a delegate call from the smart contract. So it's called from the context of the GammaPool, which means message sender is factory
 
         ProtocolStorage.Store memory pParams = abi.decode(pData, (ProtocolStorage.Store));
         ProtocolStorage.init(pParams.protocol, pParams.longStrategy, pParams.shortStrategy, pParams.owner);

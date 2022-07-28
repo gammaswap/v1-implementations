@@ -8,6 +8,13 @@ import "../base/rates/DoubleLinearRateModel.sol";
 import "../../interfaces/strategies/ICPMMStrategy.sol";
 
 abstract contract CPMMBaseStrategy is ICPMMStrategy, DoubleLinearRateModel {
+    constructor(bytes memory sData, bytes memory rData) {
+        CPMMStrategyStorage.Store memory sParams = abi.decode(sData, (CPMMStrategyStorage.Store));
+        CPMMStrategyStorage.init(sParams.factory, sParams.initCodeHash, sParams.tradingFee1, sParams.tradingFee2);
+
+        DoubleLinearRateStorage.Store memory rParams = abi.decode(rData, (DoubleLinearRateStorage.Store));
+        DoubleLinearRateStorage.init(rParams.baseRate, rParams.optimalUtilRate, rParams.slope1, rParams.slope2);
+    }
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();

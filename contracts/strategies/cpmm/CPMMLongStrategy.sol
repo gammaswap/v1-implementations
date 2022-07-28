@@ -7,7 +7,7 @@ import "./CPMMBaseStrategy.sol";
 
 contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
-    constructor() {
+    constructor(bytes memory sParams, bytes memory rParams) CPMMBaseStrategy(sParams, rParams) {
     }
 
     function convertLiquidityToAmounts(GammaPoolStorage.Store storage store, uint256 liquidity) internal view returns(uint256 amount0, uint256 amount1) {
@@ -33,7 +33,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
     function rebalancePosition(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld){
         (uint256 amount0, uint256 amount1) = convertLiquidityToAmounts(store, liquidity);
-        uint256 ONE = 10**18;
+        uint256 ONE = store.ONE;
         uint256 inAmt0;
         uint256 inAmt1;
         uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld

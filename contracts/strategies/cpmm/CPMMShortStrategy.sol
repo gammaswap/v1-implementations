@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
+import "../../interfaces/external/ICPMM.sol";
 import "../base/ShortStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
 contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
-    constructor(){
+    constructor(bytes memory sParams, bytes memory rParams) CPMMBaseStrategy(sParams, rParams) {
     }
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
@@ -38,5 +39,10 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
         require(amountOptimal >= amountMin, '< minAmt');
+    }
+
+    function getReserves(address cfmm) internal virtual override view returns(uint256[] memory reserves) {
+        reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
     }
 }

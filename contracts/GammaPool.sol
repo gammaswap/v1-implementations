@@ -3,9 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/IGammaPool.sol";
-import "./base/GammaPoolERC20.sol";
+import "./interfaces/strategies/base/IShortStrategy.sol";
+import "./interfaces/strategies/base/ILongStrategy.sol";
+import "./base/GammaPoolERC4626.sol";
 
-contract GammaPool is IGammaPool, GammaPoolERC20 {
+contract GammaPool is IGammaPool, GammaPoolERC4626 {
 
     modifier lock() {
         GammaPoolStorage.lockit();
@@ -16,7 +18,7 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
     constructor() {
         GammaPoolStorage.init();
         (bytes memory protParams, bytes memory stratParams, bytes memory rateParams) = IProtocol(GammaPoolStorage.store().protocol).parameters();
-        (bool success,bytes memory data) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("initialize(bytes,bytes,bytes)", protParams, stratParams, rateParams));
+        (bool success,bytes memory data) = GammaPoolStorage.store().protocol.delegatecall(abi.encodeWithSelector(IProtocol(GammaPoolStorage.store().protocol).initialize.selector, protParams, stratParams, rateParams));
         require(success && (data.length == 0 || abi.decode(data, (bool))),'INIT');
     }
 
@@ -47,6 +49,7 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
     function shortStrategy() external virtual override view returns(address) {
         return GammaPoolStorage.store().shortStrategy;
     }
+
     //GamamPool Data
     function tokenBalances() external virtual override view returns(uint256[] memory) {
         return GammaPoolStorage.store().TOKEN_BALANCE;
@@ -60,12 +63,12 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
         return GammaPoolStorage.store().LP_TOKEN_BORROWED;
     }
 
-    function lpBorrowed() external virtual override view returns(uint256) {
-        return GammaPoolStorage.store().LP_BORROWED;//(BORROWED_INVARIANT as LP Tokens)
+    function lpTokenBorrowedPlusInterest() external virtual override view returns(uint256) {
+        return GammaPoolStorage.store().LP_TOKEN_BORROWED_PLUS_INTEREST;//(BORROWED_INVARIANT as LP Tokens)
     }
 
     function lpTokenTotal() external virtual override view returns(uint256) {
-        return GammaPoolStorage.store().LP_TOKEN_TOTAL;//LP_TOKEN_BALANCE + LP_BORROWED
+        return GammaPoolStorage.store().LP_TOKEN_TOTAL;//LP_TOKEN_BALANCE + LP_TOKEN_BORROWED_PLUS_INTEREST
     }
 
     function borrowedInvariant() external virtual override view returns(uint256) {
@@ -117,20 +120,68 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
     }
 
     /*****SHORT*****/
-    function _mint(address to) external virtual override lock returns(uint256 liquidity) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("mint(address)", to));
+
+    /*********ERC4626 Functions Start********/
+    function totalAssets() public view virtual override returns(uint256) {//This has to be defined. Total quantity of LP Tokens (readonly) in GammaPool
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        return IShortStrategy(store.shortStrategy).totalAssets(store.cfmm, store.BORROWED_INVARIANT, store.LP_TOKEN_BALANCE,
+            store.LP_TOKEN_BORROWED, store.lastCFMMInvariant, store.lastCFMMTotalSupply, store.LAST_BLOCK_NUMBER);
+    }
+
+    function deposit(uint256 assets, address receiver) external virtual override returns (uint256 shares) {
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("deposit(uint256,address)", assets, receiver));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy)._deposit.selector, assets, receiver));
         require(success);
         return abi.decode(result, (uint256));
     }
 
-    function _burn(address to) external virtual override lock returns (uint256[] memory amounts) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("burn(address)", to));
+    function mint(uint256 shares, address receiver) external virtual override returns (uint256 assets) {
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("mint(uint256,address)", shares, receiver));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy)._mint.selector, shares, receiver));
         require(success);
-        return abi.decode(result, (uint256[]));
+        return abi.decode(result, (uint256));
     }
 
-    function _addLiquidity(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory amounts, uint256 liquidity){
-        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("addLiquidity(address,uint256[],uint256[],bytes)", to, amountsDesired, amountsMin, data));
+    function withdraw(uint256 assets, address receiver, address owner) external virtual override returns (uint256 shares){
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("withdraw(uint256,address,address)", assets, receiver, owner));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy)._withdraw.selector, assets, receiver, owner));
+        require(success);
+        return abi.decode(result, (uint256));
+    }
+
+    function redeem(uint256 shares, address receiver, address owner) external virtual override returns (uint256 assets){
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("redeem(uint256,address,address)", shares, receiver, owner));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy)._redeem.selector, shares, receiver, owner));
+        require(success);
+        return abi.decode(result, (uint256));
+    }
+
+    /*********ERC4626 Functions End********/
+
+    function _mint(address to) external virtual override lock returns(uint256 shares) {
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("mint(address)", to));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy).mint.selector, to));
+        require(success);
+        return abi.decode(result, (uint256));
+    }
+
+    function _withdrawReserves(address to) external virtual override lock returns (uint256[] memory reserves, uint256 assets) {
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("burn(address)", to));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy).withdrawReserves.selector, to));
+        require(success);
+        return abi.decode(result, (uint256[],uint256));
+    }
+
+    function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory reserves, uint256 shares){
+        //(bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSignature("addLiquidity(address,uint256[],uint256[],bytes)", to, amountsDesired, amountsMin, data));
+        (bool success, bytes memory result) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(
+                IShortStrategy(GammaPoolStorage.store().shortStrategy).depositReserves.selector, to, amountsDesired, amountsMin, data));
         require(success);
         return abi.decode(result, (uint256[],uint256));
     }
@@ -147,37 +198,49 @@ contract GammaPool is IGammaPool, GammaPoolERC20 {
     }
 
     function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint256[] memory tokensHeld) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("increaseCollateral(uint256)", tokenId));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("increaseCollateral(uint256)", tokenId));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).increaseCollateral.selector, tokenId));
         require(success);
         return abi.decode(result, (uint256[]));
     }
 
     function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory tokensHeld) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("decreaseCollateral(uint256,uint256[],address)", tokenId, amounts, to));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("decreaseCollateral(uint256,uint256[],address)", tokenId, amounts, to));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).decreaseCollateral.selector, tokenId, amounts, to));
         require(success);
         return abi.decode(result, (uint256[]));
     }
 
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("borrowLiquidity(uint256,uint256)", tokenId, lpTokens));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("borrowLiquidity(uint256,uint256)", tokenId, lpTokens));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).borrowLiquidity.selector, tokenId, lpTokens));
         require(success);
         return abi.decode(result, (uint256[]));
     }
 
     function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("repayLiquidity(uint256,uint256)", tokenId, liquidity));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("repayLiquidity(uint256,uint256)", tokenId, liquidity));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).repayLiquidity.selector, tokenId, liquidity));
         require(success);
         return abi.decode(result, (uint256,uint256,uint256[]));
     }
 
     function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint256[] memory tokensHeld) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("rebalanceCollateral(uint256,int256[])", tokenId, deltas));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("rebalanceCollateral(uint256,int256[])", tokenId, deltas));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).rebalanceCollateral.selector, tokenId, deltas));
         require(success);
         return abi.decode(result, (uint256[]));
     }
 
     function _rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256[] memory tokensHeld) {
-        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("rebalanceCollateralWithLiquidity(uint256,uint256)", tokenId, liquidity));
+        //(bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSignature("rebalanceCollateralWithLiquidity(uint256,uint256)", tokenId, liquidity));
+        (bool success, bytes memory result) = GammaPoolStorage.store().longStrategy.delegatecall(abi.encodeWithSelector(
+                ILongStrategy(GammaPoolStorage.store().longStrategy).rebalanceCollateralWithLiquidity.selector, tokenId, liquidity));
         require(success);
         return abi.decode(result, (uint256[]));
     }
