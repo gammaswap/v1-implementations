@@ -13,9 +13,6 @@ import "./base/Transfers.sol";
 
 contract PositionManager is IPositionManager, ISendTokensCallback, Transfers, ERC721 {
 
-    /// @dev The ID of the next token that will be minted. Skips 0
-    uint176 private _nextId = 1;
-
     address public owner;
 
     address public immutable override factory;
@@ -59,11 +56,10 @@ contract PositionManager is IPositionManager, ISendTokensCallback, Transfers, ER
         return IGammaPool(gammaPool).depositNoPull(params.to);
     }
 
-    //withdraw(uint256 assets, address receiver, address owner)
     function withdrawNoPull(WithdrawParams calldata params) external virtual override isExpired(params.deadline) returns(uint256 assets) {
         address gammaPool = PoolAddress.calcAddress(factory, PoolAddress.getPoolKey(params.cfmm, params.protocol));
         send(gammaPool, msg.sender, gammaPool, params.lpTokens); // send gs tokens to pool
-        return IGammaPool(gammaPool).withdrawNoPull(params.to);/**/
+        return IGammaPool(gammaPool).withdrawNoPull(params.to);
     }
 
     function depositReserves(DepositReservesParams calldata params) external virtual override isExpired(params.deadline) returns(uint256[] memory reserves, uint256 shares) {
