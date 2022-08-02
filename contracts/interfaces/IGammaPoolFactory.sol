@@ -22,9 +22,11 @@ interface IGammaPoolFactory {
     function getProtocol(uint24 protocol) external view returns (address);
     function createPool(CreatePoolParams calldata params) external returns(address);
     function getPool(bytes32 salt) external view returns(address);
-    function allPoolsLength() external view returns (uint);
+    function allPoolsLength() external view returns (uint256);
     function feeToSetter() external view returns(address);
     function owner() external view returns(address);
+    function fee() external view returns(uint256);
+    function feeTo() external view returns(address);
     function feeInfo() external view returns(address,uint);
     function parameters() external view returns (address cfmm, uint24 protocolId, address[] memory tokens, address protocol);//, address longStrategy, address shortStrategy);
 }

@@ -13,8 +13,8 @@ contract GammaPoolFactory is IGammaPoolFactory{
 
     address public override feeToSetter;
     address public override owner;
-    address private feeTo;
-    uint256 private fee = 5 * (10**16); //5% of borrowed interest gains by default
+    address public override feeTo;
+    uint256 public override fee = 5 * (10**16); //5% of borrowed interest gains by default
 
     mapping(uint24 => address) public override getProtocol;//there's a protocol
     mapping(bytes32 => address) public override getPool;//all GS Pools addresses can be predetermined

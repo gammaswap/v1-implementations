@@ -6,11 +6,11 @@ const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
 describe("UniswapV2Module", function () {
   let TestERC20: any;
-  let UniswapV2Module: any;
+  //let UniswapV2Module: any;
   let UniswapV2Factory: any;
   let uniFactory: any;
   let uniPair: any;
-  let uniModule: any;
+  //let uniModule: any;
   let tokenA: any;
   let tokenB: any;
   let owner: any;
@@ -21,7 +21,7 @@ describe("UniswapV2Module", function () {
     [owner] = await ethers.getSigners();
 
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    UniswapV2Module = await ethers.getContractFactory("UniswapV2Module");
+    //UniswapV2Module = await ethers.getContractFactory("UniswapV2Module");
 
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
@@ -51,7 +51,7 @@ describe("UniswapV2Module", function () {
 
     console.log("uniPairAddress >> " + uniPairAddress);
     uniPair = new ethers.Contract(uniPairAddress, UniswapV2PairJSON.abi, owner);
-    uniModule = await UniswapV2Module.deploy(uniFactory.address);
+    //uniModule = await UniswapV2Module.deploy(uniFactory.address);
   });
 
   describe("Deployment", function () {
@@ -62,14 +62,14 @@ describe("UniswapV2Module", function () {
         token0 = tokenB.address;
         token1 = tokenA.address;
       }
-      expect(await uniModule.factory()).to.equal(uniFactory.address);
+      //expect(await uniModule.factory()).to.equal(uniFactory.address);
       expect(await uniPair.factory()).to.equal(uniFactory.address);
       expect(await uniPair.token0()).to.equal(token0);
       expect(await uniPair.token1()).to.equal(token1);
-      expect(await uniModule.factory()).to.equal(uniFactory.address);
-      expect(await uniModule.getCFMM(tokenA.address, tokenB.address)).to.equal(
-        uniPair.address
-      );
+      //expect(await uniModule.factory()).to.equal(uniFactory.address);
+      //expect(await uniModule.getCFMM(tokenA.address, tokenB.address)).to.equal(
+      //  uniPair.address
+      //);
     });
   });
 
