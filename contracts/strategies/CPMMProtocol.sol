@@ -4,16 +4,16 @@ pragma abicoder v2;
 
 import "../interfaces/strategies/IProtocol.sol";
 import "../libraries/storage/strategies/CPMMStrategyStorage.sol";
-import "../libraries/storage/rates/DoubleLinearRateStorage.sol";
+import "../libraries/storage/rates/LinearKinkedRateStorage.sol";
 import "../libraries/storage/GammaPoolStorage.sol";
 import "../libraries/storage/ProtocolStorage.sol";
 import "../libraries/PoolAddress.sol";
 import "./cpmm/CPMMLongStrategy.sol";
 import "./cpmm/CPMMShortStrategy.sol";
 import "../interfaces/strategies/ICPMMStrategy.sol";
-import "../interfaces/strategies/base/rates/IDoubleLinearRateModel.sol";
+import "../interfaces/strategies/base/rates/ILinearKinkedRateModel.sol";
 
-contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
+contract CPMMProtocol is IProtocol, ICPMMStrategy, ILinearKinkedRateModel {
 
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
@@ -22,11 +22,9 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
     constructor(address gsFactory, address _factory, uint24 _protocol, bytes32 _initCodeHash, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) {
         owner = gsFactory;
         CPMMStrategyStorage.init(_factory, _initCodeHash, _tradingFee1, _tradingFee2);
-        DoubleLinearRateStorage.init(_baseRate, _optimalUtilRate, _slope1, _slope2);
+        LinearKinkedRateStorage.init(_baseRate, _optimalUtilRate, _slope1, _slope2);
         bytes memory sParams = strategyParams();
         bytes memory rParams = rateParams();
-        //address longStrategy = address(new CPMMLongStrategy(sParams,rParams));
-        //address shortStrategy = address(new CPMMShortStrategy(sParams,rParams));
         ProtocolStorage.init(_protocol,
             address(new CPMMLongStrategy(sParams,rParams)),
             address(new CPMMShortStrategy(sParams,rParams)),
@@ -63,19 +61,19 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
     }
 
     function baseRate() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().baseRate;
+        return LinearKinkedRateStorage.store().baseRate;
     }
 
     function optimalUtilRate() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().optimalUtilRate;
+        return LinearKinkedRateStorage.store().optimalUtilRate;
     }
 
     function slope1() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().slope1;
+        return LinearKinkedRateStorage.store().slope1;
     }
 
     function slope2() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().slope2;
+        return LinearKinkedRateStorage.store().slope2;
     }
 
     function strategyParams() internal virtual view returns(bytes memory) {
@@ -88,8 +86,8 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
     }
 
     function rateParams() internal virtual view returns(bytes memory) {
-        DoubleLinearRateStorage.Store storage rStore = DoubleLinearRateStorage.store();
-        return abi.encode(DoubleLinearRateStorage.Store({
+        LinearKinkedRateStorage.Store storage rStore = LinearKinkedRateStorage.store();
+        return abi.encode(LinearKinkedRateStorage.Store({
             ONE: 10**18,
             YEAR_BLOCK_COUNT: 2252571,
             baseRate: rStore.baseRate,
@@ -114,8 +112,8 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
             tradingFee1: sStore.tradingFee1,
             tradingFee2: sStore.tradingFee2, isSet: false}));
 
-        DoubleLinearRateStorage.Store storage rStore = DoubleLinearRateStorage.store();
-        rParams = abi.encode(DoubleLinearRateStorage.Store({
+        LinearKinkedRateStorage.Store storage rStore = LinearKinkedRateStorage.store();
+        rParams = abi.encode(LinearKinkedRateStorage.Store({
             ONE: 10**18,
             YEAR_BLOCK_COUNT: 2252571,
             baseRate: rStore.baseRate,
@@ -135,8 +133,8 @@ contract CPMMProtocol is IProtocol, ICPMMStrategy, IDoubleLinearRateModel {
         CPMMStrategyStorage.Store memory sParams = abi.decode(sData, (CPMMStrategyStorage.Store));
         CPMMStrategyStorage.init(sParams.factory, sParams.initCodeHash, sParams.tradingFee1, sParams.tradingFee2);
 
-        DoubleLinearRateStorage.Store memory rParams = abi.decode(rData, (DoubleLinearRateStorage.Store));
-        DoubleLinearRateStorage.init(rParams.baseRate, rParams.optimalUtilRate, rParams.slope1, rParams.slope2);
+        LinearKinkedRateStorage.Store memory rParams = abi.decode(rData, (LinearKinkedRateStorage.Store));
+        LinearKinkedRateStorage.init(rParams.baseRate, rParams.optimalUtilRate, rParams.slope1, rParams.slope2);
 
         return true;
     }

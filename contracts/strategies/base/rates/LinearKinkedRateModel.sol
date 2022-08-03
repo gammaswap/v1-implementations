@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../../libraries/storage/rates/DoubleLinearRateStorage.sol";
-import "../../../interfaces/strategies/base/rates/IDoubleLinearRateModel.sol";
+import "../../../libraries/storage/rates/LinearKinkedRateStorage.sol";
+import "../../../interfaces/strategies/base/rates/ILinearKinkedRateModel.sol";
 import "../BaseStrategy.sol";
 
-abstract contract DoubleLinearRateModel is BaseStrategy, IDoubleLinearRateModel {
+abstract contract LinearKinkedRateModel is BaseStrategy, ILinearKinkedRateModel {
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
-        DoubleLinearRateStorage.Store storage store = DoubleLinearRateStorage.store();
+        LinearKinkedRateStorage.Store storage store = LinearKinkedRateStorage.store();
         uint256 utilizationRate = (lpBorrowed * store.ONE) / (lpBalance + lpBorrowed);
         if(utilizationRate <= store.optimalUtilRate) {
             uint256 variableRate = (utilizationRate * store.slope1) / store.optimalUtilRate;
@@ -21,18 +21,18 @@ abstract contract DoubleLinearRateModel is BaseStrategy, IDoubleLinearRateModel 
     }
 
     function baseRate() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().baseRate;
+        return LinearKinkedRateStorage.store().baseRate;
     }
 
     function optimalUtilRate() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().optimalUtilRate;
+        return LinearKinkedRateStorage.store().optimalUtilRate;
     }
 
     function slope1() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().slope1;
+        return LinearKinkedRateStorage.store().slope1;
     }
 
     function slope2() external virtual override view returns(uint256) {
-        return DoubleLinearRateStorage.store().slope2;
+        return LinearKinkedRateStorage.store().slope2;
     }
 }

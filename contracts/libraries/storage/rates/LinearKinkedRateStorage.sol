@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-library DoubleLinearRateStorage {
-    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.rates.doublelinear");
+library LinearKinkedRateStorage {
+    bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.rates.linearkinked");
 
     struct Store {
         uint256 ONE;// = 10**18;
