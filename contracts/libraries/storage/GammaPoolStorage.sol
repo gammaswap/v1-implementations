@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/IGammaPoolFactory.sol";
-import "../../interfaces/strategies/IProtocol.sol";
+import "../../interfaces/IProtocol.sol";
 import "../../interfaces/strategies/base/IShortStrategy.sol";
 import "../../interfaces/strategies/base/ILongStrategy.sol";
 

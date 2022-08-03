@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./GammaPool.sol";
 import "./interfaces/IGammaPoolFactory.sol";
-import "./interfaces/strategies/IProtocol.sol";
+import "./interfaces/IProtocol.sol";
 import "./libraries/PoolAddress.sol";
 import "./PoolDeployer.sol";
 import "hardhat/console.sol";

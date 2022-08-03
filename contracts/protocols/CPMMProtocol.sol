@@ -2,16 +2,16 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "../interfaces/strategies/IProtocol.sol";
+import "../interfaces/IProtocol.sol";
 import "../libraries/storage/strategies/CPMMStrategyStorage.sol";
 import "../libraries/storage/rates/LinearKinkedRateStorage.sol";
 import "../libraries/storage/GammaPoolStorage.sol";
 import "../libraries/storage/ProtocolStorage.sol";
 import "../libraries/PoolAddress.sol";
-import "./cpmm/CPMMLongStrategy.sol";
-import "./cpmm/CPMMShortStrategy.sol";
+import "../strategies/cpmm/CPMMLongStrategy.sol";
+import "../strategies/cpmm/CPMMShortStrategy.sol";
 import "../interfaces/strategies/ICPMMStrategy.sol";
-import "../interfaces/strategies/base/rates/ILinearKinkedRateModel.sol";
+import "../interfaces/rates/ILinearKinkedRateModel.sol";
 
 contract CPMMProtocol is IProtocol, ICPMMStrategy, ILinearKinkedRateModel {
 

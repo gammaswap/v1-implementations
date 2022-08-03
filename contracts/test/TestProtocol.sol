@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "../interfaces/strategies/IProtocol.sol";
+import "../interfaces/IProtocol.sol";
 
 contract TestProtocol is IProtocol {
     address public override longStrategy;

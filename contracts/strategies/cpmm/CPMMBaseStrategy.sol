@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
 import "../../libraries/storage/strategies/CPMMStrategyStorage.sol";
-import "../base/rates/LinearKinkedRateModel.sol";
+import "../../rates/LinearKinkedRateModel.sol";
 import "../../interfaces/strategies/ICPMMStrategy.sol";
+import "../base/BaseStrategy.sol";
 
-abstract contract CPMMBaseStrategy is ICPMMStrategy, LinearKinkedRateModel {
+abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
     constructor(bytes memory sData, bytes memory rData) {
         CPMMStrategyStorage.Store memory sParams = abi.decode(sData, (CPMMStrategyStorage.Store));
         CPMMStrategyStorage.init(sParams.factory, sParams.initCodeHash, sParams.tradingFee1, sParams.tradingFee2);

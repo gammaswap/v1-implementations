@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../../libraries/storage/rates/LinearKinkedRateStorage.sol";
-import "../../../interfaces/strategies/base/rates/ILinearKinkedRateModel.sol";
-import "../BaseStrategy.sol";
+import "../libraries/storage/rates/LinearKinkedRateStorage.sol";
+import "../interfaces/rates/ILinearKinkedRateModel.sol";
+import "../interfaces/rates/AbstractRateModel.sol";
 
-abstract contract LinearKinkedRateModel is BaseStrategy, ILinearKinkedRateModel {
+abstract contract LinearKinkedRateModel is AbstractRateModel, ILinearKinkedRateModel {
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
         LinearKinkedRateStorage.Store storage store = LinearKinkedRateStorage.store();

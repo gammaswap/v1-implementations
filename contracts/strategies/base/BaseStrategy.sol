@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../../libraries/storage/GammaPoolStorage.sol";
 import "../../libraries/GammaSwapLibrary.sol";
+import "../../interfaces/rates/AbstractRateModel.sol";
 
-abstract contract BaseStrategy {
+abstract contract BaseStrategy is AbstractRateModel {
 
     event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -15,8 +16,6 @@ abstract contract BaseStrategy {
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual returns(uint256 liquidity);
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
-
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual view returns(uint256);
 
     function updateIndex(GammaPoolStorage.Store storage store) internal virtual {
         uint256 ONE = store.ONE;
