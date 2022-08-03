@@ -3,22 +3,28 @@ import { expect } from "chai";
 
 describe("GammaPoolFactory", function () {
   let TestERC20: any;
+  let TestProtocol: any;
   let TestPoolAddress: any;
   let GammaPoolFactory: any;
   let factory: any;
-  let testPoolAddress: any;
+  let poolAddress: any;
+  let protocol: any;
+  let protocolZero: any;
   let tokenA: any;
   let tokenB: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
+  let addr3: any;
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     GammaPoolFactory = await ethers.getContractFactory("GammaPoolFactory");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    TestProtocol = await ethers.getContractFactory("TestProtocol");
+    TestPoolAddress = await ethers.getContractFactory("TestPoolAddress");
+    [owner, addr1, addr2, addr3] = await ethers.getSigners();
 
     // To deploy our contract, we just have to call Token.deploy() and await
     // for it to be deployed(), which happens onces its transaction has been
@@ -26,11 +32,19 @@ describe("GammaPoolFactory", function () {
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
     factory = await GammaPoolFactory.deploy(owner.address);
+    poolAddress = await TestPoolAddress.deploy();
+    protocol = await TestProtocol.deploy(addr1.address, addr2.address, 1);
+    protocolZero = await TestProtocol.deploy(addr1.address, addr2.address, 0);
+
+    // address _longStrategy, address _shortStrategy, uint24 _protocol
 
     // We can interact with the contract by calling `hardhatToken.method()`
     await tokenA.deployed();
     await tokenB.deployed();
     await factory.deployed();
+    await protocol.deployed();
+    await protocolZero.deployed();
+    await poolAddress.deployed();
   });
 
   // You can nest describe calls to create subsections.
@@ -55,85 +69,106 @@ describe("GammaPoolFactory", function () {
   });
 
   describe("Create Pool", function () {
-    it("Add Protocol", async function () {
+    it("Add & Remove Protocol", async function () {
       expect(await factory.getProtocol(0)).to.equal(
         ethers.constants.AddressZero
       );
-      /*expect(await factory.getRouter(1)).to.equal(ethers.constants.AddressZero);
-      expect(await factory.getRouter(2)).to.equal(ethers.constants.AddressZero);
-      await factory.addRouter(1, addr1.address);
-      expect(await factory.getRouter(0)).to.equal(ethers.constants.AddressZero);
-      expect(await factory.getRouter(1)).to.equal(addr1.address);
-      expect(await factory.getRouter(2)).to.equal(ethers.constants.AddressZero);/**/
+      expect(await factory.getProtocol(1)).to.equal(
+        ethers.constants.AddressZero
+      );
+      await factory.addProtocol(protocol.address);
+      expect(await factory.getProtocol(0)).to.equal(
+        ethers.constants.AddressZero
+      );
+      expect(await factory.getProtocol(1)).to.equal(protocol.address);
+
+      await factory.removeProtocol(1);
+      expect(await factory.getProtocol(1)).to.equal(
+        ethers.constants.AddressZero
+      );
+
+      expect(factory.addProtocol(protocol.address)).to.be.revertedWith(
+        "PROT_EXISTS"
+      );
+      expect(factory.addProtocol(protocolZero.address)).to.be.revertedWith(
+        "0_PROT"
+      );
+
+      expect(
+        factory.connect(addr1).addProtocol(addr2.address)
+      ).to.be.revertedWith("FORBIDDEN");
+      expect(factory.connect(addr1).removeProtocol(1)).to.be.revertedWith(
+        "FORBIDDEN"
+      );
     });
 
-    /*it("Create Pool", async function () {
-      await factory.addRouter(1, addr1.address);
+    it("Restrict Protocol", async function () {
+      await factory.addProtocol(protocol.address);
+
+      expect(await factory.isProtocolRestricted(1)).to.equal(false);
+
+      await factory.setIsProtocolRestricted(1, true);
+
+      expect(await factory.isProtocolRestricted(1)).to.equal(true);
+      expect(
+        factory.connect(addr1).setIsProtocolRestricted(1, false)
+      ).to.be.revertedWith("FORBIDDEN");
+    });
+
+    it("Create Pool", async function () {
+      await factory.addProtocol(protocol.address);
       expect(await factory.allPoolsLength()).to.equal(0);
-      await factory.createPool(tokenA.address, tokenB.address, 1);
-      const poolAddressStr1: string = await factory.getPool(
-        1,
-        tokenA.address,
-        tokenB.address
-      );
-      const poolAddress1 = ethers.utils.getAddress(poolAddressStr1);
-      expect(poolAddress1).to.not.equal(ethers.constants.AddressZero);
-      const poolAddressStr2: string = await factory.getPool(
-        1,
-        tokenB.address,
-        tokenA.address
-      );
-      const poolAddress2 = ethers.utils.getAddress(poolAddressStr2);
-      expect(poolAddress2).to.not.equal(ethers.constants.AddressZero);
-      expect(poolAddress1).to.equal(poolAddress2);
+      const createPoolParams = {
+        cfmm: addr3.address,
+        protocol: 1,
+        tokens: [tokenA.address, tokenB.address],
+      };
+      await factory.createPool(createPoolParams);
+      const key = ethers.utils.hexZeroPad(ethers.utils.hexlify(1), 32);
+      const pool = await factory.getPool(key);
+      expect(pool).to.not.equal(ethers.constants.AddressZero);
 
+      // Precalculated address
+      const expectedPoolAddress = await poolAddress.calcAddress(
+        factory.address,
+        key
+      );
+      expect(pool).to.equal(expectedPoolAddress);
       expect(await factory.allPoolsLength()).to.equal(1);
-
-      const tokenC = await TestERC20.deploy("Test Token C", "TOKC");
-      await factory.createPool(tokenA.address, tokenC.address, 1);
-
-      expect(await factory.allPoolsLength()).to.equal(2);
     });
 
     it("Create Pool Errors", async function () {
       expect(
         factory.createPool(tokenA.address, tokenB.address, 1)
-      ).to.be.revertedWith("FACTORY.createPool: PROTOCOL_NOT_SET");
-      await factory.addRouter(1, addr1.address);
+      ).to.be.revertedWith("PROT_NOT_SET");
+      await factory.addProtocol(protocol.address);
+
+      const createPoolParams = {
+        cfmm: addr3.address,
+        protocol: 1,
+        tokens: [tokenA.address, tokenB.address],
+      };
+      await factory.createPool(createPoolParams);
+
       expect(
         factory.createPool(tokenA.address, tokenA.address, 1)
-      ).to.be.revertedWith("FACTORY.createPool: IDENTICAL_ADDRESSES");
-      expect(
-        factory.createPool(ethers.constants.AddressZero, tokenA.address, 1)
-      ).to.be.revertedWith("FACTORY.createPool: ZERO_ADDRESS");
-      expect(
-        factory.createPool(tokenA.address, ethers.constants.AddressZero, 1)
-      ).to.be.revertedWith("FACTORY.createPool: ZERO_ADDRESS");
-      await factory.createPool(tokenA.address, tokenB.address, 1);
-      expect(
-        factory.createPool(tokenA.address, tokenB.address, 1)
-      ).to.be.revertedWith("FACTORY.createPool: POOL_EXISTS");
-    });
+      ).to.be.revertedWith("POOL_EXISTS");
 
-    it("Address is set before pool creation", async function () {
-      TestPoolAddress = await ethers.getContractFactory("TestPoolAddress");
-      testPoolAddress = await TestPoolAddress.deploy();
-      await testPoolAddress.deployed();
-      const expectedPoolAddress: string = await testPoolAddress.getPoolAddress(
-        factory.address,
-        tokenA.address,
-        tokenB.address,
-        1
-      );
-      await factory.addRouter(1, addr1.address);
-      await factory.createPool(tokenA.address, tokenB.address, 1);
-      expect(await factory.getPool(1, tokenA.address, tokenB.address)).to.equal(
-        expectedPoolAddress
-      );
-    });/**/
+      await factory.setIsProtocolRestricted(1, true);
+
+      expect(
+        factory.createPool(tokenA.address, tokenA.address, 1)
+      ).to.be.revertedWith("RESTRICTED");
+
+      await factory.setIsProtocolRestricted(1, false);
+
+      expect(
+        factory.createPool(tokenA.address, tokenA.address, 1)
+      ).to.be.revertedWith("POOL_EXISTS");
+    });
   });
 
-  /*describe("Setting Fees", function () {
+  describe("Setting Fees", function () {
     it("Set Fee", async function () {
       expect(await factory.fee()).to.equal(
         ethers.BigNumber.from(5).mul(ethers.BigNumber.from(10).pow(16))
@@ -141,7 +176,7 @@ describe("GammaPoolFactory", function () {
       const _feeToSetter = await factory.feeToSetter();
       expect(_feeToSetter).to.equal(owner.address);
       expect(factory.connect(addr1).setFee(1)).to.be.revertedWith(
-        "FACTORY.setFee: FORBIDDEN"
+        "FORBIDDEN"
       );
       await factory.connect(owner).setFee(1);
       expect(await factory.fee()).to.equal(1);
@@ -152,7 +187,7 @@ describe("GammaPoolFactory", function () {
       const _feeToSetter = await factory.feeToSetter();
       expect(_feeToSetter).to.equal(owner.address);
       expect(factory.connect(addr1).setFeeTo(addr2.address)).to.be.revertedWith(
-        "FACTORY.setFeeTo: FORBIDDEN"
+        "FORBIDDEN"
       );
       await factory.connect(owner).setFeeTo(addr2.address);
       expect(await factory.feeTo()).to.equal(addr2.address);
@@ -164,12 +199,12 @@ describe("GammaPoolFactory", function () {
       expect(_feeToSetter).to.equal(owner.address);
       expect(
         factory.connect(addr1).setFeeToSetter(addr2.address)
-      ).to.be.revertedWith("FACTORY.setFeeToSetter: FORBIDDEN");
+      ).to.be.revertedWith("FORBIDDEN");
       await factory.connect(owner).setFeeToSetter(addr1.address);
       expect(await factory.feeToSetter()).to.equal(addr1.address);
 
       await factory.connect(addr1).setFeeToSetter(addr2.address);
       expect(await factory.feeToSetter()).to.equal(addr2.address);
     });
-  });/**/
+  });
 });

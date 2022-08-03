@@ -6,6 +6,7 @@ import "./interfaces/IGammaPoolFactory.sol";
 import "./interfaces/strategies/IProtocol.sol";
 import "./libraries/PoolAddress.sol";
 import "./PoolDeployer.sol";
+import "hardhat/console.sol";
 
 contract GammaPoolFactory is IGammaPoolFactory{
 
@@ -81,6 +82,9 @@ contract GammaPoolFactory is IGammaPoolFactory{
         (bool success, bytes memory data) = deployer.delegatecall(abi.encodeWithSignature("createPool(bytes32)", key));
         require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.calcAddress(address(this),key)), 'DEPLOY');
 
+        console.log("Pool created with key: ");
+        console.logBytes32(key);
+        //console.log("Changing greeting from '%s' ");
         //pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
         delete _params;
 

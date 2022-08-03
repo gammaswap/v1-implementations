@@ -17,7 +17,7 @@ interface IGammaPoolFactory {
 
     function isProtocolRestricted(uint24 protocol) external view returns(bool);
     function setIsProtocolRestricted(uint24 protocol, bool isRestricted) external;
-    function addProtocol(address module) external;
+    function addProtocol(address protocol) external;
     function removeProtocol(uint24 protocol) external;
     function getProtocol(uint24 protocol) external view returns (address);
     function createPool(CreatePoolParams calldata params) external returns(address);
