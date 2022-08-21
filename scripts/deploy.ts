@@ -6,20 +6,18 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+  const [owner] = await ethers.getSigners();
+  
+  const GammaPoolFactory = await ethers.getContractFactory("GammaPoolFactory");
+  const factory = await GammaPoolFactory.deploy(owner.address);
+  await factory.deployed()
+  console.log("GammaPoolFactory Address >> " + factory.address);
 
-  // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
-
-  await greeter.deployed();
-
-  console.log("Greeter deployed to:", greeter.address);
+  const GammaPool = await ethers.getContractFactory("GammaPool");
+  const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(
+    GammaPool.bytecode
+  );
+  console.log("COMPUTED_INIT_CODE_HASH >> " + COMPUTED_INIT_CODE_HASH)
 }
 
 // We recommend this pattern to be able to use async/await everywhere
@@ -28,3 +26,4 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
