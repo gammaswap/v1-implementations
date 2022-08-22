@@ -12,12 +12,6 @@ async function main() {
   const factory = await GammaPoolFactory.deploy(owner.address);
   await factory.deployed()
   console.log("GammaPoolFactory Address >> " + factory.address);
-
-  const GammaPool = await ethers.getContractFactory("GammaPool");
-  const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(
-    GammaPool.bytecode
-  );
-  console.log("COMPUTED_INIT_CODE_HASH >> " + COMPUTED_INIT_CODE_HASH)
 }
 
 // We recommend this pattern to be able to use async/await everywhere
