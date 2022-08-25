@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 library PoolAddress {
-    bytes32 internal constant POOL_INIT_CODE_HASH = 0x792d270bcbb7e585e82fdbc9bc7913437cc922440405398bb0b293a5bc0f1839;
+    bytes32 internal constant POOL_INIT_CODE_HASH = 0x14f6023825b5ea489c24560eac94b9c8eee6bfbd0cd872cd8be29d4d6e3200ef;
 
     function getPoolKey(address cfmm, uint24 protocol) internal pure returns(bytes32 key) {
         key = keccak256(abi.encode(cfmm, protocol));
