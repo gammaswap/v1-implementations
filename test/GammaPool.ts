@@ -100,13 +100,30 @@ describe("GammaPool", function () {
 
   context("SHORT functions", function () {
     it("Should return totalAssets", async function () {
+      console.log(gammaPool);
       const res = await (await gammaPool.totalAssets()).wait();
       console.log(res);
     });
 
-    it("Should deposit assets to the pool", async function () {
-      const res = await (await gammaPool.deposit(1000, addr1.address)).wait();
-      console.log(res);
-    });
+    // it("Should deposit assets to the pool", async function () {
+    //   const res = await (await gammaPool.deposit(1000, addr1.address)).wait();
+    //   console.log(res);
+    // });
+
+    // it("Should mint the shares", async function () {
+    //   const res = await (await gammaPool.mint(1000, addr2.address)).wait();
+    //   console.log(res);
+    // });
+
+    // it("Should withdraw", async function () {
+    //   await (await gammaPool.deposit(1000, addr1.address)).wait();
+    //   const res = await (await gammaPool.mint(1000, addr1.address, owner.address)).wait();
+    //   console.log(res);
+    // });
+
+    // it("Should redeem", async function () {
+    //   const res = await (await gammaPool.redeem(1000, owner.address, addr1.address)).wait();
+    //   console.log(res);
+    // });
   });
 });
