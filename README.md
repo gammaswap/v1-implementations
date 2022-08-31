@@ -14,8 +14,8 @@ You only need to fill in your address info.
 
 # Steps to Deploy To Contracts To Local Live Network
 
-1. Run ```npx hardhat node``` the root folder in admin mode.
-2. Open a new command prompt to the root folder in admin mode.
-3. Run ```npx hardhat --network localhost run scripts/deploy.ts``` to deploy.
+1. Fill in the details in [scripts/deploy.ts](scripts/deploy.ts) 
+from deploying v1-periphery deployPreCore logs.
+2. Run ```npx hardhat --network localhost run scripts/deploy.ts``` to deploy.
 
 Don't commit the secrets file.
