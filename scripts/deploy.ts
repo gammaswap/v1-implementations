@@ -19,7 +19,7 @@ async function main() {
     factory.address,
     cfmmFactoryAddress,
     1,
-    "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+    "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f", // cfmm pool hash
     1000,
     997,
     10 ^ 16,
@@ -28,6 +28,12 @@ async function main() {
     75 * 10 ^ 16);
   await protocol.deployed()
   factory.addProtocol(protocol.address);
+
+  const GammaPool = await ethers.getContractFactory("GammaPool");
+  const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(
+    GammaPool.bytecode
+  );
+  console.log("GAMMAPOOL_INIT_CODE_HASH >> " + COMPUTED_INIT_CODE_HASH)
 }
 
 // We recommend this pattern to be able to use async/await everywhere
