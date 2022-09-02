@@ -7,6 +7,7 @@ import "../../libraries/storage/strategies/CPMMStrategyStorage.sol";
 import "../../rates/LinearKinkedRateModel.sol";
 import "../../interfaces/strategies/ICPMMStrategy.sol";
 import "../base/BaseStrategy.sol";
+import "hardhat/console.sol";
 
 abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
     constructor(bytes memory sData, bytes memory rData) {
@@ -22,6 +23,7 @@ abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedR
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {
+        console.log(to.balance);
         return ICPMM(cfmm).mint(to);
     }
 

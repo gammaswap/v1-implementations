@@ -3,11 +3,14 @@ pragma solidity ^0.8.0;
 
 import "../strategies/base/ShortStrategy.sol";
 import "../libraries/storage/GammaPoolStorage.sol";
+import "hardhat/console.sol";
 
 contract TestShortStrategy is ShortStrategy {
 
     constructor() {
+        console.log("Inside Constructor");
         GammaPoolStorage.init();
+        console.log("After INIT");
     }
 
     GammaPoolStorage.Store store;
