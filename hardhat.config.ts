@@ -6,9 +6,10 @@ import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+ // "npx hardhat size-contracts" or "yarn run hardhat size-contracts"
+import "hardhat-contract-sizer"
 
 const { ALCHEMY_API_KEY, GOERLI_PRIVATE_KEY } = require("./secrets.json");
-require("hardhat-contract-sizer"); // "npx hardhat size-contracts" or "yarn run hardhat size-contracts"
 
 dotenv.config();
 

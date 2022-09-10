@@ -39,7 +39,7 @@ contract TestShortStrategy is ShortStrategy {
         returns (uint256)
     {}
 
-    function updateReserves(GammaPoolStorage.Store storage store)
+    function updateReserves(GammaPoolStorage.Store storage _store)
         internal
         virtual
         override
@@ -66,7 +66,7 @@ contract TestShortStrategy is ShortStrategy {
     ) internal virtual override returns (uint256[] memory amounts) {}
 
     function calcDepositAmounts(
-        GammaPoolStorage.Store storage store,
+        GammaPoolStorage.Store storage _store,
         uint256[] calldata amountsDesired,
         uint256[] calldata amountsMin
     )

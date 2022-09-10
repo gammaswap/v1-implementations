@@ -17,7 +17,7 @@ contract GammaPoolFactory is IGammaPoolFactory{
     address public override feeTo;
     uint256 public override fee = 5 * (10**16); //5% of borrowed interest gains by default
 
-    mapping(uint24 => address) public override getProtocol;//there's a protocol
+    mapping(uint24 => address) public override getProtocol;//there"s a protocol
     mapping(bytes32 => address) public override getPool;//all GS Pools addresses can be predetermined
     mapping(uint24 => bool) public override isProtocolRestricted;//a protocol creation can be restricted
 
@@ -46,27 +46,27 @@ contract GammaPoolFactory is IGammaPoolFactory{
     }
 
     function addProtocol(address protocol) external virtual override {
-        require(msg.sender == owner,'FORBIDDEN');
-        require(IProtocol(protocol).protocol() > 0,'0_PROT');
-        require(getProtocol[IProtocol(protocol).protocol()] == address(0), 'PROT_EXISTS');
+        require(msg.sender == owner,"FORBIDDEN");
+        require(IProtocol(protocol).protocol() > 0,"0_PROT");
+        require(getProtocol[IProtocol(protocol).protocol()] == address(0), "PROT_EXISTS");
         getProtocol[IProtocol(protocol).protocol()] = protocol;
     }
 
     function removeProtocol(uint24 protocol) external virtual override {
-        require(msg.sender == owner,'FORBIDDEN');
+        require(msg.sender == owner,"FORBIDDEN");
         getProtocol[protocol] = address(0);
     }
 
     function setIsProtocolRestricted(uint24 protocol, bool isRestricted) external virtual override {
-        require(msg.sender == owner,'FORBIDDEN');
+        require(msg.sender == owner,"FORBIDDEN");
         isProtocolRestricted[protocol] = isRestricted;
     }
 
     function createPool(CreatePoolParams calldata params) external virtual override returns (address pool) {
         uint24 protocolId = params.protocol;
 
-        require(getProtocol[protocolId] != address(0), 'PROT_NOT_SET');
-        require(isProtocolRestricted[protocolId] == false || msg.sender == owner, 'RESTRICTED');
+        require(getProtocol[protocolId] != address(0), "PROT_NOT_SET");
+        require(isProtocolRestricted[protocolId] == false || msg.sender == owner, "RESTRICTED");
 
         address protocol = getProtocol[protocolId];
 
@@ -77,15 +77,16 @@ contract GammaPoolFactory is IGammaPoolFactory{
         bytes32 key;
         (_params.tokens, key) = IProtocol(protocol).validateCFMM(params.tokens, cfmm);
 
-        require(getPool[key] == address(0), 'POOL_EXISTS');
+        require(getPool[key] == address(0), "POOL_EXISTS");
 
         (bool success, bytes memory data) = deployer.delegatecall(abi.encodeWithSignature("createPool(bytes32)", key));
-        require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.calcAddress(address(this),key)), 'DEPLOY');
+        // require(success && (data.length > 0 && (pool = abi.decode(data, (address))) == PoolAddress.calcAddress(address(this),key)), "DEPLOY");
+        abi.decode(data, (address)) == PoolAddress.calcAddress(address(this),key);
 
         console.log("Pool created with key: ");
         console.logBytes32(key);
-        //console.log("Changing greeting from '%s' ");
-        //pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn't create it, it will have a different address.
+        //console.log("Changing greeting from "%s" ");
+        //pool = address(new GammaPool{salt: key}());//This is fine because the address is tied to the factory contract here. If the factory didn"t create it, it will have a different address.
         delete _params;
 
         getPool[key] = pool;
@@ -99,17 +100,17 @@ contract GammaPoolFactory is IGammaPoolFactory{
     }
 
     function setFee(uint _fee) external {
-        require(msg.sender == feeToSetter,'FORBIDDEN');
+        require(msg.sender == feeToSetter,"FORBIDDEN");
         fee = _fee;
     }
 
     function setFeeTo(address _feeTo) external {
-        require(msg.sender == feeToSetter,'FORBIDDEN');
+        require(msg.sender == feeToSetter,"FORBIDDEN");
         feeTo = _feeTo;
     }
 
     function setFeeToSetter(address _feeToSetter) external {
-        require(msg.sender == feeToSetter,'FORBIDDEN');
+        require(msg.sender == feeToSetter,"FORBIDDEN");
         feeToSetter = _feeToSetter;
     }
 
