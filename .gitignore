@@ -8,5 +8,9 @@ typechain
 cache
 artifacts
 
+#IDE
 .idea
+
+#access tokens
 secrets.json
+.npmrc

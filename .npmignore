@@ -1,3 +1,13 @@
 hardhat.config.ts
 scripts
 test
+.github
+tasks
+.env.example
+.eslintignore
+.eslintrc.js
+.prettierignore
+.prettierrc
+.solhint.json
+.solhintignore
+tsconfig.json

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
+import "@gammaswap/v1-core/contracts/interfaces/strategies/base/IShortStrategy.sol";
 import "./BaseStrategy.sol";
-import "../../interfaces/strategies/base/IShortStrategy.sol";
 import "../../interfaces/ISendTokensCallback.sol";
 
 abstract contract ShortStrategy is IShortStrategy, BaseStrategy {

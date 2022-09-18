@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../libraries/storage/GammaPoolStorage.sol";
+import "@gammaswap/v1-core/contracts/libraries/storage/GammaPoolStorage.sol";
+
 import "../../libraries/GammaSwapLibrary.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 

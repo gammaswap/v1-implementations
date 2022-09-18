@@ -10,7 +10,12 @@
 }
 ```
 You only need to fill in your address info.
-3. Run ```npx hardhat test```
+3. Add .npmrc file in root folder with the following contents:
+```
+   @gammaswap:registry=https://npm.pkg.github.com/
+   //npm.pkg.github.com/:_authToken=<GITHUB_ACCESS_TOKEN>
+```
+4. Run ```npx hardhat test```
 
 # Steps to Deploy To Contracts To Local Live Network
 
