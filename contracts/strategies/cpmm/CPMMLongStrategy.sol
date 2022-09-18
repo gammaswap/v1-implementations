@@ -19,7 +19,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         returns(uint256[] memory _tokensHeld, uint256[] memory amounts) {
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
-        require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], '< amounts');
+        require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], "< amounts");
 
         address cfmm = store.cfmm;
         GammaSwapLibrary.safeTransfer(store.tokens[0], cfmm, amounts[0]);
@@ -51,7 +51,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
             outAmts[i] = calcAmtOut(inAmt1, reserve0, reserve1);
         }
         if(i == 1) (inAmt0, inAmt1, amount0, amount1) = (inAmt1, inAmt0, amount1, amount0);
-        require(outAmts[i] <= tokensHeld[i] - amount0, '> outAmt');
+        require(outAmts[i] <= tokensHeld[i] - amount0, "> outAmt");
         address cfmm = store.cfmm;
         _tokensHeld = new uint256[](2);
         _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
@@ -80,7 +80,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
     }
 
     function rebalancePosition(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1) internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
-        require((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0), 'bad delta');
+        require((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0), "bad delta");
         if(delta0 > 0 || delta1 > 0) {
             inAmt0 = uint256(delta1);//buy token1
             if(delta0 > 0) (inAmt0, reserve0, reserve1) = (uint256(delta0), reserve1, reserve0);//buy token0
@@ -96,7 +96,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
     // selling exactly amountOut
     function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
-        require(reserveOut > 0 && reserveIn > 0, '0 reserve');
+        require(reserveOut > 0 && reserveIn > 0, "0 reserve");
         CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
         uint256 amountOutWithFee = amountOut * store.tradingFee2;
         uint256 denominator = (reserveOut * store.tradingFee1) + amountOutWithFee;
@@ -105,7 +105,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
     // buying exactly amountIn
     function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
-        require(reserveOut > 0 && reserveIn > 0, '0 reserve');
+        require(reserveOut > 0 && reserveIn > 0, "0 reserve");
         CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
         uint256 denominator = (reserveIn - amountIn) * store.tradingFee2;
         return (reserveOut * amountIn * store.tradingFee1 / denominator) + 1;

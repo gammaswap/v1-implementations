@@ -75,7 +75,7 @@ abstract contract BaseStrategy is AbstractRateModel {
     }
 
     function _mint(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
-        require(amount > 0, '0 amt');
+        require(amount > 0, "0 amt");
         store.totalSupply += amount;
         store.balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);

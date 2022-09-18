@@ -25,7 +25,7 @@ library CPMMStrategyStorage {
 
     function init(address factory, bytes32 initCodeHash, uint16 tradingFee1, uint16 tradingFee2) internal {
         Store storage _store = store();
-        require(_store.isSet == false,'SET');
+        require(_store.isSet == false, "SET");
         _store.isSet = true;
         _store.factory = factory;
         _store.initCodeHash = initCodeHash;

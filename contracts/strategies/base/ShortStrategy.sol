@@ -60,7 +60,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function _depositNoPull(address to) public virtual override lock returns(uint256 shares) {//TODO: Should probably change the name of this function (addReserves)
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 assets = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
-        require(assets > 0, '0 dep');
+        require(assets > 0, "0 dep");
 
         updateIndex(store);
 
@@ -75,11 +75,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         //get the liquidity tokens
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 shares = store.balanceOf[address(this)];
-        require(shares > 0, '0 shares');
+        require(shares > 0, "0 shares");
 
         updateIndex(store);
 
-        require((assets = _previewRedeem(store, shares)) <= store.LP_TOKEN_BALANCE, '> liq');
+        require((assets = _previewRedeem(store, shares)) <= store.LP_TOKEN_BALANCE, "> liq");
 
         //Uni/Sus: U -> GP -> CFMM -> U
         //                    just call strategy and ask strategy to use callback to transfer to CFMM then strategy calls burn
@@ -119,11 +119,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         //get the liquidity tokens
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 shares = store.balanceOf[address(this)];
-        require(shares > 0, '0 shares');
+        require(shares > 0, "0 shares");
 
         updateIndex(store);
 
-        require((assets = _previewRedeem(store, shares)) <= store.LP_TOKEN_BALANCE, '> liq');
+        require((assets = _previewRedeem(store, shares)) <= store.LP_TOKEN_BALANCE, "> liq");
 
         //Uni/Sus: U -> GP -> CFMM -> U
         //                    just call strategy and ask strategy to use callback to transfer to CFMM then strategy calls burn
@@ -180,7 +180,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         updateIndex(store);
 
-        require(assets <= store.LP_TOKEN_BALANCE, '> liq');
+        require(assets <= store.LP_TOKEN_BALANCE, "> liq");
 
         shares = _previewWithdraw(store, assets); // No need to check for rounding error, previewWithdraw rounds up.
 
@@ -212,7 +212,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         // Check for rounding error since we round down in previewRedeem.
         require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
-        require(assets <= store.LP_TOKEN_BALANCE, '> liq');
+        require(assets <= store.LP_TOKEN_BALANCE, "> liq");
 
         beforeWithdraw(store, assets, shares);
 

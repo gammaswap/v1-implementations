@@ -12,10 +12,10 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override returns (uint256[] memory amounts, address payee) {
-        require(amountsDesired[0] > 0 && amountsDesired[1] > 0, '0 amount');
+        require(amountsDesired[0] > 0 && amountsDesired[1] > 0, "0 amount");
 
         (uint256 reserve0, uint256 reserve1) = (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1]);
-        require(reserve0 > 0 && reserve1 > 0, '0 reserve');
+        require(reserve0 > 0 && reserve1 > 0, "0 reserve");
 
         payee = store.cfmm;
         if (reserve0 == 0 && reserve1 == 0) {
@@ -38,7 +38,7 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
     }
 
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
-        require(amountOptimal >= amountMin, '< minAmt');
+        require(amountOptimal >= amountMin, "< minAmt");
     }
 
     function getReserves(address cfmm) internal virtual override view returns(uint256[] memory reserves) {

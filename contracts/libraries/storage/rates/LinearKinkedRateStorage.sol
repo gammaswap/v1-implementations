@@ -25,7 +25,7 @@ library LinearKinkedRateStorage {
 
     function init(uint256 baseRate, uint256 optimalUtilRate, uint256 slope1, uint256 slope2) internal {
         Store storage _store = store();
-        require(_store.isSet == false,'SET');
+        require(_store.isSet == false, "SET");
         _store.ONE = 10**18;
         _store.YEAR_BLOCK_COUNT = 2252571;
         _store.baseRate = baseRate;

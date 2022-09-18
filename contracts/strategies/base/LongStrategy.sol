@@ -22,12 +22,12 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
     function getLoan(GammaPoolStorage.Store storage store, uint256 tokenId) internal virtual view returns(GammaPoolStorage.Loan storage _loan) {
         _loan = store.loans[tokenId];
-        require(_loan.id > 0, '0 id');
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), 'FORBIDDEN');
+        require(_loan.id > 0, "0 id");
+        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), "FORBIDDEN");
     }
 
     function checkMargin(GammaPoolStorage.Loan storage _loan, uint24 limit) internal virtual view {
-        require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, 'margin');
+        require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, "margin");
     }
 
     function updateCollateral(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
@@ -53,7 +53,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
         for(uint256 i = 0; i < store.tokens.length; i++) {
-            require(_loan.tokensHeld[i] > amounts[i], '> amt');
+            require(_loan.tokensHeld[i] > amounts[i], "> amt");
             GammaSwapLibrary.safeTransfer(store.tokens[i], to, amounts[i]);
             _loan.tokensHeld[i] = _loan.tokensHeld[i] - amounts[i];
             store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - amounts[i];
@@ -70,7 +70,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
 
-        require(lpTokens < store.LP_TOKEN_BALANCE, '> liq');
+        require(lpTokens < store.LP_TOKEN_BALANCE, "> liq");
 
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
@@ -85,7 +85,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         updateCollateral(store, _loan);
 
         openLoan(store, _loan, calcInvariant(store.cfmm, amounts), lpTokens);
-        require(store.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(store.cfmm, address(this)), 'LP < Bal');
+        require(store.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(store.cfmm, address(this)), "LP < Bal");
 
         checkMargin(_loan, 800);
     }
