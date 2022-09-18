@@ -137,6 +137,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
     }
 
+    function initCFMMReserves() public virtual override lock returns(bool) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        updateReserves(store);
+        return true;
+    }
 
     //*************ERC-4626 functions************//
 

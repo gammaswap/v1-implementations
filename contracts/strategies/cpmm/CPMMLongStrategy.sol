@@ -61,7 +61,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         sendToken(store.tokens[1], cfmm, outAmts[1]);
 
         ICPMM(cfmm).swap(inAmt0,inAmt1, address(this), new bytes(0));
-    }/**/
+    }
 
     function sendToken(address token, address to, uint256 amount) internal {
         if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);

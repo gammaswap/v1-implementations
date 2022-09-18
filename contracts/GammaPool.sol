@@ -19,7 +19,8 @@ contract GammaPool is IGammaPool, GammaPoolERC4626 {
         GammaPoolStorage.init();
         (bytes memory protParams, bytes memory stratParams, bytes memory rateParams) = IProtocol(GammaPoolStorage.store().protocol).parameters();
         (bool success,bytes memory data) = GammaPoolStorage.store().protocol.delegatecall(abi.encodeWithSelector(IProtocol(GammaPoolStorage.store().protocol).initialize.selector, protParams, stratParams, rateParams));
-        require(success && (data.length == 0 || abi.decode(data, (bool))),'INIT');
+        (bool success2,bytes memory data2) = GammaPoolStorage.store().shortStrategy.delegatecall(abi.encodeWithSelector(IShortStrategy(GammaPoolStorage.store().shortStrategy).initCFMMReserves.selector));
+        require(success && success2 && (data.length == 0 || abi.decode(data, (bool))),'INIT');
     }
 
     function cfmm() external virtual override view returns(address) {

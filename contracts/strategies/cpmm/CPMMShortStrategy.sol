@@ -18,10 +18,6 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
         require(reserve0 > 0 && reserve1 > 0, '0 reserve');
 
         payee = store.cfmm;
-        if (reserve0 == 0 && reserve1 == 0) {
-            return(amountsDesired, payee);
-        }
-
         amounts = new uint256[](2);
 
         uint256 optimalAmount1 = (amountsDesired[0] * reserve1) / reserve0;
