@@ -14,13 +14,14 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
             internal virtual override returns (uint256[] memory amounts, address payee) {
         require(amountsDesired[0] > 0 && amountsDesired[1] > 0, "0 amount");
 
-        (uint256 reserve0, uint256 reserve1) = (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1]);
-        require(reserve0 > 0 && reserve1 > 0, "0 reserve");
+        (uint256 reserve0, uint256 reserve1,) = ICPMM(store.cfmm).getReserves();
 
         payee = store.cfmm;
         if (reserve0 == 0 && reserve1 == 0) {
             return(amountsDesired, payee);
         }
+
+        require(reserve0 > 0 && reserve1 > 0, "0 reserve");
 
         amounts = new uint256[](2);
 

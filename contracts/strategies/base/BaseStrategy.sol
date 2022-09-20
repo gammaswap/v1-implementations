@@ -8,6 +8,8 @@ import "../../interfaces/rates/AbstractRateModel.sol";
 
 abstract contract BaseStrategy is AbstractRateModel {
 
+    event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
+        uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 lpBorrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
@@ -17,6 +19,26 @@ abstract contract BaseStrategy is AbstractRateModel {
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual returns(uint256 liquidity);
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
+
+    function updateTWAP(GammaPoolStorage.Store storage store) internal virtual {
+        uint32 blockTimestamp = uint32(block.timestamp % 2**32);
+        uint32 timeElapsed = blockTimestamp - store.lastBlockTimestamp;
+        uint32 secondsInADay = 86400;
+        if (timeElapsed > 0) {
+            if (timeElapsed >= secondsInADay) { // reset
+                store.cumulativeTime = 0;
+                store.cumulativeYield = 0;
+            }
+            if (store.cumulativeTime < secondsInADay) {
+                store.cumulativeTime += timeElapsed;
+                store.cumulativeYield += timeElapsed * store.lastFeeIndex;
+                store.yieldTWAP = store.cumulativeYield / store.cumulativeTime;
+            } else {
+                store.yieldTWAP = (store.yieldTWAP * (secondsInADay - timeElapsed) + store.lastFeeIndex * timeElapsed) / secondsInADay;
+            }
+        }
+        store.lastBlockTimestamp = blockTimestamp;
+    }
 
     function updateIndex(GammaPoolStorage.Store storage store) internal virtual {
         uint256 ONE = store.ONE;
@@ -39,11 +61,12 @@ abstract contract BaseStrategy is AbstractRateModel {
             uint256 blockDiff = block.number - store.LAST_BLOCK_NUMBER;
             uint256 adjBorrowRate = (blockDiff * store.borrowRate) / 2252571;//2252571 year block count
             store.lastFeeIndex = store.lastCFMMFeeIndex + adjBorrowRate;
+            updateTWAP(store);
         }
 
         store.BORROWED_INVARIANT = (store.BORROWED_INVARIANT * store.lastFeeIndex) / ONE;
 
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply ) / store.lastCFMMInvariant;
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply) / store.lastCFMMInvariant;
         store.LP_INVARIANT = (store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
         store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;

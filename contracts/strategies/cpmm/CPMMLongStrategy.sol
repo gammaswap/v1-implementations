@@ -22,45 +22,13 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], "< amounts");
 
         address cfmm = store.cfmm;
-        GammaSwapLibrary.safeTransfer(store.tokens[0], cfmm, amounts[0]);
-        GammaSwapLibrary.safeTransfer(store.tokens[1], cfmm, amounts[1]);
+        sendToken(store.tokens[0], cfmm, amounts[0]);
+        sendToken(store.tokens[1], cfmm, amounts[1]);
 
         _tokensHeld = new uint256[](2);
         _tokensHeld[0] = tokensHeld[0] - amounts[0];
         _tokensHeld[1] = tokensHeld[1] - amounts[1];
     }
-
-    function rebalancePosition(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld){
-        (uint256 amount0, uint256 amount1) = convertLiquidityToAmounts(store, liquidity);
-        uint256 ONE = store.ONE;
-        uint256 inAmt0;
-        uint256 inAmt1;
-        uint256[] memory outAmts = new uint256[](2);//this gets subtracted from tokensHeld
-        uint8 i;
-        {
-            uint256 reserve0 = store.CFMM_RESERVES[0];
-            uint256 reserve1 = store.CFMM_RESERVES[1];
-            uint256 currPx = reserve1 * ONE / reserve0;
-            uint256 initPx = tokensHeld[1] * ONE / tokensHeld[0];
-            if (currPx > initPx) {//we sell token0
-                inAmt1 = liquidity * (Math.sqrt(currPx * ONE) - Math.sqrt(initPx * ONE));
-            } else if(currPx < initPx) {//we sell token1
-                inAmt1 = liquidity * (ONE - Math.sqrt((currPx * ONE / initPx) * ONE)) / Math.sqrt(currPx * ONE);
-                (reserve0, reserve1, i) = (reserve1, reserve0, 1);
-            }
-            outAmts[i] = calcAmtOut(inAmt1, reserve0, reserve1);
-        }
-        if(i == 1) (inAmt0, inAmt1, amount0, amount1) = (inAmt1, inAmt0, amount1, amount0);
-        require(outAmts[i] <= tokensHeld[i] - amount0, "> outAmt");
-        address cfmm = store.cfmm;
-        _tokensHeld = new uint256[](2);
-        _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmts[0];
-        _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmts[1];
-        sendToken(store.tokens[0], cfmm, outAmts[0]);
-        sendToken(store.tokens[1], cfmm, outAmts[1]);
-
-        ICPMM(cfmm).swap(inAmt0,inAmt1, address(this), new bytes(0));
-    }/**/
 
     function sendToken(address token, address to, uint256 amount) internal {
         if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);

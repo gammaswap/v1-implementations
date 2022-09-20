@@ -16,8 +16,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld)
         internal virtual returns(uint256[] memory _tokensHeld, uint256[] memory amounts);
 
-    function rebalancePosition(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
-
     function rebalancePosition(GammaPoolStorage.Store storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual returns(uint256[] memory _tokensHeld);
 
     function getLoan(GammaPoolStorage.Store storage store, uint256 tokenId) internal virtual view returns(GammaPoolStorage.Loan storage _loan) {
@@ -45,6 +43,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         updateCollateral(store, _loan);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
         return _loan.tokensHeld;/**/
     }
 
@@ -64,6 +63,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         _loan.heldLiquidity = calcInvariant(store.cfmm, tokensHeld);
 
         checkMargin(_loan, 800);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
         return _loan.tokensHeld;
     }
 
@@ -88,6 +88,11 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         require(store.LP_TOKEN_BALANCE == GammaSwapLibrary.balanceOf(store.cfmm, address(this)), "LP < Bal");
 
         checkMargin(_loan, 800);
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
     }
 
     function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
@@ -103,6 +108,9 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         liquidityPaid = lpTokensPaid * store.lastCFMMInvariant / store.lastCFMMTotalSupply;
 
         payLoan(store, _loan, liquidityPaid, lpTokensPaid);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
 
         //Do I have the amounts in the tokensHeld?
         //so to swap you send the amount you want to swap to CFMM
@@ -120,17 +128,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         tokensHeld = rebalancePosition(store, deltas, _loan.tokensHeld);
         checkMargin(_loan, 850);
         _loan.tokensHeld = tokensHeld;
-    }
-
-    function _rebalanceCollateralWithLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256[] memory tokensHeld) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
-
-        updateLoan(store, _loan);
-
-        tokensHeld = rebalancePosition(store, liquidity, _loan.tokensHeld);
-        checkMargin(_loan, 850);
-        _loan.tokensHeld = tokensHeld;
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
     }
 
     function openLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 liquidity, uint256 lpTokens) internal virtual {

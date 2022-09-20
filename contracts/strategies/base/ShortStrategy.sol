@@ -18,12 +18,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function getReserves(address cfmm) internal virtual view returns(uint256[] memory);
 
-    function getBorrowRate(uint256 lpBalance, uint256 lpBorrowed) public virtual override view returns(uint256) {
-        return calcBorrowRate(lpBalance, lpBorrowed);
-    }
-
     function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlackNum) public view virtual override returns(uint256) {
-        (uint256 lastFeeIndex,, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) = calcFeeIndex(cfmm, getBorrowRate(lpBalance, lpBorrowed), prevCFMMInvariant, prevCFMMTotalSupply, lastBlackNum);
+        (uint256 lastFeeIndex,, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) = calcFeeIndex(cfmm, calcBorrowRate(lpBalance, lpBorrowed), prevCFMMInvariant, prevCFMMTotalSupply, lastBlackNum);
         borrowedInvariant = borrowedInvariant * lastFeeIndex / (10**18);
         return lpBalance + (borrowedInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
     }
@@ -49,13 +45,6 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         }
     }
 
-    function calcBorrowedLPTokensPlusInterest(uint256 borrowedInvariant, uint256 lastFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual override pure returns(uint256) {
-        borrowedInvariant = borrowedInvariant * lastFeeIndex / (10**18);
-        return (borrowedInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
-    }
-
-
-
     //********* Short Gamma Functions *********//
     function _depositNoPull(address to) public virtual override lock returns(uint256 shares) {//TODO: Should probably change the name of this function (addReserves)
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
@@ -68,7 +57,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         _mint(store, to, shares);
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-        //emit Mint(msg.sender, amountA, amountB);
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     function _withdrawNoPull(address to) public virtual override lock returns(uint256 assets) {//TODO: Should probably change the name of this function (addReserves)
@@ -91,7 +82,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         _burn(store, address(this), shares);
 
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(cfmm, address(this));
-        //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory reserves, uint256 shares) {
@@ -134,9 +127,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         _burn(store, address(this), shares);
 
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-        //emit Burn(msg.sender, _amount0, _amount1, uniLiquidity, to);
-    }
 
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+    }
 
     //*************ERC-4626 functions************//
 
@@ -153,9 +147,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         _mint(store, to, shares);
 
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+
         emit Deposit(msg.sender, to, assets, shares);
 
         afterDeposit(store, assets, shares);
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     function _mint(uint256 shares, address to) external virtual override lock returns(uint256 assets) {
@@ -170,9 +169,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         _mint(store, to, shares);
 
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+
         emit Deposit(msg.sender, to, assets, shares);
 
         afterDeposit(store, assets, shares);
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     function _withdraw(uint256 assets, address to, address from) external virtual override lock returns(uint256 shares) {
@@ -197,6 +201,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         emit Withdraw(msg.sender, to, from, assets, shares);
 
         GammaSwapLibrary.safeTransfer(store.cfmm, to, assets);
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     function _redeem(uint256 shares, address to, address from) external virtual override lock returns(uint256 assets) {
@@ -221,40 +229,44 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         emit Withdraw(msg.sender, to, from, assets, shares);
 
         GammaSwapLibrary.safeTransfer(store.cfmm, to, assets);
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+
+        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
+            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     //ACCOUNTING LOGIC
 
-    function _previewDeposit(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
+    function _convertToShares(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         uint256 _totalAssets = store.LP_TOKEN_TOTAL;
 
         //return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
-        return supply == 0 ? assets : (assets * supply) / _totalAssets;
+        return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
     }
 
-    function _previewMint(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
-        uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+    function _convertToAssets(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
+        uint256 supply = store.totalSupply;
         uint256 _totalAssets = store.LP_TOKEN_TOTAL;
 
         //return supply == 0 ? shares : shares.mulDivUp(_totalAssets, supply);
         return supply == 0 ? shares : (shares * _totalAssets) / supply;
     }
 
-    function _previewWithdraw(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
-        uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        uint256 _totalAssets = store.LP_TOKEN_TOTAL;
+    function _previewDeposit(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
+        return _convertToShares(store, assets);
+    }
 
-        //return supply == 0 ? assets : assets.mulDivUp(supply, _totalAssets);
-        return supply == 0 ? assets : (assets * supply) / _totalAssets;
+    function _previewMint(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
+        return _convertToAssets(store, shares);
+    }
+
+    function _previewWithdraw(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
+        return _convertToShares(store, assets);
     }
 
     function _previewRedeem(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
-        uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        uint256 _totalAssets = store.LP_TOKEN_TOTAL;
-
-        //return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
-        return supply == 0 ? shares : (shares * _totalAssets) / supply;
+        return _convertToAssets(store, shares);
     }
 
     //INTERNAL HOOKS LOGIC
