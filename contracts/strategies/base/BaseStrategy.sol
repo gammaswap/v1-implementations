@@ -9,7 +9,7 @@ import "../../interfaces/rates/AbstractRateModel.sol";
 abstract contract BaseStrategy is AbstractRateModel {
 
     event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
-        uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 lpBorrowedInvariant);
+        uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
@@ -64,8 +64,13 @@ abstract contract BaseStrategy is AbstractRateModel {
     function updateStore(GammaPoolStorage.Store storage store) internal virtual {
         store.BORROWED_INVARIANT = (store.BORROWED_INVARIANT * store.lastFeeIndex) / store.ONE;
 
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply) / store.lastCFMMInvariant;
-        store.LP_INVARIANT = (store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
+        if(store.lastCFMMInvariant > 0 && store.lastCFMMTotalSupply > 0) {
+            store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply) / store.lastCFMMInvariant;
+            store.LP_INVARIANT = (store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
+        } else {
+            store.LP_TOKEN_BORROWED_PLUS_INTEREST = 0;
+            store.LP_INVARIANT = 0;
+        }
         store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 
@@ -77,11 +82,11 @@ abstract contract BaseStrategy is AbstractRateModel {
 
         updateCFMMIndex(store);
         updateFeeIndex(store);
-        updateTWAP(store);
+        // updateTWAP(store);
         updateStore(store);
 
         if(store.BORROWED_INVARIANT > 0) {
-            mintToDevs(store);
+            // mintToDevs(store);
         }
     }
 
@@ -103,8 +108,7 @@ abstract contract BaseStrategy is AbstractRateModel {
 
     function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal {
         updateIndex(store);
-        _loan.liquidity = (_loan.liquidity * store.accFeeIndex) / _loan.rateIndex;
-        _loan.rateIndex = store.accFeeIndex;
+        updateLoanLiquidity(_loan, store.accFeeIndex);
     }
 
     function updateLoanLiquidity(GammaPoolStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual {
