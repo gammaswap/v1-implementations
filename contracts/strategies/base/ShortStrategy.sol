@@ -18,31 +18,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function getReserves(address cfmm) internal virtual view returns(uint256[] memory);
 
-    function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlackNum) public view virtual override returns(uint256) {
-        (uint256 lastFeeIndex,, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) = calcFeeIndex(cfmm, calcBorrowRate(lpBalance, lpBorrowed), prevCFMMInvariant, prevCFMMTotalSupply, lastBlackNum);
-        borrowedInvariant = borrowedInvariant * lastFeeIndex / (10**18);
-        return lpBalance + (borrowedInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
-    }
-
-    function calcFeeIndex(address cfmm, uint256 borrowRate, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlackNum)
-        public virtual override view returns(uint256 lastFeeIndex, uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
-        uint256 ONE = 10**18;
-        lastCFMMFeeIndex = ONE;
-        {
-            lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
-            lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
-        }
-
-        if(lastCFMMTotalSupply > 0) {
-            uint256 denominator = (prevCFMMInvariant * lastCFMMTotalSupply) / ONE;
-            lastCFMMFeeIndex = (lastCFMMInvariant * prevCFMMTotalSupply) / denominator;
-        }
-
-        {
-            uint256 blockDiff = block.number - lastBlackNum;
-            uint256 adjBorrowRate = (blockDiff * borrowRate) / 2252571;//2252571 year block count
-            lastFeeIndex = lastCFMMFeeIndex + adjBorrowRate;
-        }
+    function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
+        uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpBalance, lpBorrowed), lastBlockNum);
+        return lpBalance + calcLPTokenBorrowedPlusInterest(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
     }
 
     //********* Short Gamma Functions *********//
@@ -190,7 +170,6 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         if (msg.sender != from) {
             uint256 allowed = store.allowance[from][msg.sender]; // Saves gas for limited approvals.
-
             if (allowed != type(uint256).max) store.allowance[from][msg.sender] = allowed - shares;
         }
 
@@ -214,7 +193,6 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         if (msg.sender != from) {
             uint256 allowed = store.allowance[from][msg.sender]; // Saves gas for limited approvals.
-
             if (allowed != type(uint256).max) store.allowance[from][msg.sender] = allowed - shares;
         }
 
@@ -240,17 +218,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function _convertToShares(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         uint256 _totalAssets = store.LP_TOKEN_TOTAL;
-
-        //return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
         return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
     }
 
     function _convertToAssets(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
         uint256 supply = store.totalSupply;
-        uint256 _totalAssets = store.LP_TOKEN_TOTAL;
-
-        //return supply == 0 ? shares : shares.mulDivUp(_totalAssets, supply);
-        return supply == 0 ? shares : (shares * _totalAssets) / supply;
+        return supply == 0 ? shares : (shares * store.LP_TOKEN_TOTAL) / supply;
     }
 
     function _previewDeposit(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {

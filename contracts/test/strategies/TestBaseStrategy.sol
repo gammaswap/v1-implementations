@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../strategies/base/BaseStrategy.sol";
-import "../interfaces/external/ICPMM.sol";
-import "../libraries/Math.sol";
+import "../../interfaces/external/ICPMM.sol";
+import "../../libraries/Math.sol";
+import "../../strategies/base/BaseStrategy.sol";
 
 contract TestBaseStrategy is BaseStrategy {
 
@@ -189,7 +189,6 @@ contract TestBaseStrategy is BaseStrategy {
         return GammaPoolStorage.store().balanceOf[account];
     }
 
-    // Need to set this
     function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {
         return borrowRate;
     }
@@ -202,7 +201,6 @@ contract TestBaseStrategy is BaseStrategy {
         updateReserves(GammaPoolStorage.store());
     }
 
-    // Need to set this
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
     }
@@ -211,7 +209,6 @@ contract TestBaseStrategy is BaseStrategy {
         invariant = _invariant;
     }
 
-    // Need to set this
     function calcInvariant(address, uint256[] memory) internal virtual override view returns(uint256) {
         return invariant;
     }

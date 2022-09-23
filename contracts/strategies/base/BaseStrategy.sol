@@ -40,37 +40,52 @@ abstract contract BaseStrategy is AbstractRateModel {
         store.lastBlockTimestamp = blockTimestamp;
     }
 
+    function calcCFMMFeeIndex(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
+        uint256 ONE = 10**18;
+        if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
+            uint256 denominator = (prevCFMMInvariant * lastCFMMTotalSupply) / ONE;
+            return (lastCFMMInvariant * prevCFMMTotalSupply) / denominator;
+        }
+        return ONE;
+    }
+
+    function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 lastBlockNum) internal virtual view returns(uint256) {
+        uint256 blockDiff = block.number - lastBlockNum;
+        uint256 adjBorrowRate = (blockDiff * borrowRate) / 2252571;//2252571 year block count
+        return lastCFMMFeeIndex + adjBorrowRate;
+    }
+
     function updateCFMMIndex(GammaPoolStorage.Store storage store) internal virtual {
         updateReserves(store);
         uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
         uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(store.cfmm);
-        if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && store.lastCFMMTotalSupply > 0 && store.lastCFMMInvariant > 0) {
-            uint256 denominator = (store.lastCFMMInvariant * lastCFMMTotalSupply) / store.ONE;
-            store.lastCFMMFeeIndex = (lastCFMMInvariant * store.lastCFMMTotalSupply) / denominator;
-        } else {
-            store.lastCFMMFeeIndex = store.ONE;
-        }
+        store.lastCFMMFeeIndex = calcCFMMFeeIndex(lastCFMMInvariant, lastCFMMTotalSupply, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
         store.lastCFMMInvariant = lastCFMMInvariant;
         store.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
 
     function updateFeeIndex(GammaPoolStorage.Store storage store) internal virtual {
         store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
-        uint256 blockDiff = block.number - store.LAST_BLOCK_NUMBER;
-        uint256 adjBorrowRate = (blockDiff * store.borrowRate) / 2252571;//2252571 year block count
-        store.lastFeeIndex = store.lastCFMMFeeIndex + adjBorrowRate;
+        store.lastFeeIndex = calcFeeIndex(store.lastCFMMFeeIndex, store.borrowRate, store.LAST_BLOCK_NUMBER);
+    }
+
+    function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual pure returns(uint256) {
+        return  borrowedInvariant * lastFeeIndex / (10**18);
+    }
+
+    function calcLPTokenBorrowedPlusInterest(uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) internal virtual pure returns(uint256) {
+        return lastCFMMInvariant == 0 ? 0 : (borrowedInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
+    }
+
+    function calcLPInvariant(uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual pure returns(uint256) {
+        return lastCFMMTotalSupply == 0 ? 0 : (lpTokenBalance * lastCFMMInvariant) / lastCFMMTotalSupply;
     }
 
     function updateStore(GammaPoolStorage.Store storage store) internal virtual {
-        store.BORROWED_INVARIANT = (store.BORROWED_INVARIANT * store.lastFeeIndex) / store.ONE;
+        store.BORROWED_INVARIANT = accrueBorrowedInvariant(store.BORROWED_INVARIANT, store.lastFeeIndex);//(store.BORROWED_INVARIANT * store.lastFeeIndex) / store.ONE;
 
-        if(store.lastCFMMInvariant > 0 && store.lastCFMMTotalSupply > 0) {
-            store.LP_TOKEN_BORROWED_PLUS_INTEREST = (store.BORROWED_INVARIANT * store.lastCFMMTotalSupply) / store.lastCFMMInvariant;
-            store.LP_INVARIANT = (store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply;
-        } else {
-            store.LP_TOKEN_BORROWED_PLUS_INTEREST = 0;
-            store.LP_INVARIANT = 0;
-        }
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(store.BORROWED_INVARIANT, store.lastCFMMTotalSupply, store.lastCFMMInvariant);
+        store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
         store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 

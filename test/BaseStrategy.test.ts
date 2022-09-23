@@ -7,8 +7,8 @@ const PROTOCOL_ID = 1;
 describe("BaseStrategy", function () {
   let TestERC20: any;
   let TestCFMM: any;
-  let TestBaseStrategy: any;
-  let StrategyFactory: any;
+  let TestStrategy: any;
+  let TestStrategyFactory: any;
   let TestProtocol: any;
   let tokenA: any;
   let tokenB: any;
@@ -26,8 +26,10 @@ describe("BaseStrategy", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCFMM = await ethers.getContractFactory("TestCFMM");
-    StrategyFactory = await ethers.getContractFactory("TestStrategyFactory");
-    TestBaseStrategy = await ethers.getContractFactory("TestBaseStrategy");
+    TestStrategyFactory = await ethers.getContractFactory(
+      "TestStrategyFactory"
+    );
+    TestStrategy = await ethers.getContractFactory("TestBaseStrategy");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
     [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -46,7 +48,7 @@ describe("BaseStrategy", function () {
       addr2.address,
       PROTOCOL_ID
     );
-    factory = await StrategyFactory.deploy(
+    factory = await TestStrategyFactory.deploy(
       cfmm.address,
       PROTOCOL_ID,
       [tokenA.address, tokenB.address],
@@ -56,7 +58,7 @@ describe("BaseStrategy", function () {
     await (await factory.createBaseStrategy()).wait();
     const strategyAddr = await factory.strategy();
 
-    strategy = await TestBaseStrategy.attach(
+    strategy = await TestStrategy.attach(
       strategyAddr // The deployed contract address
     );
   });
