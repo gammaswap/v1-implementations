@@ -58,6 +58,12 @@ contract TestBaseStrategy is BaseStrategy {
         store.BORROWED_INVARIANT = borrowedInv;
     }
 
+    function getLPTokenBalAndBorrowedInv() public virtual view returns(uint256 lpTokenBal, uint256 borrowedInv) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        lpTokenBal = store.LP_TOKEN_BALANCE;
+        borrowedInv = store.BORROWED_INVARIANT;
+    }
+
     function setBorrowRate(uint256 _borrowRate) public virtual {
         borrowRate = _borrowRate;
     }
@@ -82,15 +88,26 @@ contract TestBaseStrategy is BaseStrategy {
         return GammaPoolStorage.store().lastCFMMFeeIndex;
     }
 
-    function testUpdateLoan() internal {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+    function testUpdateIndex() public virtual {
+        updateIndex(GammaPoolStorage.store());
     }
 
-    function testUpdateIndex() public virtual {
+    function getUpdateIndexFields() public virtual view returns(uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant, uint256 lastCFMMFeeIndex,
+        uint256 lastFeeIndex, uint256 accFeeIndex, uint256 borrowedInvariant, uint256 lpInvariant, uint256 totalInvariant,
+        uint256 lpTokenBorrowedPlusInterest, uint256 lpTokenBal, uint256 lpTokenTotal, uint256 lastBlockNumber) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        updateIndex(store);
-        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
-            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+        lastCFMMTotalSupply = store.lastCFMMTotalSupply;
+        lastCFMMInvariant = store.lastCFMMInvariant;
+        lastCFMMFeeIndex = store.lastCFMMFeeIndex;
+        lastFeeIndex = store.lastFeeIndex;
+        accFeeIndex = store.accFeeIndex;
+        borrowedInvariant = store.BORROWED_INVARIANT;
+        lpInvariant = store.LP_INVARIANT;
+        totalInvariant = store.TOTAL_INVARIANT;
+        lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        lpTokenBal = store.LP_TOKEN_BALANCE;
+        lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lastBlockNumber = store.LAST_BLOCK_NUMBER;
     }
 
     function testUpdateCFMMIndex() public virtual {
@@ -99,10 +116,6 @@ contract TestBaseStrategy is BaseStrategy {
 
     function testUpdateFeeIndex() public virtual {
         updateFeeIndex(GammaPoolStorage.store());
-    }
-
-    function testUpdateTWAP() public virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
     }
 
     function testUpdateStore() public virtual {
@@ -143,6 +156,12 @@ contract TestBaseStrategy is BaseStrategy {
         updateLoanLiquidity(_loan, accFeeIndex);
     }
 
+    function testUpdateLoan(uint256 tokenId) public virtual {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        GammaPoolStorage.Loan storage _loan = store.loans[tokenId];
+        updateLoan(store, _loan);
+    }
+
     function getLastFeeIndex() public virtual view returns(uint256){
         return GammaPoolStorage.store().lastFeeIndex;
     }
@@ -170,12 +189,8 @@ contract TestBaseStrategy is BaseStrategy {
         return GammaPoolStorage.store().balanceOf[account];
     }
 
-    function testMintToDevs() internal virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-    }
-
     // Need to set this
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
+    function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {
         return borrowRate;
     }
 
@@ -197,11 +212,11 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     // Need to set this
-    function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
+    function calcInvariant(address, uint256[] memory) internal virtual override view returns(uint256) {
         return invariant;
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256 liquidity) { return 0; }
+    function depositToCFMM(address, uint256[] memory, address) internal virtual override returns(uint256) { return 0; }
 
-    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) { return amounts; }
+    function withdrawFromCFMM(address, address, uint256) internal virtual override returns(uint256[] memory amounts) { return amounts; }
 }

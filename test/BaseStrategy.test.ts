@@ -260,6 +260,20 @@ describe("BaseStrategy", function () {
     );
   }
 
+  async function execFirstUpdateIndex() {
+    const ONE = BigNumber.from(10).pow(18);
+    const cfmmInvariant = ONE.mul(1000);
+    await (await strategy.setInvariant(cfmmInvariant)).wait();
+    await (await cfmm.mint(ONE.mul(100), owner.address)).wait();
+    await (await cfmm.mint(ONE.mul(100), strategy.address)).wait();
+    const lpTokenBal = ONE.mul(100);
+    const borrowedInvariant = ONE.mul(200);
+    await (
+      await strategy.setLPTokenBalAndBorrowedInv(lpTokenBal, borrowedInvariant)
+    ).wait();
+    await (await strategy.testUpdateIndex()).wait();
+  }
+
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Should set right init params", async function () {
@@ -382,7 +396,7 @@ describe("BaseStrategy", function () {
     });
   });
 
-  describe("Update Index", function () {
+  describe("Update Index Functions", function () {
     it("Update CFMM Index, last = 0, prev = 0 => idx = 1, prev = 0", async function () {
       const cfmmData = await strategy.getCFMMData();
       const ONE = ethers.BigNumber.from(10).pow(18);
@@ -678,65 +692,429 @@ describe("BaseStrategy", function () {
         lastCFMMInvariant3
       );
     });
+  });
 
-    it.only("Update Index", async function () {
-      //TODO: We just have to test that the right fields are increasing as more blocks pass by
+  describe("Update Index", function () {
+    it("Update Index, check first update", async function () {
       const ONE = BigNumber.from(10).pow(18);
-      const cfmmIndex0 = await strategy.getCFMMIndex();
-      const storageFields0 = await strategy.getUpdateStoreFields();
-      const borrowRate0 = await strategy.borrowRate();
-      await (await strategy.setInvariant(ONE.mul(1000))).wait();
+      const cfmmInvariant = ONE.mul(1000);
+      await (await strategy.setInvariant(cfmmInvariant)).wait();
       await (await cfmm.mint(ONE.mul(100), owner.address)).wait();
       await (await cfmm.mint(ONE.mul(100), strategy.address)).wait();
+      const totalCFMMSupply = await cfmm.totalSupply();
+      const lpTokenBal = ONE.mul(100);
+      const borrowedInvariant = ONE.mul(200);
       await (
-        await strategy.setLPTokenBalAndBorrowedInv(ONE.mul(100), ONE.mul(200))
+        await strategy.setLPTokenBalAndBorrowedInv(
+          lpTokenBal,
+          borrowedInvariant
+        )
       ).wait();
-      const invariant0 = await strategy.invariant();
-      console.log("cfmmIndex0 >>");
-      console.log(cfmmIndex0);
-      console.log("borrowRate0 >>");
-      console.log(borrowRate0);
-      console.log("invariant0 >>");
-      console.log(invariant0);
-      console.log("storageFields0 >>");
-      console.log(storageFields0);
-      const res = await (await strategy.testUpdateIndex()).wait();
-      //console.log("res1 >>");
-      //console.log(res.events[0].args);
+      await (await strategy.testUpdateIndex()).wait();
 
-      const cfmmIndex1 = await strategy.getCFMMIndex();
-      const storageFields1 = await strategy.getUpdateStoreFields();
-      const borrowRate1 = await strategy.borrowRate();
-      const invariant1 = await strategy.invariant();
-      console.log("cfmmIndex1 >>");
-      console.log(cfmmIndex1);
-      console.log("borrowRate1 >>");
-      console.log(borrowRate1);
-      console.log("invariant1 >>");
-      console.log(invariant1);
-      console.log("storageFields1 >>");
-      console.log(storageFields1);
+      const fields = await strategy.getUpdateIndexFields();
+      expect(fields.lastCFMMTotalSupply).to.equal(totalCFMMSupply);
+      expect(fields.lastCFMMInvariant).to.equal(cfmmInvariant);
+      expect(fields.lastCFMMFeeIndex).to.equal(ONE);
+      expect(fields.lastFeeIndex).to.gt(ONE);
+      expect(fields.accFeeIndex).to.equal(fields.lastFeeIndex); // first update
+      expect(fields.borrowedInvariant).to.gt(borrowedInvariant);
+      expect(fields.lpInvariant).to.equal(
+        cfmmInvariant.mul(lpTokenBal).div(totalCFMMSupply)
+      );
+      const borrowedLPTokens = borrowedInvariant
+        .mul(totalCFMMSupply)
+        .div(cfmmInvariant);
+      expect(fields.lpTokenBorrowedPlusInterest).to.gt(borrowedLPTokens);
+      expect(fields.lpTokenBal).to.equal(lpTokenBal);
+      expect(fields.lpTokenTotal).gt(lpTokenBal.add(borrowedLPTokens));
 
-      await ethers.provider.send("hardhat_mine", ["0x3e8", "0x3c"]);
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const expBlockNumber = BigNumber.from(latestBlock.number);
+      expect(fields.lastBlockNumber).to.equal(expBlockNumber);
+    });
 
-      const res2 = await (await strategy.testUpdateIndex()).wait();
-      //console.log("res2 >>");
-      //console.log(res2.events[0].args);
+    it("Update Index, only time passes by", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
 
-      const cfmmIndex2 = await strategy.getCFMMIndex();
-      const storageFields2 = await strategy.getUpdateStoreFields();
-      const borrowRate2 = await strategy.borrowRate();
-      const invariant2 = await strategy.invariant();
-      console.log("cfmmIndex2 >>");
-      console.log(cfmmIndex2);
-      console.log("borrowRate2 >>");
-      console.log(borrowRate2);
-      console.log("invariant2 >>");
-      console.log(invariant2);
-      console.log("storageFields2 >>");
-      console.log(storageFields2);
-      //event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
-      //    uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
+      // only time passes by
+      // mine 256 blocks
+      await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      expect(fields1.lastBlockNumber).to.gt(fields0.lastBlockNumber);
+      expect(fields1.lastFeeIndex).to.gt(fields0.lastFeeIndex);
+      expect(fields1.borrowedInvariant).to.gt(fields0.borrowedInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.gt(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.gt(fields0.lpTokenTotal);
+      expect(fields1.totalInvariant).to.gt(fields0.totalInvariant);
+      expect(fields1.accFeeIndex).to.gt(fields0.accFeeIndex);
+
+      expect(fields1.lpInvariant).to.equal(fields0.lpInvariant);
+      expect(fields1.lastCFMMInvariant).to.equal(fields0.lastCFMMInvariant);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastCFMMTotalSupply).to.equal(fields0.lastCFMMTotalSupply);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
+    });
+
+    it("Update Index, only trades happen", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait();
+      await (await strategy.setLastBlockNumber(latestBlock.number + 3)).wait(); // +3 because updates took 2 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMInvariant).to.gt(fields0.lastCFMMInvariant);
+      expect(fields1.lastCFMMFeeIndex).to.gt(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.gt(fields0.lastFeeIndex);
+      expect(fields1.borrowedInvariant).to.gt(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.gt(fields0.lpInvariant);
+      expect(fields1.accFeeIndex).to.gt(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.gt(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
+      expect(fields1.lastCFMMTotalSupply).to.equal(fields0.lastCFMMTotalSupply);
+    });
+
+    it("Update Index, trades happen & time passes by", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // trades happen
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait();
+
+      // time passes by
+      // mine 256 blocks
+      await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      expect(fields1.lastBlockNumber).to.gt(fields0.lastBlockNumber);
+      expect(fields1.lastCFMMInvariant).to.gt(fields0.lastCFMMInvariant);
+      expect(fields1.lastCFMMFeeIndex).to.gt(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.gt(fields0.lastFeeIndex);
+      expect(fields1.borrowedInvariant).to.gt(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.gt(fields0.lpInvariant);
+      expect(fields1.accFeeIndex).to.gt(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.gt(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.gt(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.gt(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
+      expect(fields1.lastCFMMTotalSupply).to.equal(fields0.lastCFMMTotalSupply);
+    });
+
+    it("Update Index, only deposits outside GS", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait(); // we double the CFMM invariant
+      const totalCFMMSupply = await cfmm.totalSupply();
+      await (await cfmm.mint(totalCFMMSupply, owner.address)).wait(); // we double the CFMM shares
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 4)).wait(); // +4 because updates took 3 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.equal(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.equal(fields0.lpInvariant);
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
+      expect(fields1.lastCFMMInvariant).to.gt(fields0.lastCFMMInvariant);
+      expect(fields1.lastCFMMTotalSupply).to.gt(fields0.lastCFMMTotalSupply);
+    });
+
+    it("Update Index, only withdrawals outside GS", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.div(2))).wait(); // we half the CFMM invariant
+      const ownerBalance = await cfmm.balanceOf(owner.address); // owner has half the total CFMM supply
+      await (await cfmm.burn(ownerBalance, owner.address)).wait(); // we half the CFMM shares
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 4)).wait(); // +4 because updates took 3 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.equal(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.equal(fields0.lpInvariant);
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
+      expect(fields1.lastCFMMInvariant).to.lt(fields0.lastCFMMInvariant);
+      expect(fields1.lastCFMMTotalSupply).to.lt(fields0.lastCFMMTotalSupply);
+    });
+
+    it("Update Index, only deposits inside GS", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait(); // we double the CFMM invariant
+      const totalCFMMSupply = await cfmm.totalSupply();
+      await (await cfmm.mint(totalCFMMSupply, strategy.address)).wait(); // we double the CFMM shares
+      const resp = await strategy.getLPTokenBalAndBorrowedInv();
+      await (
+        await strategy.setLPTokenBalAndBorrowedInv(
+          resp.lpTokenBal.add(totalCFMMSupply),
+          resp.borrowedInv
+        )
+      ).wait();
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 5)).wait(); // +5 because updates took 4 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.equal(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.equal(
+        fields0.lpInvariant.add(cfmmInvariant)
+      );
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(
+        fields0.totalInvariant.add(cfmmInvariant)
+      );
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.equal(
+        fields0.lpTokenTotal.add(totalCFMMSupply)
+      );
+      expect(fields1.lpTokenBal).to.equal(
+        fields0.lpTokenBal.add(totalCFMMSupply)
+      );
+      expect(fields1.lastCFMMInvariant).to.equal(
+        fields0.lastCFMMInvariant.add(cfmmInvariant)
+      );
+      expect(fields1.lastCFMMTotalSupply).to.equal(
+        fields0.lastCFMMTotalSupply.add(totalCFMMSupply)
+      );
+    });
+
+    it("Update Index, only withdrawals inside GS", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(3).div(4))).wait(); // we quarter the CFMM invariant
+      const gsBalance = await cfmm.balanceOf(strategy.address); // GS has half the total CFMM supply
+      await (await cfmm.burn(gsBalance.div(2), strategy.address)).wait(); // we quarter the CFMM shares (half GS Balance)
+
+      const resp = await strategy.getLPTokenBalAndBorrowedInv();
+      await (
+        await strategy.setLPTokenBalAndBorrowedInv(
+          resp.lpTokenBal.div(2),
+          resp.borrowedInv
+        )
+      ).wait();
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 5)).wait(); // +5 because updates took 4 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.equal(fields0.borrowedInvariant);
+      expect(fields1.lpInvariant).to.equal(fields0.lpInvariant.div(2));
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(
+        fields0.totalInvariant.sub(fields0.lpInvariant.div(2))
+      );
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest
+      );
+      expect(fields1.lpTokenTotal).to.equal(
+        fields0.lpTokenTotal.sub(resp.lpTokenBal.div(2))
+      );
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal.div(2));
+      expect(fields1.lastCFMMInvariant).to.equal(
+        fields0.lastCFMMInvariant.mul(3).div(4)
+      );
+      expect(fields1.lastCFMMTotalSupply).to.equal(
+        fields0.lastCFMMTotalSupply.mul(3).div(4)
+      );
+    });
+
+    it("Update Index, increase debt", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      await (await strategy.setInvariant(cfmmInvariant.mul(3).div(4))).wait(); // we quarter the CFMM invariant
+      const gsBalance = await cfmm.balanceOf(strategy.address); // GS has half the total CFMM supply
+      await (await cfmm.burn(gsBalance.div(2), strategy.address)).wait(); // we quarter the CFMM shares (half GS Balance)
+
+      const resp = await strategy.getLPTokenBalAndBorrowedInv();
+      await (
+        await strategy.setLPTokenBalAndBorrowedInv(
+          resp.lpTokenBal.div(2),
+          resp.borrowedInv.add(cfmmInvariant.mul(1).div(4))
+        )
+      ).wait();
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 5)).wait(); // +5 because updates took 4 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.equal(
+        fields0.borrowedInvariant.add(cfmmInvariant.mul(1).div(4))
+      );
+      expect(fields1.lpInvariant).to.equal(fields0.lpInvariant.div(2));
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest.add(resp.lpTokenBal.div(2))
+      );
+      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal.div(2));
+      expect(fields1.lastCFMMInvariant).to.equal(
+        fields0.lastCFMMInvariant.mul(3).div(4)
+      );
+      expect(fields1.lastCFMMTotalSupply).to.equal(
+        fields0.lastCFMMTotalSupply.mul(3).div(4)
+      );
+    });
+
+    it("Update Index, pay debt", async function () {
+      await execFirstUpdateIndex();
+      const fields0 = await strategy.getUpdateIndexFields();
+
+      // only trades happen
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const cfmmInvariant = await strategy.invariant();
+      const ONE = BigNumber.from(10).pow(18);
+      const paidInvariant = ONE.mul(50);
+      const paidShares = ONE.mul(10);
+      await (
+        await strategy.setInvariant(cfmmInvariant.add(paidInvariant))
+      ).wait(); // we quarter the CFMM invariant
+      await (await cfmm.mint(paidShares, strategy.address)).wait(); // we quarter the CFMM shares (half GS Balance)
+
+      const resp = await strategy.getLPTokenBalAndBorrowedInv();
+      await (
+        await strategy.setLPTokenBalAndBorrowedInv(
+          resp.lpTokenBal.add(paidShares),
+          resp.borrowedInv.sub(paidInvariant)
+        )
+      ).wait();
+
+      await (await strategy.setLastBlockNumber(latestBlock.number + 5)).wait(); // +5 because updates took 4 blocks
+      const lastBlockNum = await strategy.getLastBlockNumber();
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      const fields1 = await strategy.getUpdateIndexFields();
+      const latestBlock1 = await ethers.provider.getBlock("latest");
+      const expBlockNumber1 = BigNumber.from(latestBlock1.number);
+      expect(expBlockNumber1).to.equal(lastBlockNum);
+      expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
+      expect(fields1.lastCFMMFeeIndex).to.equal(fields0.lastCFMMFeeIndex);
+      expect(fields1.lastFeeIndex).to.lt(fields0.lastFeeIndex);
+      expect(fields1.lastFeeIndex).to.equal(ONE);
+      expect(fields1.borrowedInvariant).to.equal(
+        fields0.borrowedInvariant.sub(paidInvariant)
+      );
+      expect(fields1.lpInvariant).to.equal(
+        fields0.lpInvariant.add(paidInvariant)
+      );
+      expect(fields1.accFeeIndex).to.equal(fields0.accFeeIndex);
+      expect(fields1.totalInvariant).to.equal(fields0.totalInvariant);
+      expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
+        fields0.lpTokenBorrowedPlusInterest.sub(paidShares)
+      );
+      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal.add(paidShares));
+      expect(fields1.lastCFMMInvariant).to.equal(
+        fields0.lastCFMMInvariant.add(paidInvariant)
+      );
+      expect(fields1.lastCFMMTotalSupply).to.equal(
+        fields0.lastCFMMTotalSupply.add(paidShares)
+      );
     });
   });
 
@@ -815,7 +1193,9 @@ describe("BaseStrategy", function () {
       const newAccFeeIndex0 = newAccFeeIndex.mul(ONE.add(ONE.div(20))).div(ONE);
       await testLoanUpdateLiquidity(tokenId, newAccFeeIndex0, loan);
 
-      const newAccFeeIndex1 = newAccFeeIndex0.mul(ONE.add(ONE.div(120))).div(ONE);
+      const newAccFeeIndex1 = newAccFeeIndex0
+        .mul(ONE.add(ONE.div(120)))
+        .div(ONE);
       await testLoanUpdateLiquidity(tokenId, newAccFeeIndex1, loan);
     });
 
@@ -856,11 +1236,43 @@ describe("BaseStrategy", function () {
     ): BigNumber {
       return liquidity.mul(accFeeIndex).div(rateIndex);
     }
+
+    it("Update Loan", async function () {
+      await execFirstUpdateIndex();
+      // time passes by
+      // mine 256 blocks
+      await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+      await (await strategy.testUpdateIndex()).wait();
+
+      // updateLoanLiquidity
+      const res = await (await strategy.createLoan()).wait();
+      expect(res.events[0].args.caller).to.equal(owner.address);
+      const tokenId = res.events[0].args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const loan = await strategy.getLoan(tokenId);
+      expect(loan.id).to.equal(1);
+      expect(loan.poolId).to.equal(strategy.address);
+      expect(loan.tokensHeld.length).to.equal(2);
+      expect(loan.tokensHeld[0]).to.equal(0);
+      expect(loan.tokensHeld[1]).to.equal(0);
+      expect(loan.liquidity).to.equal(0);
+      expect(loan.lpTokens).to.equal(0);
+      const accFeeIndex = await strategy.getAccFeeIndex();
+      expect(loan.rateIndex).to.equal(accFeeIndex);
+
+      const liquidity = ONE.mul(100);
+      await (await strategy.setLoanLiquidity(tokenId, liquidity)).wait();
+
+      // time passes by
+      // mine 256 blocks
+      await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+      await (await strategy.testUpdateLoan(tokenId)).wait();
+
+      const loan1 = await strategy.getLoan(tokenId);
+      expect(loan1.liquidity).to.gt(liquidity);
+    });
   });
 });
-/*
-function updateLoanLiquidity(GammaPoolStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual {
-        _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
-        _loan.rateIndex = accFeeIndex;
-    }
-* */
