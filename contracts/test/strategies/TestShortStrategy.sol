@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/external/ICPMM.sol";
 import "../../strategies/base/ShortStrategy.sol";
+import "../TestCFMM.sol";
 
 contract TestShortStrategy is ShortStrategy {
 
-    uint256 public invariant;
-    uint256 public borrowRate = 10**18;
+    //uint256 public invariant;
+    //uint256 public borrowRate = 10**18;
 
     constructor() {
         GammaPoolStorage.init();
@@ -25,11 +27,20 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.store().LP_TOKEN_TOTAL = _totalAssets;
     }
 
+    function getLastFeeIndex() public virtual view returns(uint256 lastFeeIndex) {
+        lastFeeIndex = GammaPoolStorage.store().lastFeeIndex;
+    }
+
+    function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex) {
+        accFeeIndex = GammaPoolStorage.store().accFeeIndex;
+    }
+
     function getTotalAssets() public virtual view returns(uint256 _totalAssets) {
         _totalAssets = GammaPoolStorage.store().LP_TOKEN_TOTAL;
     }
 
-    function getTotalAssetsParams() public virtual view returns(uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) {
+    function getTotalAssetsParams() public virtual view returns(uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum,
+        uint256 lpTokenTotal, uint256 lpTokenBorrowedPlusInterest) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         borrowedInvariant = store.BORROWED_INVARIANT;
         lpBalance = store.LP_TOKEN_BALANCE;
@@ -37,6 +48,8 @@ contract TestShortStrategy is ShortStrategy {
         prevCFMMInvariant = store.lastCFMMInvariant;
         prevCFMMTotalSupply = store.lastCFMMTotalSupply;
         lastBlockNum = store.LAST_BLOCK_NUMBER;
+        lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
     }
 
     function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint256 borrowedInv) public virtual {
@@ -55,7 +68,26 @@ contract TestShortStrategy is ShortStrategy {
         updateIndex(GammaPoolStorage.store());
     }
 
+    function balanceOf(address account) public virtual view returns(uint256) {
+        return GammaPoolStorage.store().balanceOf[account];
+    }
 
+    function depositLPTokens(address to) public virtual {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        uint256 assets = IERC20(store.cfmm).balanceOf(address(this)) - store.LP_TOKEN_BALANCE;
+        uint256 shares = previewDeposit(assets);
+        _mint(store, to, shares);
+        store.LP_TOKEN_BALANCE = IERC20(store.cfmm).balanceOf(address(this));
+    }
+
+    function borrowLPTokens(uint256 lpTokens) public virtual {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        require(lpTokens < store.LP_TOKEN_BALANCE);
+        TestCFMM(store.cfmm).burn(lpTokens, address(this));
+        store.BORROWED_INVARIANT += TestCFMM(store.cfmm).convertSharesToInvariant(lpTokens);
+        store.LP_TOKEN_BORROWED += lpTokens;
+        store.LP_TOKEN_BALANCE = IERC20(store.cfmm).balanceOf(address(this));
+    }
 
     function convertToShares(uint256 assets) public view virtual returns(uint256) {
         return _convertToShares(GammaPoolStorage.store(), assets);
@@ -81,9 +113,9 @@ contract TestShortStrategy is ShortStrategy {
         return _previewRedeem(GammaPoolStorage.store(), shares);
     }
 
-
-    function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {
-        return borrowRate;
+    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
+        uint256 totalLP = lpBalance + lpBorrowed;
+        return totalLP == 0 ? 0 : lpBorrowed * (10**18) / totalLP;
     }
 
     //ShortGamma
@@ -100,12 +132,12 @@ contract TestShortStrategy is ShortStrategy {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
     }
 
-    function setInvariant(uint256 _invariant) public virtual {
+    /*function setInvariant(uint256 _invariant) public virtual {
         invariant = _invariant;
-    }
+    }/**/
 
-    function calcInvariant(address, uint256[] memory) internal virtual override view returns(uint256) {
-        return invariant;
+    function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
+        return TestCFMM(cfmm).invariant();
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal override virtual returns(uint256 liquidity) {

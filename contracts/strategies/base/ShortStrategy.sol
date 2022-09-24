@@ -77,7 +77,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         for(uint256 i = 0; i < tokens.length; i++) {
             balances[i] = GammaSwapLibrary.balanceOf(tokens[i], address(this));
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data);
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data); // TODO: Risky? What could go wrong before depositing?
         for(uint256 i = 0; i < tokens.length; i++) {
             if(reserves[i] > 0) require(balances[i] + reserves[i] == GammaSwapLibrary.balanceOf(tokens[i], address(this)), "WL");
         }
@@ -131,10 +131,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         emit Deposit(msg.sender, to, assets, shares);
 
-        afterDeposit(store, assets, shares);
-
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+
+        afterDeposit(store, assets, shares);
     }
 
     function _mint(uint256 shares, address to) external virtual override lock returns(uint256 assets) {
@@ -153,10 +153,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         emit Deposit(msg.sender, to, assets, shares);
 
-        afterDeposit(store, assets, shares);
-
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+
+        afterDeposit(store, assets, shares);
     }
 
     function _withdraw(uint256 assets, address to, address from) external virtual override lock returns(uint256 shares) {
