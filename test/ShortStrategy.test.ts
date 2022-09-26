@@ -288,6 +288,14 @@ describe("ShortStrategy", function () {
     await (await strategy._withdrawNoPull(to)).wait();
   }
 
+  async function withdrawReserves(
+    shares: BigNumber,
+    to: Address,
+    from: Address
+  ) {
+    await (await strategy._withdrawReserves(to)).wait();
+  }
+
   async function testERC4626Withdraw(
     from: Address,
     to: Address,
@@ -297,6 +305,7 @@ describe("ShortStrategy", function () {
     receiverAssetChange: BigNumber,
     ownerShareChange: BigNumber,
     receiverShareChange: BigNumber,
+    cfmmSupplyChange: BigNumber,
     erc4626WithdrawFunc: Function
   ) {
     const resp = await strategy.getLPTokenBalAndBorrowedInv();
@@ -322,7 +331,7 @@ describe("ShortStrategy", function () {
       totalSupply.sub(shares),
       ownerBalance.sub(ownerShareChange),
       receiverBalance.sub(receiverShareChange),
-      totalCFMMSupply,
+      totalCFMMSupply.sub(cfmmSupplyChange),
       strategyCFMMBalance.sub(assets),
       ownerCFMMBalance.add(ownerAssetChange),
       receiverCFMMBalance.add(receiverAssetChange)
@@ -338,40 +347,63 @@ describe("ShortStrategy", function () {
     receiverAssetChange: BigNumber,
     ownerShareChange: BigNumber,
     receiverShareChange: BigNumber,
+    cfmmSupplyChange: BigNumber,
     withdrawFunc: Function
   ) {
-    const resp = await strategy.getLPTokenBalAndBorrowedInv();
-
-    const totalSupply = await strategy.totalSupply();
     const strategyBalance = await strategy.balanceOf(strategy.address);
-    const ownerBalance = await strategy.balanceOf(from);
-    const receiverBalance = await strategy.balanceOf(to);
-    const totalCFMMSupply = await cfmm.totalSupply();
-    const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
-    const ownerCFMMBalance = await cfmm.balanceOf(from);
-    const receiverCFMMBalance = await cfmm.balanceOf(to);
 
-    expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
-
-    const receiverAddr = to;
-    const ownerAddr = from;
-
-    await withdrawFunc(assets, receiverAddr, ownerAddr);
-
-    await checkWithdrawal(
+    await testERC4626Withdraw(
       from,
       to,
-      totalSupply.sub(shares),
-      ownerBalance.sub(ownerShareChange),
-      receiverBalance.sub(receiverShareChange),
-      totalCFMMSupply,
-      strategyCFMMBalance.sub(assets),
-      ownerCFMMBalance.add(ownerAssetChange),
-      receiverCFMMBalance.add(receiverAssetChange)
+      assets,
+      shares,
+      ownerAssetChange,
+      receiverAssetChange,
+      ownerShareChange,
+      receiverShareChange,
+      cfmmSupplyChange,
+      withdrawFunc
     );
 
     expect(await strategy.balanceOf(strategy.address)).to.equal(
       strategyBalance.sub(shares)
+    );
+  }
+
+  async function testWithdrawReserves(
+    from: Address,
+    to: Address,
+    assets: BigNumber,
+    shares: BigNumber,
+    ownerAssetChange: BigNumber,
+    receiverAssetChange: BigNumber,
+    ownerShareChange: BigNumber,
+    receiverShareChange: BigNumber,
+    receiverToken0Change: BigNumber,
+    receiverToken1Change: BigNumber,
+    withdrawFunc: Function
+  ) {
+    const token0Balance = await tokenA.balanceOf(to);
+    const token1Balance = await tokenB.balanceOf(to);
+
+    await testWithdraw(
+      from,
+      to,
+      assets,
+      shares,
+      ownerAssetChange,
+      receiverAssetChange,
+      ownerShareChange,
+      receiverShareChange,
+      assets,
+      withdrawFunc
+    );
+
+    expect(await tokenA.balanceOf(to)).to.equal(
+      token0Balance.add(receiverToken0Change)
+    );
+    expect(await tokenB.balanceOf(to)).to.equal(
+      token1Balance.add(receiverToken1Change)
     );
   }
 
@@ -682,6 +714,7 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           ethers.constants.Zero,
           ethers.constants.Zero,
+          ethers.constants.Zero,
           withdrawNoPull
         );
 
@@ -696,7 +729,74 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           ethers.constants.Zero,
           ethers.constants.Zero,
+          ethers.constants.Zero,
           withdrawNoPull
+        );
+      });
+    });
+    describe("Deposit Reserves", function () {
+      it("Error Deposit Reserves", async function () {
+
+      });
+    });
+    describe("Withdraw Reserves", function () {
+      it("Withdraw Reserves Error", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const assets = ONE.mul(200);
+        await prepareAssetsToWithdraw(assets, owner);
+
+        await expect(
+          strategy._withdrawReserves(owner.address)
+        ).to.be.revertedWith("ZERO_ASSETS");
+
+        await (await strategy.transfer(strategy.address, assets)).wait();
+
+        await borrowLPTokens(ONE.mul(1));
+
+        await expect(
+          strategy._withdrawReserves(owner.address)
+        ).to.be.revertedWith("withdraw > max");
+      });
+
+      it("Withdraw Reserves", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const assets = ONE.mul(200);
+        await prepareAssetsToWithdraw(assets, owner);
+
+        const withdrawAssets = ONE.mul(50);
+        const shares = ONE.mul(50);
+
+        // px is assumed to be 2
+        await (await strategy.transfer(strategy.address, shares)).wait();
+
+        await testWithdrawReserves(
+          owner.address,
+          addr1.address,
+          withdrawAssets,
+          shares,
+          ethers.constants.Zero, // ownerAssetChange: BigNumber,
+          ethers.constants.Zero, // receiverAssetChange: BigNumber,
+          ethers.constants.Zero, // ownerShareChange: BigNumber,
+          ethers.constants.Zero, // receiverShareChange: BigNumber,
+          withdrawAssets, // token0Change: BigNumber,
+          withdrawAssets.mul(2), // token1Change: BigNumber,
+          withdrawReserves
+        );
+
+        await (await strategy.transfer(strategy.address, shares)).wait();
+
+        await testWithdrawReserves(
+          owner.address,
+          owner.address,
+          withdrawAssets,
+          shares,
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+          withdrawAssets, // token0Change: BigNumber,
+          withdrawAssets.mul(2), // token1Change: BigNumber,
+          withdrawReserves
         );
       });
     });
@@ -1172,6 +1272,7 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           shares,
           ethers.constants.Zero,
+          ethers.constants.Zero,
           erc4626Withdraw
         );
 
@@ -1184,6 +1285,7 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           shares,
           shares,
+          ethers.constants.Zero,
           erc4626Withdraw
         );
       });
@@ -1219,6 +1321,7 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           shares,
           ethers.constants.Zero,
+          ethers.constants.Zero,
           erc4626Redeem
         );
 
@@ -1231,6 +1334,7 @@ describe("ShortStrategy", function () {
           withdrawAssets,
           shares,
           shares,
+          ethers.constants.Zero,
           erc4626Redeem
         );
       });

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/external/ICPMM.sol";
 import "../../strategies/base/ShortStrategy.sol";
 import "../TestCFMM.sol";
+import "../TestERC20.sol";
 
 contract TestShortStrategy is ShortStrategy {
 
@@ -76,7 +77,7 @@ contract TestShortStrategy is ShortStrategy {
 
     function withdrawAssets(address caller, address receiver, address owner, uint256 assets, uint256 shares) public virtual {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        _withdrawAssets(GammaPoolStorage.store(), caller, receiver, owner, assets, shares);
+        _withdrawAssets(GammaPoolStorage.store(), caller, receiver, owner, assets, shares, false);
     }
 
     function testUpdateIndex() public virtual {
@@ -179,5 +180,13 @@ contract TestShortStrategy is ShortStrategy {
         return liquidity;
     }
 
-    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal override virtual returns(uint256[] memory amounts) { return amounts; }
+    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal override virtual returns(uint256[] memory amounts) {
+        amounts = new uint256[](2);
+        amounts[0] = amount;
+        amounts[1] = amount * 2;
+
+        TestCFMM(cfmm).burn(amount, address(this));
+        TestERC20(TestCFMM(cfmm).token0()).mint(to, amounts[0]);
+        TestERC20(TestCFMM(cfmm).token1()).mint(to, amounts[1]);
+    }
 }

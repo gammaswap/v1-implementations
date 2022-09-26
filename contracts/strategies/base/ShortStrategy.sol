@@ -37,14 +37,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     }
 
     function _withdrawNoPull(address to) public virtual override lock returns(uint256 assets) {//TODO: Should probably change the name of this function (addReserves)
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        uint256 shares = store.balanceOf[address(this)];
-
-        updateIndex(store);
-
-        require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
-        require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxRedeem is
-        _withdrawAssets(store, address(this), to, address(this), assets, shares);
+        (,assets) = _withdrawAssetsNoPull(to, false);
     }
 
     function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory reserves, uint256 shares) {
@@ -57,7 +50,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         for(uint256 i = 0; i < tokens.length; i++) {
             balances[i] = GammaSwapLibrary.balanceOf(tokens[i], address(this));
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data); // TODO: Risky? What could go wrong before depositing?
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data); // TODO: Risky. Should probably set sender to PosMgr
         for(uint256 i = 0; i < tokens.length; i++) {
             if(reserves[i] > 0) require(balances[i] + reserves[i] == GammaSwapLibrary.balanceOf(tokens[i], address(this)), "WL");
         }
@@ -67,29 +60,19 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         shares = _depositNoPull(to);
     }
 
-    // this low-level function should be called from a contract which performs important safety checks
     function _withdrawReserves(address to) public virtual override lock returns(uint256[] memory reserves, uint256 assets) {//TODO: Should probably change the name of this function (maybe withdrawReserves)
-        //get the liquidity tokens
+        (reserves, assets) = _withdrawAssetsNoPull(to, true);
+    }
+
+    function _withdrawAssetsNoPull(address to, bool askForReserves) internal virtual returns(uint256[] memory reserves, uint256 assets) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 shares = store.balanceOf[address(this)];
-        require(shares > 0, "0 shares");
 
         updateIndex(store);
 
-        require((assets = _previewRedeem(store, shares)) <= store.LP_TOKEN_BALANCE, "> liq");
-
-        //Uni/Sus: U -> GP -> CFMM -> U
-        //                    just call strategy and ask strategy to use callback to transfer to CFMM then strategy calls burn
-        //Bal/Crv: U -> GP -> Strategy -> CFMM -> Strategy -> U
-        //                    just call strategy and ask strategy to use callback to transfer to Strategy then to CFMM
-        //                    Since CFMM has to pull from strategy, strategy must always check it has enough approval
-        reserves = withdrawFromCFMM(store.cfmm, to, assets);
-        _burn(store, address(this), shares);
-
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-
-        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
-            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+        require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
+        require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxRedeem is
+        reserves = _withdrawAssets(store, address(this), to, address(this), assets, shares, askForReserves);
     }
 
     //*************ERC-4626 functions************//
@@ -117,8 +100,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         updateIndex(store);
         require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxWithdraw is
         require((shares = _previewWithdraw(store, assets)) != 0, "ZERO_SHARES");
-        //shares = _previewWithdraw(store, assets); // No need to check for rounding error, previewWithdraw rounds up.
-        _withdrawAssets(store, msg.sender, to, from, assets, shares);
+        _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
     }
 
     function _redeem(uint256 shares, address to, address from) external virtual override lock returns(uint256 assets) {
@@ -126,7 +108,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         updateIndex(store);
         require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
         require(assets <= store.LP_TOKEN_BALANCE, "redeem > max"); //TODO: This is what maxRedeem is
-        _withdrawAssets(store, msg.sender, to, from, assets, shares);
+        _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
     }
 
     function _depositAssetsFrom(
@@ -163,8 +145,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         address receiver,
         address owner,
         uint256 assets,
-        uint256 shares
-    ) internal virtual {
+        uint256 shares,
+        bool askForReserves
+    ) internal virtual returns(uint256[] memory reserves){
         if (caller != owner) {
             _spendAllowance(store, owner, caller, shares);
         }
@@ -172,7 +155,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         beforeWithdraw(store, assets, shares);
 
         _burn(store, owner, shares);
-        GammaSwapLibrary.safeTransfer(store.cfmm, receiver, assets);
+        if(askForReserves) {
+            reserves = withdrawFromCFMM(store.cfmm, receiver, assets);
+        } else {
+            GammaSwapLibrary.safeTransfer(store.cfmm, receiver, assets);
+        }
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
 
         emit Withdraw(caller, receiver, owner, assets, shares);
