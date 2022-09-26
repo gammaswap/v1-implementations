@@ -164,6 +164,217 @@ describe("ShortStrategy", function () {
     await (await strategy.testUpdateIndex()).wait();
   }
 
+  async function checkGSPoolIsEmpty(
+    cfmmTotalSupply: BigNumber,
+    cfmmTotalInvariant: BigNumber
+  ) {
+    expect(await strategy.getTotalAssets()).to.equal(0);
+    expect(await strategy.totalSupply()).to.equal(0);
+    const params = await strategy.getTotalAssetsParams();
+    expect(params.borrowedInvariant).to.equal(0);
+    expect(params.lpBalance).to.equal(0);
+    expect(params.lpBorrowed).to.equal(0);
+    expect(params.lpTokenTotal).to.equal(0);
+    expect(params.lpTokenBorrowedPlusInterest).to.equal(0);
+    expect(params.prevCFMMInvariant).to.equal(cfmmTotalInvariant);
+    expect(params.prevCFMMTotalSupply).to.equal(cfmmTotalSupply);
+  }
+
+  async function checkWithdrawal(
+    ownerAddr: Address,
+    receiverAddr: Address,
+    expTotalSupply: BigNumber,
+    expOwnerBalance: BigNumber,
+    expReceiverBalance: BigNumber,
+    expTotalCFMMSupply: BigNumber,
+    expStrategyCFMMSupply: BigNumber,
+    expOwnerCFMMBalance: BigNumber,
+    expReceiverCFMMBalance: BigNumber
+  ) {
+    const totalSupply = await strategy.totalSupply();
+    expect(totalSupply).to.equal(expTotalSupply);
+
+    const ownerBalance = await strategy.balanceOf(ownerAddr);
+    expect(ownerBalance).to.equal(expOwnerBalance);
+
+    const receiverBalance = await strategy.balanceOf(receiverAddr);
+    expect(receiverBalance).to.equal(expReceiverBalance);
+
+    const totalCFMMSupply = await cfmm.totalSupply();
+    expect(totalCFMMSupply).to.equal(expTotalCFMMSupply);
+
+    const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
+    expect(strategyCFMMBalance).to.equal(expStrategyCFMMSupply);
+
+    const ownerCFMMBalance = await cfmm.balanceOf(ownerAddr);
+    expect(ownerCFMMBalance).to.equal(expOwnerCFMMBalance);
+
+    const receiverCFMMBalance = await cfmm.balanceOf(receiverAddr);
+    expect(receiverCFMMBalance).to.equal(expReceiverCFMMBalance);
+
+    const resp = await strategy.getLPTokenBalAndBorrowedInv();
+    expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
+  }
+
+  async function prepareAssetsToWithdraw(assets: BigNumber, to: any) {
+    await (await cfmm.mint(assets, to.address)).wait();
+    await (await cfmm.connect(to).transfer(strategy.address, assets)).wait();
+    await (await strategy.depositLPTokens(to.address)).wait();
+  }
+
+  async function testWithdrawal(
+    caller: Address,
+    from: Address,
+    to: Address,
+    assets: BigNumber,
+    shares: BigNumber,
+    ownerAssetChange: BigNumber,
+    receiverAssetChange: BigNumber,
+    ownerShareChange: BigNumber,
+    receiverShareChange: BigNumber
+  ) {
+    const resp = await strategy.getLPTokenBalAndBorrowedInv();
+
+    const totalSupply = await strategy.totalSupply();
+    const ownerBalance = await strategy.balanceOf(from);
+    const receiverBalance = await strategy.balanceOf(to);
+    const totalCFMMSupply = await cfmm.totalSupply();
+    const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
+    const ownerCFMMBalance = await cfmm.balanceOf(from);
+    const receiverCFMMBalance = await cfmm.balanceOf(to);
+
+    expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
+
+    const receiverAddr = to;
+    const ownerAddr = from;
+    const callerAddr = caller;
+
+    await (
+      await strategy.withdrawAssets(
+        callerAddr,
+        receiverAddr,
+        ownerAddr,
+        assets,
+        shares
+      )
+    ).wait();
+
+    await checkWithdrawal(
+      from,
+      to,
+      totalSupply.sub(shares),
+      ownerBalance.sub(ownerShareChange),
+      receiverBalance.sub(receiverShareChange),
+      totalCFMMSupply,
+      strategyCFMMBalance.sub(assets),
+      ownerCFMMBalance.add(ownerAssetChange),
+      receiverCFMMBalance.add(receiverAssetChange)
+    );
+  }
+
+  async function erc4626Withdraw(
+    assets: BigNumber,
+    to: Address,
+    from: Address
+  ) {
+    await (await strategy._withdraw(assets, to, from)).wait();
+  }
+
+  async function erc4626Redeem(shares: BigNumber, to: Address, from: Address) {
+    await (await strategy._redeem(shares, to, from)).wait();
+  }
+
+  async function withdrawNoPull(shares: BigNumber, to: Address, from: Address) {
+    await (await strategy._withdrawNoPull(to)).wait();
+  }
+
+  async function testERC4626Withdraw(
+    from: Address,
+    to: Address,
+    assets: BigNumber,
+    shares: BigNumber,
+    ownerAssetChange: BigNumber,
+    receiverAssetChange: BigNumber,
+    ownerShareChange: BigNumber,
+    receiverShareChange: BigNumber,
+    erc4626WithdrawFunc: Function
+  ) {
+    const resp = await strategy.getLPTokenBalAndBorrowedInv();
+
+    const totalSupply = await strategy.totalSupply();
+    const ownerBalance = await strategy.balanceOf(from);
+    const receiverBalance = await strategy.balanceOf(to);
+    const totalCFMMSupply = await cfmm.totalSupply();
+    const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
+    const ownerCFMMBalance = await cfmm.balanceOf(from);
+    const receiverCFMMBalance = await cfmm.balanceOf(to);
+
+    expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
+
+    const receiverAddr = to;
+    const ownerAddr = from;
+
+    await erc4626WithdrawFunc(assets, receiverAddr, ownerAddr);
+
+    await checkWithdrawal(
+      from,
+      to,
+      totalSupply.sub(shares),
+      ownerBalance.sub(ownerShareChange),
+      receiverBalance.sub(receiverShareChange),
+      totalCFMMSupply,
+      strategyCFMMBalance.sub(assets),
+      ownerCFMMBalance.add(ownerAssetChange),
+      receiverCFMMBalance.add(receiverAssetChange)
+    );
+  }
+
+  async function testWithdraw(
+    from: Address,
+    to: Address,
+    assets: BigNumber,
+    shares: BigNumber,
+    ownerAssetChange: BigNumber,
+    receiverAssetChange: BigNumber,
+    ownerShareChange: BigNumber,
+    receiverShareChange: BigNumber,
+    withdrawFunc: Function
+  ) {
+    const resp = await strategy.getLPTokenBalAndBorrowedInv();
+
+    const totalSupply = await strategy.totalSupply();
+    const strategyBalance = await strategy.balanceOf(strategy.address);
+    const ownerBalance = await strategy.balanceOf(from);
+    const receiverBalance = await strategy.balanceOf(to);
+    const totalCFMMSupply = await cfmm.totalSupply();
+    const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
+    const ownerCFMMBalance = await cfmm.balanceOf(from);
+    const receiverCFMMBalance = await cfmm.balanceOf(to);
+
+    expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
+
+    const receiverAddr = to;
+    const ownerAddr = from;
+
+    await withdrawFunc(assets, receiverAddr, ownerAddr);
+
+    await checkWithdrawal(
+      from,
+      to,
+      totalSupply.sub(shares),
+      ownerBalance.sub(ownerShareChange),
+      receiverBalance.sub(receiverShareChange),
+      totalCFMMSupply,
+      strategyCFMMBalance.sub(assets),
+      ownerCFMMBalance.add(ownerAssetChange),
+      receiverCFMMBalance.add(receiverAssetChange)
+    );
+
+    expect(await strategy.balanceOf(strategy.address)).to.equal(
+      strategyBalance.sub(shares)
+    );
+  }
+
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
@@ -263,21 +474,233 @@ describe("ShortStrategy", function () {
     });
   });
 
-  async function checkGSPoolIsEmpty(
-    cfmmTotalSupply: BigNumber,
-    cfmmTotalInvariant: BigNumber
-  ) {
-    expect(await strategy.getTotalAssets()).to.equal(0);
-    expect(await strategy.totalSupply()).to.equal(0);
-    const params = await strategy.getTotalAssetsParams();
-    expect(params.borrowedInvariant).to.equal(0);
-    expect(params.lpBalance).to.equal(0);
-    expect(params.lpBorrowed).to.equal(0);
-    expect(params.lpTokenTotal).to.equal(0);
-    expect(params.lpTokenBorrowedPlusInterest).to.equal(0);
-    expect(params.prevCFMMInvariant).to.equal(cfmmTotalInvariant);
-    expect(params.prevCFMMTotalSupply).to.equal(cfmmTotalSupply);
-  }
+  describe("Write Functions", function () {
+    describe("Deposit No Pull", function () {
+      it("Error Deposit Assets/LP Tokens", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await expect(strategy._depositNoPull(owner.address)).to.be.revertedWith(
+          "ZERO_SHARES"
+        );
+      });
+
+      it("First Deposit Assets/LP Tokens", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        const assets = shares.div(2);
+        const expectedGSShares = await strategy.previewDeposit(assets);
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (await cfmm.transfer(strategy.address, assets)).wait();
+
+        const { events } = await (
+          await strategy._depositNoPull(owner.address)
+        ).wait();
+
+        const depositEvent = events[events.length - 2];
+        expect(depositEvent.event).to.equal("Deposit");
+        expect(depositEvent.args.caller).to.equal(owner.address);
+        expect(depositEvent.args.to).to.equal(owner.address);
+        expect(depositEvent.args.assets).to.equal(assets);
+        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+
+        const poolUpdatedEvent = events[events.length - 1];
+        expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
+        expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(assets);
+        expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(0);
+        expect(poolUpdatedEvent.args.lastBlockNumber).to.equal(
+          (await ethers.provider.getBlock("latest")).number
+        );
+        expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
+        expect(poolUpdatedEvent.args.lpInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
+
+        expect(await strategy.totalSupply()).to.equal(expectedGSShares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          expectedGSShares
+        );
+        const params1 = await strategy.getTotalAssetsParams();
+        expect(params1.lpBalance).to.equal(assets);
+        expect(assets).to.equal(expectedGSShares);
+      });
+
+      it("More Deposit Assets/LP Tokens", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        const assets = shares.div(2);
+        const expectedGSShares = await strategy.previewDeposit(assets);
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        await (await cfmm.transfer(strategy.address, assets)).wait();
+
+        const { events } = await (
+          await strategy._depositNoPull(owner.address)
+        ).wait();
+
+        const depositEvent = events[events.length - 2];
+        expect(depositEvent.event).to.equal("Deposit");
+        expect(depositEvent.args.caller).to.equal(owner.address);
+        expect(depositEvent.args.to).to.equal(owner.address);
+        expect(depositEvent.args.assets).to.equal(assets);
+        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+
+        expect(await strategy.totalSupply()).to.equal(expectedGSShares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          expectedGSShares
+        );
+
+        await (await cfmm.trade(tradeYield)).wait();
+
+        const assets2 = assets.div(2);
+        const expectedGSShares2 = await strategy.previewDeposit(assets2);
+
+        // time passes by
+        // mine 256 blocks
+        await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+        await (await cfmm.transfer(strategy.address, assets2)).wait();
+
+        const resp = await (
+          await strategy._depositNoPull(owner.address)
+        ).wait();
+
+        const depositEvent1 = resp.events[resp.events.length - 2];
+        expect(depositEvent1.event).to.equal("Deposit");
+        expect(depositEvent1.args.caller).to.equal(owner.address);
+        expect(depositEvent1.args.to).to.equal(owner.address);
+        expect(depositEvent1.args.assets).to.equal(assets2);
+        expect(depositEvent1.args.shares).to.equal(expectedGSShares2);
+
+        await borrowLPTokens(ONE.mul(10));
+
+        await (await cfmm.trade(tradeYield)).wait();
+        // time passes by
+        // mine 256 blocks
+        await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+        const assets3 = assets2.div(2);
+        const params1 = await strategy.getTotalAssetsParams();
+
+        const currTotalAssets = await strategy.totalAssets(
+          cfmm.address,
+          params1.borrowedInvariant,
+          params1.lpBalance,
+          params1.lpBorrowed,
+          params1.prevCFMMInvariant,
+          params1.prevCFMMTotalSupply,
+          params1.lastBlockNum.sub(2) // to account for the next 2 blocks update
+        );
+
+        const expectedGSShares3 = assets3
+          .mul(await strategy.totalSupply())
+          .div(currTotalAssets);
+
+        await (await cfmm.transfer(strategy.address, assets3)).wait();
+
+        const resp1 = await (
+          await strategy._depositNoPull(owner.address)
+        ).wait();
+
+        const depositEvent2 = resp1.events[resp1.events.length - 2];
+        expect(depositEvent2.event).to.equal("Deposit");
+        expect(depositEvent2.args.caller).to.equal(owner.address);
+        expect(depositEvent2.args.to).to.equal(owner.address);
+        expect(depositEvent2.args.assets).to.equal(assets3);
+        expect(depositEvent2.args.shares).to.equal(expectedGSShares3);
+      });
+    });
+    describe("Withdraw No Pull", function () {
+      it("Withdraw Shares Error", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const assets = ONE.mul(200);
+        await prepareAssetsToWithdraw(assets, owner);
+
+        await expect(
+          strategy._withdrawNoPull(owner.address)
+        ).to.be.revertedWith("ZERO_ASSETS");
+
+        await (await strategy.transfer(strategy.address, assets)).wait();
+
+        await borrowLPTokens(ONE.mul(1));
+
+        await expect(
+          strategy._withdrawNoPull(owner.address)
+        ).to.be.revertedWith("withdraw > max");
+      });
+
+      it("Withdraw Shares", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const assets = ONE.mul(200);
+        await prepareAssetsToWithdraw(assets, owner);
+
+        const withdrawAssets = ONE.mul(50);
+        const shares = ONE.mul(50);
+
+        await (await strategy.transfer(strategy.address, shares)).wait();
+
+        await testWithdraw(
+          owner.address,
+          addr1.address,
+          withdrawAssets,
+          shares,
+          ethers.constants.Zero,
+          withdrawAssets,
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+          withdrawNoPull
+        );
+
+        await (await strategy.transfer(strategy.address, shares)).wait();
+
+        await testWithdraw(
+          owner.address,
+          owner.address,
+          withdrawAssets,
+          shares,
+          withdrawAssets,
+          withdrawAssets,
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+          withdrawNoPull
+        );
+      });
+    });
+  });
 
   describe("ERC4626 Write Functions", function () {
     describe("ERC4626 Deposit & Mint", function () {
@@ -811,157 +1234,6 @@ describe("ShortStrategy", function () {
           erc4626Redeem
         );
       });
-
-      async function checkWithdrawal(
-        ownerAddr: Address,
-        receiverAddr: Address,
-        expTotalSupply: BigNumber,
-        expOwnerBalance: BigNumber,
-        expReceiverBalance: BigNumber,
-        expTotalCFMMSupply: BigNumber,
-        expStrategyCFMMSupply: BigNumber,
-        expOwnerCFMMBalance: BigNumber,
-        expReceiverCFMMBalance: BigNumber
-      ) {
-        const totalSupply = await strategy.totalSupply();
-        expect(totalSupply).to.equal(expTotalSupply);
-
-        const ownerBalance = await strategy.balanceOf(ownerAddr);
-        expect(ownerBalance).to.equal(expOwnerBalance);
-
-        const receiverBalance = await strategy.balanceOf(receiverAddr);
-        expect(receiverBalance).to.equal(expReceiverBalance);
-
-        const totalCFMMSupply = await cfmm.totalSupply();
-        expect(totalCFMMSupply).to.equal(expTotalCFMMSupply);
-
-        const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
-        expect(strategyCFMMBalance).to.equal(expStrategyCFMMSupply);
-
-        const ownerCFMMBalance = await cfmm.balanceOf(ownerAddr);
-        expect(ownerCFMMBalance).to.equal(expOwnerCFMMBalance);
-
-        const receiverCFMMBalance = await cfmm.balanceOf(receiverAddr);
-        expect(receiverCFMMBalance).to.equal(expReceiverCFMMBalance);
-
-        const resp = await strategy.getLPTokenBalAndBorrowedInv();
-        expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
-      }
-
-      async function prepareAssetsToWithdraw(assets: BigNumber, to: any) {
-        await (await cfmm.mint(assets, to.address)).wait();
-        await (
-          await cfmm.connect(to).transfer(strategy.address, assets)
-        ).wait();
-        await (await strategy.depositLPTokens(to.address)).wait();
-      }
-
-      async function testWithdrawal(
-        caller: Address,
-        from: Address,
-        to: Address,
-        assets: BigNumber,
-        shares: BigNumber,
-        ownerAssetChange: BigNumber,
-        receiverAssetChange: BigNumber,
-        ownerShareChange: BigNumber,
-        receiverShareChange: BigNumber
-      ) {
-        const resp = await strategy.getLPTokenBalAndBorrowedInv();
-
-        const totalSupply = await strategy.totalSupply();
-        const ownerBalance = await strategy.balanceOf(from);
-        const receiverBalance = await strategy.balanceOf(to);
-        const totalCFMMSupply = await cfmm.totalSupply();
-        const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
-        const ownerCFMMBalance = await cfmm.balanceOf(from);
-        const receiverCFMMBalance = await cfmm.balanceOf(to);
-
-        expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
-
-        const receiverAddr = to;
-        const ownerAddr = from;
-        const callerAddr = caller;
-
-        await (
-          await strategy.withdrawAssets(
-            callerAddr,
-            receiverAddr,
-            ownerAddr,
-            assets,
-            shares
-          )
-        ).wait();
-
-        await checkWithdrawal(
-          from,
-          to,
-          totalSupply.sub(shares),
-          ownerBalance.sub(ownerShareChange),
-          receiverBalance.sub(receiverShareChange),
-          totalCFMMSupply,
-          strategyCFMMBalance.sub(assets),
-          ownerCFMMBalance.add(ownerAssetChange),
-          receiverCFMMBalance.add(receiverAssetChange)
-        );
-      }
-
-      async function erc4626Withdraw(
-        assets: BigNumber,
-        to: Address,
-        from: Address
-      ) {
-        await (await strategy._withdraw(assets, to, from)).wait();
-      }
-
-      async function erc4626Redeem(
-        shares: BigNumber,
-        to: Address,
-        from: Address
-      ) {
-        await (await strategy._redeem(shares, to, from)).wait();
-      }
-
-      async function testERC4626Withdraw(
-        from: Address,
-        to: Address,
-        assets: BigNumber,
-        shares: BigNumber,
-        ownerAssetChange: BigNumber,
-        receiverAssetChange: BigNumber,
-        ownerShareChange: BigNumber,
-        receiverShareChange: BigNumber,
-        erc4626WithdrawFunc: Function
-      ) {
-        const resp = await strategy.getLPTokenBalAndBorrowedInv();
-
-        const totalSupply = await strategy.totalSupply();
-        const ownerBalance = await strategy.balanceOf(from);
-        const receiverBalance = await strategy.balanceOf(to);
-        const totalCFMMSupply = await cfmm.totalSupply();
-        const strategyCFMMBalance = await cfmm.balanceOf(strategy.address);
-        const ownerCFMMBalance = await cfmm.balanceOf(from);
-        const receiverCFMMBalance = await cfmm.balanceOf(to);
-
-        expect(resp.lpTokenBal).to.equal(strategyCFMMBalance);
-
-        const receiverAddr = to;
-        const ownerAddr = from;
-
-        await erc4626WithdrawFunc(assets, receiverAddr, ownerAddr);
-
-        await checkWithdrawal(
-          from,
-          to,
-          totalSupply.sub(shares),
-          ownerBalance.sub(ownerShareChange),
-          receiverBalance.sub(receiverShareChange),
-          totalCFMMSupply,
-          strategyCFMMBalance.sub(assets),
-          ownerCFMMBalance.add(ownerAssetChange),
-          receiverCFMMBalance.add(receiverAssetChange)
-        );
-      }
     });
   });
 

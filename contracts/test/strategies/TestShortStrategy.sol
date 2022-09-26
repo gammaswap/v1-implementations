@@ -104,6 +104,30 @@ contract TestShortStrategy is ShortStrategy {
         store.LP_TOKEN_BALANCE = IERC20(store.cfmm).balanceOf(address(this));
     }
 
+    function transfer(address to, uint256 amount) public virtual returns (bool) {
+        _transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function _transfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {
+        require(from != address(0));
+        require(to != address(0));
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+
+        uint256 fromBalance = store.balanceOf[from];
+        require(fromBalance >= amount);
+        unchecked {
+            store.balanceOf[from] = fromBalance - amount;
+        }
+        store.balanceOf[to] += amount;
+
+        emit Transfer(from, to, amount);
+    }
+
     function convertToShares(uint256 assets) public view virtual returns(uint256) {
         return _convertToShares(GammaPoolStorage.store(), assets);
     }
