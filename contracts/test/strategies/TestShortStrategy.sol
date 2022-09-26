@@ -8,9 +8,6 @@ import "../TestCFMM.sol";
 
 contract TestShortStrategy is ShortStrategy {
 
-    //uint256 public invariant;
-    //uint256 public borrowRate = 10**18;
-
     constructor() {
         GammaPoolStorage.init();
     }
@@ -62,6 +59,24 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         lpTokenBal = store.LP_TOKEN_BALANCE;
         borrowedInv = store.BORROWED_INVARIANT;
+    }
+
+    function checkAllowance(address owner, address spender) public virtual view returns(uint256) {
+        return GammaPoolStorage.store().allowance[owner][spender];
+    }
+
+    function setAllowance(address owner, address spender, uint256 amount) public virtual {
+        GammaPoolStorage.store().allowance[owner][spender] = amount;
+    }
+
+    function spendAllowance(address owner, address spender, uint256 amount) public virtual {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        _spendAllowance(GammaPoolStorage.store(), owner, spender, amount);
+    }
+
+    function withdrawAssets(address caller, address receiver, address owner, uint256 assets, uint256 shares) public virtual {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        _withdrawAssets(GammaPoolStorage.store(), caller, receiver, owner, assets, shares);
     }
 
     function testUpdateIndex() public virtual {
@@ -131,10 +146,6 @@ contract TestShortStrategy is ShortStrategy {
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
     }
-
-    /*function setInvariant(uint256 _invariant) public virtual {
-        invariant = _invariant;
-    }/**/
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
         return TestCFMM(cfmm).invariant();

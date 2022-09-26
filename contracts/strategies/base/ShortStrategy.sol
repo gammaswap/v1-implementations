@@ -34,12 +34,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         updateIndex(store);
 
         require((shares = _previewDeposit(store, assets)) != 0, "ZERO_SHARES");
-
-        _mint(store, to, shares);
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-
-        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
-            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
+        _depositAssets(store, msg.sender, to, assets, shares);
     }
 
     function _withdrawNoPull(address to) public virtual override lock returns(uint256 assets) {//TODO: Should probably change the name of this function (addReserves)
@@ -116,101 +111,103 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function _deposit(uint256 assets, address to) external virtual override lock returns(uint256 shares) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-
         updateIndex(store);
 
         // Check for rounding error since we round down in previewDeposit.
         require((shares = _previewDeposit(store, assets)) != 0, "ZERO_SHARES");
-
-        // Need to transfer before minting or ERC777s could reenter.
-        GammaSwapLibrary.safeTransferFrom(store.cfmm, msg.sender, address(this), assets);
-
-        _mint(store, to, shares);
-
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-
-        emit Deposit(msg.sender, to, assets, shares);
-
-        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
-            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
-
-        afterDeposit(store, assets, shares);
+        _depositAssetsFrom(store, msg.sender, to, assets, shares);
     }
 
     function _mint(uint256 shares, address to) external virtual override lock returns(uint256 assets) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-
         updateIndex(store);
 
-        assets = _previewMint(store, shares); // No need to check for rounding error, previewMint rounds up.
+        // No need to check for rounding error, previewMint rounds up.
+        require((assets = _previewMint(store, shares)) != 0, "ZERO_ASSETS");
+        _depositAssetsFrom(store, msg.sender, to, assets, shares);
+    }
 
-        // Need to transfer before minting or ERC777s could reenter.
-        GammaSwapLibrary.safeTransferFrom(store.cfmm, msg.sender, address(this), assets);
+    function _withdraw(uint256 assets, address to, address from) external virtual override lock returns(uint256 shares) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        updateIndex(store);
+        require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxWithdraw is
+        require((shares = _previewWithdraw(store, assets)) != 0, "ZERO_SHARES");
+        //shares = _previewWithdraw(store, assets); // No need to check for rounding error, previewWithdraw rounds up.
+        _withdrawAssets(store, msg.sender, to, from, assets, shares);
+    }
 
-        _mint(store, to, shares);
+    function _redeem(uint256 shares, address to, address from) external virtual override lock returns(uint256 assets) {
+        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        updateIndex(store);
+        require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
+        require(assets <= store.LP_TOKEN_BALANCE, "redeem > max"); //TODO: This is what maxRedeem is
+        _withdrawAssets(store, msg.sender, to, from, assets, shares);
+    }
 
+    function _depositAssetsFrom(
+        GammaPoolStorage.Store storage store,
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        GammaSwapLibrary.safeTransferFrom(store.cfmm, caller, address(this), assets);
+        _depositAssets(store, caller, receiver, assets, shares);
+    }
+
+    function _depositAssets(
+        GammaPoolStorage.Store storage store,
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        _mint(store, receiver, shares);
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
 
-        emit Deposit(msg.sender, to, assets, shares);
-
+        emit Deposit(caller, receiver, assets, shares);
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
 
         afterDeposit(store, assets, shares);
     }
 
-    function _withdraw(uint256 assets, address to, address from) external virtual override lock returns(uint256 shares) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-
-        updateIndex(store);
-
-        require(assets <= store.LP_TOKEN_BALANCE, "> liq");
-
-        shares = _previewWithdraw(store, assets); // No need to check for rounding error, previewWithdraw rounds up.
-
-        if (msg.sender != from) {
-            uint256 allowed = store.allowance[from][msg.sender]; // Saves gas for limited approvals.
-            if (allowed != type(uint256).max) store.allowance[from][msg.sender] = allowed - shares;
+    function _withdrawAssets(
+        GammaPoolStorage.Store storage store,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        if (caller != owner) {
+            _spendAllowance(store, owner, caller, shares);
         }
 
         beforeWithdraw(store, assets, shares);
 
-        _burn(store, from, shares);
-
-        emit Withdraw(msg.sender, to, from, assets, shares);
-
-        GammaSwapLibrary.safeTransfer(store.cfmm, to, assets);
+        _burn(store, owner, shares);
+        GammaSwapLibrary.safeTransfer(store.cfmm, receiver, assets);
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
 
+        emit Withdraw(caller, receiver, owner, assets, shares);
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
-    function _redeem(uint256 shares, address to, address from) external virtual override lock returns(uint256 assets) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-
-        updateIndex(store);
-
-        if (msg.sender != from) {
-            uint256 allowed = store.allowance[from][msg.sender]; // Saves gas for limited approvals.
-            if (allowed != type(uint256).max) store.allowance[from][msg.sender] = allowed - shares;
+    function _spendAllowance(
+        GammaPoolStorage.Store storage store,
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal virtual {
+        uint256 allowed = store.allowance[owner][spender]; // Saves gas for limited approvals.
+        if (allowed != type(uint256).max) {
+            require(allowed >= amount, "amt > allow");
+            unchecked {
+                store.allowance[owner][spender] = allowed - amount;
+            }
         }
-
-        // Check for rounding error since we round down in previewRedeem.
-        require((assets = _previewRedeem(store, shares)) != 0, "ZERO_ASSETS");
-        require(assets <= store.LP_TOKEN_BALANCE, "> liq");
-
-        beforeWithdraw(store, assets, shares);
-
-        _burn(store, from, shares);
-
-        emit Withdraw(msg.sender, to, from, assets, shares);
-
-        GammaSwapLibrary.safeTransfer(store.cfmm, to, assets);
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
-
-        emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
-            store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
     //ACCOUNTING LOGIC
