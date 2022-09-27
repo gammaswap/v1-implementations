@@ -9,13 +9,6 @@ import "../../interfaces/strategies/ICPMMStrategy.sol";
 import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
-    constructor(bytes memory sData, bytes memory rData) {
-        CPMMStrategyStorage.Store memory sParams = abi.decode(sData, (CPMMStrategyStorage.Store));
-        CPMMStrategyStorage.init(sParams.factory, sParams.initCodeHash, sParams.tradingFee1, sParams.tradingFee2);
-
-        LinearKinkedRateStorage.Store memory rParams = abi.decode(rData, (LinearKinkedRateStorage.Store));
-        LinearKinkedRateStorage.init(rParams.baseRate, rParams.optimalUtilRate, rParams.slope1, rParams.slope2);
-    }
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();

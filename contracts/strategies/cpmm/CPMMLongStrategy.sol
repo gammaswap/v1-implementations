@@ -6,9 +6,6 @@ import "./CPMMBaseStrategy.sol";
 
 contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
 
-    constructor(bytes memory sParams, bytes memory rParams) CPMMBaseStrategy(sParams, rParams) {
-    }
-
     function convertLiquidityToAmounts(GammaPoolStorage.Store storage store, uint256 liquidity) internal view returns(uint256 amount0, uint256 amount1) {
         uint256 lastCFMMTotalSupply = store.lastCFMMTotalSupply;
         amount0 = liquidity * store.CFMM_RESERVES[0] / lastCFMMTotalSupply;

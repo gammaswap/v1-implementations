@@ -17,7 +17,7 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.store().totalSupply = _totalSupply;
     }
 
-    function totalSupply() public virtual view returns (uint256){
+    function totalSupply() public virtual view returns (uint256) {
         return GammaPoolStorage.store().totalSupply;
     }
 
