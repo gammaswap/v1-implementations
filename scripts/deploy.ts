@@ -20,7 +20,7 @@ async function main() {
 
   const abi = ethers.utils.defaultAbiCoder;
   const params = abi.encode(
-    ["string", "bytes", "uint", "uint", "uint", "uint", "uint", "uint"],
+    ["address", "bytes32", "uint", "uint", "uint", "uint", "uint", "uint"],
     [
       cfmmFactoryAddress,
       cfmmHash,
