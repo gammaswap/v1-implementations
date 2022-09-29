@@ -10,12 +10,14 @@ describe("ShortStrategy", function () {
   let TestCFMM: any;
   let TestStrategy: any;
   let TestStrategyFactory: any;
+  let TestPositionManager: any;
   let TestProtocol: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
   let factory: any;
   let strategy: any;
+  let posManager: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
@@ -31,6 +33,9 @@ describe("ShortStrategy", function () {
       "TestStrategyFactory"
     );
     TestStrategy = await ethers.getContractFactory("TestShortStrategy");
+    TestPositionManager = await ethers.getContractFactory(
+      "TestPositionManager"
+    );
     TestProtocol = await ethers.getContractFactory("TestProtocol");
     [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -61,6 +66,13 @@ describe("ShortStrategy", function () {
 
     strategy = await TestStrategy.attach(
       strategyAddr // The deployed contract address
+    );
+
+    posManager = await TestPositionManager.deploy(
+      factory.address,
+      strategy.address,
+      cfmm.address,
+      PROTOCOL_ID
     );
   });
 
@@ -736,9 +748,224 @@ describe("ShortStrategy", function () {
     });
     describe("Deposit Reserves", function () {
       it("Error Deposit Reserves", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        await (await cfmm.mint(shares, owner.address)).wait();
 
+        await expect(
+          posManager.depositReserves(owner.address, [0, 0], [0, 0])
+        ).to.be.revertedWith("ZERO_SHARES");
+
+        const amtDesired1 = [1, 1];
+        const amtMin1 = [0, 0];
+        await expect(
+          posManager.depositReserves(owner.address, amtDesired1, amtMin1)
+        ).to.be.revertedWith("STF");
+
+        await (
+          await tokenA.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+        await (
+          await tokenB.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        await expect(
+          posManager.depositReserves(owner.address, [1, 2], [0, 0])
+        ).to.be.revertedWith("WL");
+
+        await expect(
+          posManager.depositReserves(owner.address, [2, 1], [0, 0])
+        ).to.be.revertedWith("WL");
+
+        await expect(
+          posManager.depositReserves(owner.address, [1, 1], [0, 0])
+        ).to.be.revertedWith("WL");
+      });
+
+      it("First Deposit Reserves", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        await (
+          await tokenA.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+        await (
+          await tokenB.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const assets = BigNumber.from(20);
+        const expectedGSShares = await strategy.previewDeposit(assets);
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        const res = await (
+          await posManager.depositReserves(owner.address, [10, 10], [0, 0])
+        ).wait();
+
+        const depositEvent = res.events[res.events.length - 3];
+        expect(depositEvent.event).to.equal("Deposit");
+        expect(depositEvent.args.caller).to.equal(posManager.address);
+        expect(depositEvent.args.to).to.equal(owner.address);
+        expect(depositEvent.args.assets).to.equal(assets);
+        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+
+        const poolUpdatedEvent = res.events[res.events.length - 2];
+        expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
+        expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(assets);
+        expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(0);
+        expect(poolUpdatedEvent.args.lastBlockNumber).to.equal(
+          (await ethers.provider.getBlock("latest")).number
+        );
+        expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
+        expect(poolUpdatedEvent.args.lpInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
+
+        const depositReserveEvent = res.events[res.events.length - 1];
+        expect(depositReserveEvent.args.pool).to.equal(strategy.address);
+        expect(depositReserveEvent.args.reserves.length).to.equal(2);
+        expect(depositReserveEvent.args.reservesLen).to.equal(
+          depositReserveEvent.args.reserves.length
+        );
+        expect(depositReserveEvent.args.reserves[0]).to.equal(10);
+        expect(depositReserveEvent.args.reserves[1]).to.equal(10);
+        expect(depositReserveEvent.args.shares).to.equal(20);
+
+        expect(await strategy.totalSupply()).to.equal(expectedGSShares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          expectedGSShares
+        );
+        const params1 = await strategy.getTotalAssetsParams();
+        expect(params1.lpBalance).to.equal(assets);
+        expect(assets).to.equal(expectedGSShares);
+      });
+
+      it("More Deposit Reserves", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        await (
+          await tokenA.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+        await (
+          await tokenB.approve(posManager.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const assets = shares.div(2);
+        const expectedGSShares = await strategy.previewDeposit(assets);
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        const res = await (
+          await posManager.depositReserves(
+            owner.address,
+            [assets.div(2), assets.div(2)],
+            [0, 0]
+          )
+        ).wait();
+
+        const depositEvent = res.events[res.events.length - 3];
+        expect(depositEvent.event).to.equal("Deposit");
+        expect(depositEvent.args.caller).to.equal(posManager.address);
+        expect(depositEvent.args.to).to.equal(owner.address);
+        expect(depositEvent.args.assets).to.equal(assets);
+        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+
+        expect(await strategy.totalSupply()).to.equal(expectedGSShares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          expectedGSShares
+        );
+
+        await (await cfmm.trade(tradeYield)).wait();
+
+        const assets2 = assets.div(2);
+        const expectedGSShares2 = await strategy.previewDeposit(assets2);
+
+        // time passes by
+        // mine 256 blocks
+        await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+        const resp = await (
+          await posManager.depositReserves(
+            owner.address,
+            [assets2.div(2), assets2.div(2)],
+            [0, 0]
+          )
+        ).wait();
+
+        const depositEvent1 = resp.events[resp.events.length - 3];
+        expect(depositEvent1.event).to.equal("Deposit");
+        expect(depositEvent1.args.caller).to.equal(posManager.address);
+        expect(depositEvent1.args.to).to.equal(owner.address);
+        expect(depositEvent1.args.assets).to.equal(assets2);
+        expect(depositEvent1.args.shares).to.equal(expectedGSShares2);
+
+        await borrowLPTokens(ONE.mul(10));
+
+        await (await cfmm.trade(tradeYield)).wait();
+        // time passes by
+        // mine 256 blocks
+        await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+        const assets3 = assets2.div(2);
+        const params1 = await strategy.getTotalAssetsParams();
+
+        const currTotalAssets = await strategy.totalAssets(
+          cfmm.address,
+          params1.borrowedInvariant,
+          params1.lpBalance,
+          params1.lpBorrowed,
+          params1.prevCFMMInvariant,
+          params1.prevCFMMTotalSupply,
+          params1.lastBlockNum.sub(1) // to account for the next 1 block update
+        );
+
+        const expectedGSShares3 = assets3
+          .mul(await strategy.totalSupply())
+          .div(currTotalAssets);
+
+        const resp1 = await (
+          await posManager.depositReserves(
+            owner.address,
+            [assets3.div(2), assets3.div(2)],
+            [0, 0]
+          )
+        ).wait();
+
+        const depositEvent2 = resp1.events[resp1.events.length - 3];
+        expect(depositEvent2.event).to.equal("Deposit");
+        expect(depositEvent2.args.caller).to.equal(posManager.address);
+        expect(depositEvent2.args.to).to.equal(owner.address);
+        expect(depositEvent2.args.assets).to.equal(assets3);
+        expect(depositEvent2.args.shares).to.equal(expectedGSShares3);
       });
     });
+
     describe("Withdraw Reserves", function () {
       it("Withdraw Reserves Error", async function () {
         const ONE = BigNumber.from(10).pow(18);

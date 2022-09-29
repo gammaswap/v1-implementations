@@ -1,7 +1,7 @@
 {
-  "name": "@gammaswap/v1-core",
+  "name": "@gammaswap/v1-strategies",
   "version": "1.0.0",
-  "description": "Core contracts for the GammaSwapV1 protocol",
+  "description": "Strategies contracts for the v1-core",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
   "scripts": {
@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "@gammaswap/v1-core": "^0.1.3",
+    "@gammaswap/v1-periphery": "^1.0.4",
     "@openzeppelin/contracts": "^4.7.0"
   }
 }

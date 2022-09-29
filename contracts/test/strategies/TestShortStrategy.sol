@@ -13,6 +13,22 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.init();
     }
 
+    //function getTks() external virtual view returns(address tk) {
+    //    getTokensX();
+    //    tk = address(0);
+    //}
+
+    /*function getTokensX() public virtual view returns(address token1, address token2) {
+        //address[] memory _tokens = GammaPoolStorage.store().tokens;
+        //uint256[] memory tks = new uint256[](2);
+
+        //_tks[0] = GammaPoolStorage.store().tokens[0];
+        //_tks[1] = GammaPoolStorage.store().tokens[1];
+        //_tks = new address[](2);
+
+        GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
+    }/**/
+
     function setTotalSupply(uint256 _totalSupply) public virtual {
         GammaPoolStorage.store().totalSupply = _totalSupply;
     }
@@ -25,13 +41,13 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.store().LP_TOKEN_TOTAL = _totalAssets;
     }
 
-    function getLastFeeIndex() public virtual view returns(uint256 lastFeeIndex) {
+    /*function getLastFeeIndex() public virtual view returns(uint256 lastFeeIndex) {
         lastFeeIndex = GammaPoolStorage.store().lastFeeIndex;
     }
 
     function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex) {
         accFeeIndex = GammaPoolStorage.store().accFeeIndex;
-    }
+    }/**/
 
     function getTotalAssets() public virtual view returns(uint256 _totalAssets) {
         _totalAssets = GammaPoolStorage.store().LP_TOKEN_TOTAL;
@@ -160,7 +176,7 @@ contract TestShortStrategy is ShortStrategy {
 
     //ShortGamma
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal override virtual returns (uint256[] memory reserves, address payee) {
-        return (reserves, payee);
+        return (amountsDesired, store.cfmm);
     }
 
     function getReserves(address cfmm) internal override virtual view returns(uint256[] memory reserves){
@@ -177,7 +193,8 @@ contract TestShortStrategy is ShortStrategy {
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal override virtual returns(uint256 liquidity) {
-        return liquidity;
+        liquidity = amounts[0] + amounts[1];
+        TestCFMM(cfmm).mint(liquidity, address(this));
     }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal override virtual returns(uint256[] memory amounts) {

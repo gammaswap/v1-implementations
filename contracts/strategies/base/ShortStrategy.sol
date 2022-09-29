@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/IShortStrategy.sol";
+import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
 import "./BaseStrategy.sol";
-import "../../interfaces/ISendTokensCallback.sol";
 
 abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
@@ -40,7 +40,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         (,assets) = _withdrawAssetsNoPull(to, false);
     }
 
-    function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory reserves, uint256 shares) {
+    function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override returns(uint256[] memory reserves, uint256 shares) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         address payee;
         (reserves, payee) = calcDepositAmounts(store, amountsDesired, amountsMin);
@@ -48,11 +48,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         address[] storage tokens = store.tokens;
         uint256[] memory balances = new uint256[](tokens.length);
         for(uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = GammaSwapLibrary.balanceOf(tokens[i], address(this));
+            balances[i] = GammaSwapLibrary.balanceOf(tokens[i], payee);
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data); // TODO: Risky. Should probably set sender to PosMgr
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, reserves, payee, data); // TODO: Risky. Should set sender to PosMgr
         for(uint256 i = 0; i < tokens.length; i++) {
-            if(reserves[i] > 0) require(balances[i] + reserves[i] == GammaSwapLibrary.balanceOf(tokens[i], address(this)), "WL");
+            if(reserves[i] > 0) require(balances[i] + reserves[i] == GammaSwapLibrary.balanceOf(tokens[i], payee), "WL");
         }
 
         depositToCFMM(store.cfmm, reserves, address(this));
