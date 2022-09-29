@@ -23,8 +23,8 @@ async function main() {
     [
       "address",
       "bytes32",
-      "uint256",
-      "uint256",
+      "uint16",
+      "uint16",
       "uint256",
       "uint256",
       "uint256",
