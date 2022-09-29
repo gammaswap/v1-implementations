@@ -44,7 +44,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         updateCollateral(store, _loan);
         emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
-        return _loan.tokensHeld;/**/
+        return _loan.tokensHeld;
     }
 
     function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory tokensHeld) {
