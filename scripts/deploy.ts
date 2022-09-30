@@ -6,34 +6,51 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const cfmmFactoryAddress = "<get this from periphery pre core deploy logs>";
-  const [owner] = await ethers.getSigners();
-  
-  const GammaPoolFactory = await ethers.getContractFactory("GammaPoolFactory");
-  const factory = await GammaPoolFactory.deploy(owner.address);
-  await factory.deployed()
-  console.log("GammaPoolFactory Address >> " + factory.address);
+  const gsFactoryAddress = "<get this from core pre-strat deploy logs>";
+  const cfmmFactoryAddress = "<get this from core pre-strat deploy logs>";
+  const cfmmHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f";
+
+  const CPMMLongStrategy = await ethers.getContractFactory("CPMMLongStrategy");
+  const longStrategy = await CPMMLongStrategy.deploy();
+  await longStrategy.deployed();
+
+  const CPMMShortStrategy = await ethers.getContractFactory("CPMMLongStrategy");
+  const shortStrategy = await CPMMShortStrategy.deploy();
+  await shortStrategy.deployed();
+
+  const abi = ethers.utils.defaultAbiCoder;
+  const params = abi.encode(
+    [
+      "address",
+      "bytes32",
+      "uint16",
+      "uint16",
+      "uint256",
+      "uint256",
+      "uint256",
+      "uint256"],
+    [
+      cfmmFactoryAddress,
+      cfmmHash,
+      1000,
+      997,
+      10 ^ 16,
+      8 * 10 ^ 17,
+      4 * 10 ^ 16,
+      75 * 10 ^ 16
+    ]
+  );
 
   const CPMMProtocol = await ethers.getContractFactory("CPMMProtocol");
   const protocol = await CPMMProtocol.deploy(
-    factory.address,
-    cfmmFactoryAddress,
+    gsFactoryAddress,
     1,
-    "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f", // cfmm pool hash
-    1000,
-    997,
-    10 ^ 16,
-    8 * 10 ^ 17,
-    4 * 10 ^ 16,
-    75 * 10 ^ 16);
-  await protocol.deployed()
-  factory.addProtocol(protocol.address);
-
-  const GammaPool = await ethers.getContractFactory("GammaPool");
-  const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(
-    GammaPool.bytecode
+    params,
+    longStrategy.address,
+    shortStrategy.address,
   );
-  console.log("GAMMAPOOL_INIT_CODE_HASH >> " + COMPUTED_INIT_CODE_HASH)
+  await protocol.deployed()
+  console.log("CPMMProtocol Address >> " + protocol.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
