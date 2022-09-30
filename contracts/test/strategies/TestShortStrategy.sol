@@ -175,7 +175,7 @@ contract TestShortStrategy is ShortStrategy {
     }
 
     //ShortGamma
-    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal override virtual returns (uint256[] memory reserves, address payee) {
+    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal override virtual view returns (uint256[] memory reserves, address payee) {
         return (amountsDesired, store.cfmm);
     }
 

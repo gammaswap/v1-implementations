@@ -14,7 +14,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     }
 
     //ShortGamma
-    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual returns (uint256[] memory reserves, address payee);
+    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual view returns (uint256[] memory reserves, address payee);
 
     function getReserves(address cfmm) internal virtual view returns(uint256[] memory);
 

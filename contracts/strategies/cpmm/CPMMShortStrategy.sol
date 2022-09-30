@@ -8,7 +8,7 @@ import "./CPMMBaseStrategy.sol";
 contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
-            internal virtual override returns (uint256[] memory amounts, address payee) {
+            internal virtual override view returns (uint256[] memory amounts, address payee) {
         require(amountsDesired[0] > 0 && amountsDesired[1] > 0, "0 amount");
 
         (uint256 reserve0, uint256 reserve1,) = ICPMM(store.cfmm).getReserves();

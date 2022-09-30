@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./deployers/TestBaseStrategyDeployer.sol";
 import "./deployers/TestShortStrategyDeployer.sol";
 import "./deployers/cpmm/TestCPMMBaseStrategyDeployer.sol";
+import "./deployers/cpmm/TestCPMMShortStrategyDeployer.sol";
 
 contract TestStrategyFactory {
 
@@ -16,6 +17,7 @@ contract TestStrategyFactory {
     address public baseDeployer;
     address public shortDeployer;
     address public cpmmBaseDeployer;
+    address public cpmmShortDeployer;
 
     constructor(address _cfmm, uint24 _protocolId, address[] memory _tokens, address _protocol) {
         cfmm = _cfmm;
@@ -25,6 +27,7 @@ contract TestStrategyFactory {
         baseDeployer = address(new TestBaseStrategyDeployer());
         shortDeployer = address(new TestShortStrategyDeployer());
         cpmmBaseDeployer = address(new TestCPMMBaseStrategyDeployer());
+        cpmmShortDeployer = address(new TestCPMMShortStrategyDeployer());
     }
 
     function parameters() external virtual view returns (address _cfmm, uint24 _protocolId, address[] memory _tokens, address _protocol) {
@@ -50,6 +53,13 @@ contract TestStrategyFactory {
 
     function createCPMMBaseStrategy() public virtual returns(bool) {
         (bool success, bytes memory data) = cpmmBaseDeployer.delegatecall(abi.encodeWithSignature("createPool()"));
+        require(success && data.length > 0);
+        strategy = abi.decode(data, (address));
+        return true;
+    }
+
+    function createCPMMShortStrategy() public virtual returns(bool) {
+        (bool success, bytes memory data) = cpmmShortDeployer.delegatecall(abi.encodeWithSignature("createPool()"));
         require(success && data.length > 0);
         strategy = abi.decode(data, (address));
         return true;

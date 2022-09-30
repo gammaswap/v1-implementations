@@ -7,7 +7,7 @@ const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
 const PROTOCOL_ID = 1;
 
-describe.only("CPMMBaseStrategy", function () {
+describe("CPMMBaseStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
   let TestStrategyFactory: any;

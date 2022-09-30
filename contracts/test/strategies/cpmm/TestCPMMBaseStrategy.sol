@@ -8,7 +8,7 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     event DepositToCFMM(address cfmm, address to, uint256 liquidity);
     event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
-    bytes32 public constant INIT_CODE_HASH = 0x27285ab59f8ba133307fa420eb84d62bb43c162ff701cc3df8b9e638194fa370;
+    bytes32 public constant INIT_CODE_HASH = 0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f;
 
     constructor() {
         GammaPoolStorage.init();
@@ -40,9 +40,4 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     function testCalcInvariant(address cfmm, uint256[] memory amounts) public virtual view returns(uint256) {
         return calcInvariant(cfmm, amounts);
     }
-    /*
-    function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
-        (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
-    }
-    */
 }
