@@ -7,9 +7,10 @@ const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
 const PROTOCOL_ID = 1;
 
-describe.only("CPMMBaseStrategy", function () {
+describe.only("CPMMShortStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
+  let TestStrategy2: any;
   let TestStrategyFactory: any;
   let TestProtocol: any;
   let UniswapV2Factory: any;
@@ -20,6 +21,7 @@ describe.only("CPMMBaseStrategy", function () {
   let factory: any;
   let uniFactory: any;
   let strategy: any;
+  let strategy2: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
@@ -45,6 +47,7 @@ describe.only("CPMMBaseStrategy", function () {
       owner
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMShortStrategy");
+    TestStrategy2 = await ethers.getContractFactory("TestCPMMShortStrategy2");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
@@ -82,6 +85,13 @@ describe.only("CPMMBaseStrategy", function () {
 
     strategy = await TestStrategy.attach(
       strategyAddr // The deployed contract address
+    );
+
+    await (await factory.createCPMMShortStrategy2()).wait();
+    const strategy2Addr = await factory.strategy();
+
+    strategy2 = await TestStrategy2.attach(
+      strategy2Addr // The deployed contract address
     );
   });
 
@@ -171,18 +181,86 @@ describe.only("CPMMBaseStrategy", function () {
       expect(res3[1]).to.equal(amtB.mul(2).sub(amtB.div(2)));
     });
 
-    it("Error Calc Deposit Amounts", async function () {
-      // amounts 0  // require(amountsDesired[0] > 0 && amountsDesired[1] > 0, "0 amount");
-      // reserves are 0
-      /*
-        payee = store.cfmm;
-        if (reserve0 == 0 && reserve1 == 0) {
-            return(amountsDesired, payee);
-        }
-
-        require(reserve0 > 0 && reserve1 > 0, "0 reserve");
-      * */
+    it("Error Calc Deposit Amounts, 0 amt", async function () {
+      await expect(
+        strategy2.testCalcDeposits([0, 0], [0, 0])
+      ).to.be.revertedWith("0 amount");
+      await expect(
+        strategy2.testCalcDeposits([1, 0], [0, 0])
+      ).to.be.revertedWith("0 amount");
+      await expect(
+        strategy2.testCalcDeposits([0, 1], [0, 0])
+      ).to.be.revertedWith("0 amount");
       // require(amountOptimal >= amountMin, "< minAmt");
+    });
+
+    it("Error Calc Deposit Amounts, 0 reserve tokenA", async function () {
+      await (await tokenB.transfer(cfmm.address, 1)).wait();
+      await (await cfmm.sync()).wait();
+      await expect(
+        strategy2.testCalcDeposits([1, 1], [0, 0])
+      ).to.be.revertedWith("0 reserve");
+    });
+
+    it("Error Calc Deposit Amounts, 0 reserve tokenB", async function () {
+      await (await tokenA.transfer(cfmm.address, 1)).wait();
+      await (await cfmm.sync()).wait();
+      await expect(
+        strategy2.testCalcDeposits([1, 1], [0, 0])
+      ).to.be.revertedWith("0 reserve");
+    });
+
+    it("Error Calc Deposit Amounts, < minAmt", async function () {
+      await (await tokenA.transfer(cfmm.address, 1)).wait();
+      await (await tokenB.transfer(cfmm.address, 1)).wait();
+      await (await cfmm.sync()).wait();
+      await expect(
+        strategy2.testCalcDeposits([1, 1], [0, 2])
+      ).to.be.revertedWith("< minAmt");
+
+      await (await tokenB.transfer(cfmm.address, 1)).wait();
+      await (await cfmm.sync()).wait();
+      await expect(
+        strategy2.testCalcDeposits([1, 1], [2, 0])
+      ).to.be.revertedWith("< minAmt");
+    });
+
+    it("Empty reserves", async function () {
+      const res = await strategy2.testCalcDeposits([1, 1], [0, 0]);
+      expect(res.amounts.length).to.equal(2);
+      expect(res.amounts[0]).to.equal(1);
+      expect(res.amounts[1]).to.equal(1);
+      expect(res.payee).to.equal(cfmm.address);
+    });
+
+    it("Success Calculation", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      await (await tokenA.transfer(cfmm.address, ONE.mul(100))).wait();
+      await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
+      await (await cfmm.sync()).wait();
+      const res = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      expect(res.amounts.length).to.equal(2);
+      expect(res.amounts[0]).to.equal(ONE.mul(100));
+      expect(res.amounts[1]).to.equal(ONE.mul(100));
+      expect(res.payee).to.equal(cfmm.address);
+
+      await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
+      await (await cfmm.sync()).wait();
+
+      const res1 = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      expect(res1.amounts.length).to.equal(2);
+      expect(res1.amounts[0]).to.equal(ONE.mul(50));
+      expect(res1.amounts[1]).to.equal(ONE.mul(100));
+      expect(res1.payee).to.equal(cfmm.address);
+
+      await (await tokenA.transfer(cfmm.address, ONE.mul(300))).wait();
+      await (await cfmm.sync()).wait();
+
+      const res2 = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      expect(res2.amounts.length).to.equal(2);
+      expect(res2.amounts[0]).to.equal(ONE.mul(100));
+      expect(res2.amounts[1]).to.equal(ONE.mul(50));
+      expect(res2.payee).to.equal(cfmm.address);
     });
   });
 });
