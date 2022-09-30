@@ -238,7 +238,10 @@ describe("CPMMShortStrategy", function () {
       await (await tokenA.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await cfmm.sync()).wait();
-      const res = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      const res = await strategy2.testCalcDeposits(
+        [ONE.mul(100), ONE.mul(100)],
+        [0, 0]
+      );
       expect(res.amounts.length).to.equal(2);
       expect(res.amounts[0]).to.equal(ONE.mul(100));
       expect(res.amounts[1]).to.equal(ONE.mul(100));
@@ -247,7 +250,10 @@ describe("CPMMShortStrategy", function () {
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await cfmm.sync()).wait();
 
-      const res1 = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      const res1 = await strategy2.testCalcDeposits(
+        [ONE.mul(100), ONE.mul(100)],
+        [0, 0]
+      );
       expect(res1.amounts.length).to.equal(2);
       expect(res1.amounts[0]).to.equal(ONE.mul(50));
       expect(res1.amounts[1]).to.equal(ONE.mul(100));
@@ -256,7 +262,10 @@ describe("CPMMShortStrategy", function () {
       await (await tokenA.transfer(cfmm.address, ONE.mul(300))).wait();
       await (await cfmm.sync()).wait();
 
-      const res2 = await strategy2.testCalcDeposits([ONE.mul(100), ONE.mul(100)], [0, 0]);
+      const res2 = await strategy2.testCalcDeposits(
+        [ONE.mul(100), ONE.mul(100)],
+        [0, 0]
+      );
       expect(res2.amounts.length).to.equal(2);
       expect(res2.amounts[0]).to.equal(ONE.mul(100));
       expect(res2.amounts[1]).to.equal(ONE.mul(50));
