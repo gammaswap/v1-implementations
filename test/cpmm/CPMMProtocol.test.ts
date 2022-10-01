@@ -7,7 +7,7 @@ const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
 const PROTOCOL_ID = 1;
 
-describe.only("CPMMProtocol", function () {
+describe("CPMMProtocol", function () {
   let TestERC20: any;
   let TestCPMMProtocol: any;
   let TestCPMMProtocol2: any;
@@ -201,7 +201,6 @@ describe.only("CPMMProtocol", function () {
     expect(tokens[1]).to.equal(token1Addr);
   }
 
-  // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Should set right init params", async function () {
       expect(await protocol._owner()).to.equal(gsFactoryAddress);
