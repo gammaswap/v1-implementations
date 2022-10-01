@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "../../interfaces/external/ICPMM.sol";
 import "../base/ShortStrategy.sol";
 import "./CPMMBaseStrategy.sol";
-import "hardhat/console.sol";
 
 contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
 
