@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./deployers/TestBaseStrategyDeployer.sol";
 import "./deployers/TestShortStrategyDeployer.sol";
+import "./deployers/TestLongStrategyDeployer.sol";
 import "./deployers/cpmm/TestCPMMBaseStrategyDeployer.sol";
 import "./deployers/cpmm/TestCPMMShortStrategyDeployer.sol";
 import "./deployers/cpmm/TestCPMMShortStrategyDeployer2.sol";
@@ -17,6 +18,7 @@ contract TestStrategyFactory {
 
     address public baseDeployer;
     address public shortDeployer;
+    address public longDeployer;
     address public cpmmBaseDeployer;
     address public cpmmShortDeployer;
     address public cpmmShortDeployer2;
@@ -28,6 +30,7 @@ contract TestStrategyFactory {
         protocol = _protocol;
         baseDeployer = address(new TestBaseStrategyDeployer());
         shortDeployer = address(new TestShortStrategyDeployer());
+        longDeployer = address(new TestLongStrategyDeployer());
         cpmmBaseDeployer = address(new TestCPMMBaseStrategyDeployer());
         cpmmShortDeployer = address(new TestCPMMShortStrategyDeployer());
         cpmmShortDeployer2 = address(new TestCPMMShortStrategyDeployer2());
@@ -49,6 +52,13 @@ contract TestStrategyFactory {
 
     function createShortStrategy() public virtual returns(bool) {
         (bool success, bytes memory data) = shortDeployer.delegatecall(abi.encodeWithSignature("createPool()"));
+        require(success && data.length > 0);
+        strategy = abi.decode(data, (address));
+        return true;
+    }
+
+    function createLongStrategy() public virtual returns(bool) {
+        (bool success, bytes memory data) = longDeployer.delegatecall(abi.encodeWithSignature("createPool()"));
         require(success && data.length > 0);
         strategy = abi.decode(data, (address));
         return true;

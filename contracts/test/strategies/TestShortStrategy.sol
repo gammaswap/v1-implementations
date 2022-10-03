@@ -13,22 +13,6 @@ contract TestShortStrategy is ShortStrategy {
         GammaPoolStorage.init();
     }
 
-    //function getTks() external virtual view returns(address tk) {
-    //    getTokensX();
-    //    tk = address(0);
-    //}
-
-    /*function getTokensX() public virtual view returns(address token1, address token2) {
-        //address[] memory _tokens = GammaPoolStorage.store().tokens;
-        //uint256[] memory tks = new uint256[](2);
-
-        //_tks[0] = GammaPoolStorage.store().tokens[0];
-        //_tks[1] = GammaPoolStorage.store().tokens[1];
-        //_tks = new address[](2);
-
-        GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
-    }/**/
-
     function setTotalSupply(uint256 _totalSupply) public virtual {
         GammaPoolStorage.store().totalSupply = _totalSupply;
     }
@@ -40,14 +24,6 @@ contract TestShortStrategy is ShortStrategy {
     function setTotalAssets(uint256 _totalAssets) public virtual {
         GammaPoolStorage.store().LP_TOKEN_TOTAL = _totalAssets;
     }
-
-    /*function getLastFeeIndex() public virtual view returns(uint256 lastFeeIndex) {
-        lastFeeIndex = GammaPoolStorage.store().lastFeeIndex;
-    }
-
-    function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex) {
-        accFeeIndex = GammaPoolStorage.store().accFeeIndex;
-    }/**/
 
     function getTotalAssets() public virtual view returns(uint256 _totalAssets) {
         _totalAssets = GammaPoolStorage.store().LP_TOKEN_TOTAL;
