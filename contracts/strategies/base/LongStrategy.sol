@@ -20,7 +20,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
     function getLoan(GammaPoolStorage.Store storage store, uint256 tokenId) internal virtual view returns(GammaPoolStorage.Loan storage _loan) {
         _loan = store.loans[tokenId];
-        require(_loan.id > 0, "0 id");
+        //require(_loan.id > 0, "0 id");
         require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), "FORBIDDEN");
     }
 
@@ -47,20 +47,19 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return _loan.tokensHeld;
     }
 
-    function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory tokensHeld) {
+    function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
         for(uint256 i = 0; i < store.tokens.length; i++) {
-            require(_loan.tokensHeld[i] > amounts[i], "> amt");
+            require(_loan.tokensHeld[i] >= amounts[i], "> amt");
             GammaSwapLibrary.safeTransfer(store.tokens[i], to, amounts[i]);
             _loan.tokensHeld[i] = _loan.tokensHeld[i] - amounts[i];
             store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - amounts[i];
         }
 
         updateLoan(store, _loan);
-        tokensHeld = _loan.tokensHeld;
-        _loan.heldLiquidity = calcInvariant(store.cfmm, tokensHeld);
+        _loan.heldLiquidity = calcInvariant(store.cfmm, _loan.tokensHeld);
 
         checkMargin(_loan, 800);
         emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
