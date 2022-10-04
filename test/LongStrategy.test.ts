@@ -1,11 +1,10 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { Address } from "cluster";
 
 const PROTOCOL_ID = 1;
 
-describe.only("LongStrategy", function () {
+describe("LongStrategy", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestStrategy: any;
@@ -17,7 +16,6 @@ describe.only("LongStrategy", function () {
   let cfmm: any;
   let factory: any;
   let strategy: any;
-  let posManager: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
