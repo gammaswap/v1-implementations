@@ -1,0 +1,21 @@
+name: Compile/Test
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  compile-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16
+          registry-url: https://npm.pkg.github.com/
+          scope: '@gammaswap'
+      - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GS_TOKEN}}
+      - run: npx hardhat test
