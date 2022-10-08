@@ -47,7 +47,7 @@ export async function main() {
   console.log('gsFactoryAddress: ', gsFactoryAddress);
   const cfmmFactoryAddress = uniFactory.address
   const cfmmHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // uniFactory init_code_hash
-
+  
   const protocolParams = abi.encode(
     [
       "address",
@@ -64,10 +64,10 @@ export async function main() {
       cfmmHash,
       1000,
       997,
-      10 ^ 16,
-      8 * 10 ^ 17,
-      4 * 10 ^ 16,
-      75 * 10 ^ 16
+      ethers.utils.parseUnits("1.0", 16),
+      ethers.utils.parseUnits("8.0", 17),
+      ethers.utils.parseUnits("4.0", 16),
+      ethers.utils.parseUnits("75.0", 16)
     ]
   )
   const protocol = await CPMMProtocol.deploy(
@@ -99,26 +99,21 @@ export async function main() {
   }
 
   async function createPair(token1: TestERC20, token2: TestERC20) {
-    try {
-      await uniFactory.createPair(token1.address, token2.address)
-      const cfmmPairAddress: string = await uniFactory.getPair(token1.address, token2.address)
+    await uniFactory.createPair(token1.address, token2.address)
+    const cfmmPairAddress: string = await uniFactory.getPair(token1.address, token2.address)
 
-      const token1Symbol = await token1.symbol()
-      const token2Symbol = await token2.symbol()
-      console.log(`${token1Symbol}/${token2Symbol} Pair Address: ${cfmmPairAddress}`)
+    const token1Symbol = await token1.symbol()
+    const token2Symbol = await token2.symbol()
+    console.log(`${token1Symbol}/${token2Symbol} Pair Address: ${cfmmPairAddress}`)
 
-      // initial reserves
-      const pair = new ethers.Contract(cfmmPairAddress, UniswapV2PairJSON.abi, owner)
-      let amountToTransfer = ethers.utils.parseEther("100")
-      await token1.transfer(cfmmPairAddress, amountToTransfer)
-      await token2.transfer(cfmmPairAddress, amountToTransfer)
-      await pair.mint(owner.address)
+    // initial reserves
+    const pair = new ethers.Contract(cfmmPairAddress, UniswapV2PairJSON.abi, owner)
+    let amountToTransfer = ethers.utils.parseEther("100")
+    await token1.transfer(cfmmPairAddress, amountToTransfer)
+    await token2.transfer(cfmmPairAddress, amountToTransfer)
+    await pair.mint(owner.address)
 
-      return cfmmPairAddress
-    } catch (e) {
-      console.log(`Could not create token pair`)
-      console.log(`PairCreationError: ${e}`)
-    }
+    return cfmmPairAddress
   }
 
   // token pair addresses
