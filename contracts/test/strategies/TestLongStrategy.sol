@@ -71,24 +71,17 @@ contract TestLongStrategy is LongStrategy {
         amounts = new uint256[](2);
     }
 
-    function sendAmounts(GammaPoolStorage.Store storage store, address to, uint256[] memory amounts, bool force) internal virtual override {
-        sendToken(store.tokens[0], to, amounts[0]);
-        sendToken(store.tokens[1], to, amounts[1]);
-    }
-
-    function sendToken(address token, address to, uint256 amount) internal virtual {
-        if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);
-    }
-
     function calcDeltaAmounts(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {
-
     }
 
     function swapAmounts(GammaPoolStorage.Store storage store, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
-
     }
 
     //BaseStrategy
+    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
+        // sendAmounts(store, to, amounts);
+    }
+
     function updateReserves(GammaPoolStorage.Store storage store) internal override virtual {
 
     }
@@ -110,12 +103,6 @@ contract TestLongStrategy is LongStrategy {
         GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
         openLoan(_store, _loan, lpTokens);
     }
-
-    /*function testPayLoan(uint256 tokenId, uint256 liquidity, uint256 lpTokens) public virtual {
-        GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
-        payLoan(_store, _loan, liquidity, lpTokens);
-    }/**/
 
     function setLPTokenBalance(uint256 lpTokenBalance, uint256 lpInvariant) public virtual {
         GammaPoolStorage.Store storage _store = GammaPoolStorage.store();

@@ -13,6 +13,8 @@ describe("CPMMShortStrategy", function () {
   let TestStrategy2: any;
   let TestStrategyFactory: any;
   let TestProtocol: any;
+  let TestDeployer: any;
+  let TestDeployer2: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -26,6 +28,8 @@ describe("CPMMShortStrategy", function () {
   let addr1: any;
   let addr2: any;
   let protocol: any;
+  let deployer: any;
+  let deployer2: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -49,6 +53,12 @@ describe("CPMMShortStrategy", function () {
     TestStrategy = await ethers.getContractFactory("TestCPMMShortStrategy");
     TestStrategy2 = await ethers.getContractFactory("TestCPMMShortStrategy2");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
+    TestDeployer = await ethers.getContractFactory(
+      "TestCPMMShortStrategyDeployer"
+    );
+    TestDeployer2 = await ethers.getContractFactory(
+      "TestCPMMShortStrategyDeployer2"
+    );
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -80,14 +90,18 @@ describe("CPMMShortStrategy", function () {
       protocol.address
     );
 
-    await (await factory.createCPMMShortStrategy()).wait();
+    deployer = await TestDeployer.deploy(factory.address);
+
+    await (await factory.createStrategy(deployer.address)).wait();
     const strategyAddr = await factory.strategy();
 
     strategy = await TestStrategy.attach(
       strategyAddr // The deployed contract address
     );
 
-    await (await factory.createCPMMShortStrategy2()).wait();
+    deployer2 = await TestDeployer2.deploy(factory.address);
+
+    await (await factory.createStrategy(deployer2.address)).wait();
     const strategy2Addr = await factory.strategy();
 
     strategy2 = await TestStrategy2.attach(

@@ -10,6 +10,7 @@ describe("BaseStrategy", function () {
   let TestStrategy: any;
   let TestStrategyFactory: any;
   let TestProtocol: any;
+  let TestDeployer: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
@@ -19,6 +20,7 @@ describe("BaseStrategy", function () {
   let addr1: any;
   let addr2: any;
   let protocol: any;
+  let deployer: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -30,6 +32,7 @@ describe("BaseStrategy", function () {
       "TestStrategyFactory"
     );
     TestStrategy = await ethers.getContractFactory("TestBaseStrategy");
+    TestDeployer = await ethers.getContractFactory("TestBaseStrategyDeployer");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
     [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -55,7 +58,9 @@ describe("BaseStrategy", function () {
       protocol.address
     );
 
-    await (await factory.createBaseStrategy()).wait();
+    deployer = await TestDeployer.deploy(factory.address);
+
+    await (await factory.createStrategy(deployer.address)).wait();
     const strategyAddr = await factory.strategy();
 
     strategy = await TestStrategy.attach(
