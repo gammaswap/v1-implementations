@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/external/ICPMM.sol";
-import "../base/ShortStrategy.sol";
+import "../base/ShortStrategyERC4626.sol";
 import "./CPMMBaseStrategy.sol";
 
-contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategy {
+contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override view returns (uint256[] memory amounts, address payee) {

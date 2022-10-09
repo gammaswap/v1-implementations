@@ -12,36 +12,26 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         amount1 = liquidity * store.CFMM_RESERVES[1] / lastCFMMTotalSupply;
     }
 
-    function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity, uint256[] storage tokensHeld) internal virtual override
-        returns(uint256[] memory _tokensHeld, uint256[] memory amounts) {
+    function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view
+        returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
-        require(tokensHeld[0] >= amounts[0] && tokensHeld[1] >= amounts[1], "< amounts");
-
-        address cfmm = store.cfmm;
-        sendToken(store.tokens[0], cfmm, amounts[0]);
-        sendToken(store.tokens[1], cfmm, amounts[1]);
-
-        _tokensHeld = new uint256[](2);
-        _tokensHeld[0] = tokensHeld[0] - amounts[0];
-        _tokensHeld[1] = tokensHeld[1] - amounts[1];
     }
 
-    function sendToken(address token, address to, uint256 amount) internal {
-        if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);
+    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
+        sendAmounts(store, to, amounts);
     }
 
-    function rebalancePosition(GammaPoolStorage.Store storage store, int256[] calldata deltas, uint256[] storage tokensHeld) internal virtual override returns(uint256[] memory _tokensHeld) {
-        (uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) = rebalancePosition(store.CFMM_RESERVES[0], store.CFMM_RESERVES[1], deltas[0], deltas[1]);
-        _tokensHeld = new uint256[](2);
-
-        _tokensHeld[0] = tokensHeld[0] + inAmt0 - outAmt0;
-        _tokensHeld[1] = tokensHeld[1] + inAmt1 - outAmt1;
-
+    function swapAmounts(GammaPoolStorage.Store storage store, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
         address cfmm = store.cfmm;
-        sendToken(store.tokens[0], cfmm, outAmt0);
-        sendToken(store.tokens[1], cfmm, outAmt1);
-        ICPMM(cfmm).swap(inAmt0,inAmt1,address(this), new bytes(0));
+        sendAmounts(store, cfmm, outAmts);
+        ICPMM(cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
+    }
+
+    function calcDeltaAmounts(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+        outAmts = new uint256[](2);
+        inAmts = new uint256[](2);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = rebalancePosition(store.CFMM_RESERVES[0], store.CFMM_RESERVES[1], deltas[0], deltas[1]); // TODO: Add slippage check
     }
 
     function rebalancePosition(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1) internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {

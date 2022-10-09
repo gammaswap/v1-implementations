@@ -12,6 +12,7 @@ describe("CPMMBaseStrategy", function () {
   let TestStrategy: any;
   let TestStrategyFactory: any;
   let TestProtocol: any;
+  let TestDeployer: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -24,6 +25,7 @@ describe("CPMMBaseStrategy", function () {
   let addr1: any;
   let addr2: any;
   let protocol: any;
+  let deployer: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -46,6 +48,9 @@ describe("CPMMBaseStrategy", function () {
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMBaseStrategy");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
+    TestDeployer = await ethers.getContractFactory(
+      "TestCPMMBaseStrategyDeployer"
+    );
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -77,7 +82,9 @@ describe("CPMMBaseStrategy", function () {
       protocol.address
     );
 
-    await (await factory.createCPMMBaseStrategy()).wait();
+    deployer = await TestDeployer.deploy(factory.address);
+
+    await (await factory.createStrategy(deployer.address)).wait();
     const strategyAddr = await factory.strategy();
 
     strategy = await TestStrategy.attach(
