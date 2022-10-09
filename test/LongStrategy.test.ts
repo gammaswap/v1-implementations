@@ -10,6 +10,7 @@ describe.only("LongStrategy", function () {
   let TestStrategy: any;
   let TestStrategyFactory: any;
   let TestProtocol: any;
+  let TestDeployer: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
@@ -19,6 +20,7 @@ describe.only("LongStrategy", function () {
   let addr1: any;
   let addr2: any;
   let protocol: any;
+  let deployer: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -29,6 +31,7 @@ describe.only("LongStrategy", function () {
     TestStrategyFactory = await ethers.getContractFactory(
       "TestStrategyFactory"
     );
+    TestDeployer = await ethers.getContractFactory("TestLongStrategyDeployer");
     TestStrategy = await ethers.getContractFactory("TestLongStrategy");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
     [owner, addr1, addr2] = await ethers.getSigners();
@@ -56,7 +59,9 @@ describe.only("LongStrategy", function () {
       protocol.address
     );
 
-    await (await factory.createLongStrategy()).wait();
+    deployer = await TestDeployer.deploy(factory.address);
+
+    await (await factory.createStrategy(deployer.address)).wait();
     const strategyAddr = await factory.strategy();
 
     strategy = await TestStrategy.attach(
@@ -371,6 +376,22 @@ describe.only("LongStrategy", function () {
           [amtA.div(2).add(1), amtB.div(2)],
           owner.address
         )
+      ).to.be.revertedWith("> bal");
+
+      const resp = await (await strategy.createLoan()).wait();
+      const tokenId2 = resp.events[0].args.tokenId;
+
+      await tokenA.transfer(strategy.address, amtA);
+      await tokenB.transfer(strategy.address, amtB);
+
+      await (await strategy._increaseCollateral(tokenId2)).wait();
+
+      await expect(
+        strategy._decreaseCollateral(
+          tokenId,
+          [amtA.div(2).add(1), amtB.div(2)],
+          owner.address
+        )
       ).to.be.revertedWith("> held");
 
       await expect(
@@ -409,6 +430,14 @@ describe.only("LongStrategy", function () {
       expect(await tokenB.balanceOf(addr1.address)).to.equal(
         addr1BalB.add(amtB.div(4))
       );
+
+      await (
+        await strategy._decreaseCollateral(
+          tokenId2,
+          [amtA, amtB],
+          owner.address
+        )
+      ).wait();
 
       await checkStrategyTokenBalances(amtA.div(4), amtB.div(4));
 
@@ -504,7 +533,7 @@ describe.only("LongStrategy", function () {
         addr1BalB.add(amtB.div(2))
       );
 
-      await checkStrategyTokenBalances(0, 0);
+      await checkStrategyTokenBalances(0, 0); /**/
     });
 
     it("Decrease Collateral, UpdateIndex", async function () {
@@ -648,7 +677,6 @@ describe.only("LongStrategy", function () {
     });
 
     it("Pay Loan", async function () {
-      // function payLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 liquidity, uint256 lpTokensPaid) internal virtual
       const res1 = await (await strategy.createLoan()).wait();
       const tokenId = res1.events[0].args.tokenId;
 

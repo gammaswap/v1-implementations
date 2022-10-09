@@ -12,9 +12,17 @@ abstract contract BaseStrategy is AbstractRateModel {
         uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
+    modifier lock() {
+        GammaPoolStorage.lockit();
+        _;
+        GammaPoolStorage.unlockit();
+    }
+
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual view returns(uint256);
+
+    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual;
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual returns(uint256 liquidity);
 
@@ -82,7 +90,7 @@ abstract contract BaseStrategy is AbstractRateModel {
     }
 
     function updateStore(GammaPoolStorage.Store storage store) internal virtual {
-        store.BORROWED_INVARIANT = accrueBorrowedInvariant(store.BORROWED_INVARIANT, store.lastFeeIndex);//(store.BORROWED_INVARIANT * store.lastFeeIndex) / store.ONE;
+        store.BORROWED_INVARIANT = accrueBorrowedInvariant(store.BORROWED_INVARIANT, store.lastFeeIndex);
 
         store.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(store.BORROWED_INVARIANT, store.lastCFMMTotalSupply, store.lastCFMMInvariant);
         store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
@@ -100,7 +108,7 @@ abstract contract BaseStrategy is AbstractRateModel {
         // updateTWAP(store);
         updateStore(store);
 
-        if(store.BORROWED_INVARIANT > 0) {
+        if(store.BORROWED_INVARIANT >= 0) {
             // mintToDevs(store);
         }
     }

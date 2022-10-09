@@ -18,19 +18,14 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
     }
 
+    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
+        sendAmounts(store, to, amounts);
+    }
+
     function swapAmounts(GammaPoolStorage.Store storage store, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
         address cfmm = store.cfmm;
-        sendAmounts(store, cfmm, outAmts, true);
+        sendAmounts(store, cfmm, outAmts);
         ICPMM(cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
-    }
-
-    function sendAmounts(GammaPoolStorage.Store storage store, address to, uint256[] memory amounts, bool force) internal virtual override {// TODO: Should probably be changed to something else and a different one should be implemented
-        sendToken(store.tokens[0], to, amounts[0]);
-        sendToken(store.tokens[1], to, amounts[1]);
-    }
-
-    function sendToken(address token, address to, uint256 amount) internal { // TODO: probably needs to move upstream
-        if(amount > 0) GammaSwapLibrary.safeTransfer(token, to, amount);
     }
 
     function calcDeltaAmounts(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {

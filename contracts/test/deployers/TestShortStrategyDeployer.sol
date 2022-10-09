@@ -7,8 +7,8 @@ contract TestShortStrategyDeployer {
 
     address public immutable factory;
 
-    constructor(){
-        factory = msg.sender;
+    constructor(address _factory){
+        factory = _factory;
     }
 
     function createPool() external virtual returns (address pool) {
