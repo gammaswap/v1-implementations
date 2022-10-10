@@ -65,25 +65,21 @@ contract TestLongStrategy is LongStrategy {
     }
 
     //LongGamma
+    function beforeRepay(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
+    }
 
-    function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity)
-        internal override virtual view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
     }
 
-    function calcDeltaAmounts(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
     }
 
-    function swapAmounts(GammaPoolStorage.Store storage store, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+    function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
     }
 
     //BaseStrategy
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
-        // sendAmounts(store, to, amounts);
-    }
-
     function updateReserves(GammaPoolStorage.Store storage store) internal override virtual {
-
     }
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {

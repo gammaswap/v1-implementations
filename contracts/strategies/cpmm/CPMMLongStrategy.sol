@@ -12,23 +12,23 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
         amount1 = liquidity * store.CFMM_RESERVES[1] / lastCFMMTotalSupply;
     }
 
-    function calcRepayAmounts(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view
+    function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view
         returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = convertLiquidityToAmounts(store, liquidity);
     }
 
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
-        sendAmounts(store, to, amounts);
+    function beforeRepay(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
+        sendTokens(store, _loan, store.cfmm, amounts);
     }
 
-    function swapAmounts(GammaPoolStorage.Store storage store, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+    function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
         address cfmm = store.cfmm;
-        sendAmounts(store, cfmm, outAmts);
+        sendTokens(store, _loan, cfmm, outAmts);
         ICPMM(cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
     }
 
-    function calcDeltaAmounts(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = rebalancePosition(store.CFMM_RESERVES[0], store.CFMM_RESERVES[1], deltas[0], deltas[1]); // TODO: Add slippage check

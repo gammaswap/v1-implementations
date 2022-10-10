@@ -38,7 +38,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         (,assets) = _withdrawAssetsNoPull(to, false);
     }
 
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
+    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual {
         address[] storage tokens = store.tokens;
         uint256[] memory balances = new uint256[](tokens.length);
         for(uint256 i = 0; i < tokens.length; i++) {

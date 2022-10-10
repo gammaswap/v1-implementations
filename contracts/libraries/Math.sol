@@ -4,11 +4,11 @@ pragma solidity >=0.6.2;
 // a library for performing various math operations
 
 library Math {
-    function min(uint x, uint y) internal pure returns (uint z) {
-        z = x < y ? x : y;
+    function max(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x > y ? x : y;
     }
 
-    function min2(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x < y ? x : y;
     }
 
