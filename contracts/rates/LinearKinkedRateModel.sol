@@ -8,8 +8,12 @@ import "../interfaces/rates/AbstractRateModel.sol";
 abstract contract LinearKinkedRateModel is AbstractRateModel, ILinearKinkedRateModel {
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
+        uint256 totalLp = lpBalance + lpBorrowed;
+        if(totalLp == 0)
+            return 0;
+
         LinearKinkedRateStorage.Store storage store = LinearKinkedRateStorage.store();
-        uint256 utilizationRate = (lpBorrowed * store.ONE) / (lpBalance + lpBorrowed);
+        uint256 utilizationRate = (lpBorrowed * store.ONE) / totalLp;
         if(utilizationRate <= store.optimalUtilRate) {
             uint256 variableRate = (utilizationRate * store.slope1) / store.optimalUtilRate;
             return (store.baseRate + variableRate);

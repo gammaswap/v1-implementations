@@ -650,19 +650,19 @@
     "@ethersproject/properties" "^5.6.0"
     "@ethersproject/strings" "^5.6.1"
 
-"@gammaswap/v1-core@^0.1.11", "@gammaswap/v1-core@^0.1.2":
+"@gammaswap/v1-core@^0.1.11":
   "integrity" "sha512-gPuU+8DMoslXlrWeipfGJRJ2oh54VzJ7clIxYkS4Ms9guxtcFpqvRgt3iIHmqStqkg8tn8aqkrtzXYiDRu6LDQ=="
   "resolved" "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.1.11/05734e511aec444789d79e134223dce27a402516"
   "version" "0.1.11"
   dependencies:
     "@openzeppelin/contracts" "^4.7.0"
 
-"@gammaswap/v1-periphery@^1.0.4":
-  "integrity" "sha512-0s/x5WL8cY3XATqgYKHFQOOcew9Dk+W1RoCMQRHWEwH4N44uHJCy2b+0u4Rd1JheN5uPf0llFcDAHX2grANHfw=="
-  "resolved" "https://npm.pkg.github.com/download/@gammaswap/v1-periphery/1.0.4/2af8e234270381d4604e93b9a7716157fa90fcc8"
-  "version" "1.0.4"
+"@gammaswap/v1-periphery@^0.1.6":
+  "integrity" "sha512-bhENzYgAarSVj11jXr5ouNx/WYANnXsTIHNIxnV19xjrlu6posKOIGW85pNeKCCYyHv/zF1ReCb8q4M8Vpspxg=="
+  "resolved" "https://npm.pkg.github.com/download/@gammaswap/v1-periphery/0.1.8/f05e108c68a1057d9f3c7db39b630022122f582f"
+  "version" "0.1.8"
   dependencies:
-    "@gammaswap/v1-core" "^0.1.2"
+    "@gammaswap/v1-core" "^0.1.11"
     "@openzeppelin/contracts" "^4.7.0"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
@@ -883,9 +883,14 @@
     "mcl-wasm" "^0.7.1"
     "rustbn.js" "~0.2.0"
 
-"@nomicfoundation/solidity-analyzer-darwin-x64@0.0.3":
-  "integrity" "sha512-HuJd1K+2MgmFIYEpx46uzwEFjvzKAI765mmoMxy4K+Aqq1p+q7hHRlsFU2kx3NB8InwotkkIq3A5FLU1sI1WDw=="
-  "resolved" "https://registry.npmjs.org/@nomicfoundation/solidity-analyzer-darwin-x64/-/solidity-analyzer-darwin-x64-0.0.3.tgz"
+"@nomicfoundation/solidity-analyzer-linux-x64-gnu@0.0.3":
+  "integrity" "sha512-uRfVDlxtwT1vIy7MAExWAkRD4r9M79zMG7S09mCrWUn58DbLs7UFl+dZXBX0/8FTGYWHhOT/1Etw1ZpAf5DTrg=="
+  "resolved" "https://registry.npmjs.org/@nomicfoundation/solidity-analyzer-linux-x64-gnu/-/solidity-analyzer-linux-x64-gnu-0.0.3.tgz"
+  "version" "0.0.3"
+
+"@nomicfoundation/solidity-analyzer-linux-x64-musl@0.0.3":
+  "integrity" "sha512-8HPwYdLbhcPpSwsE0yiU/aZkXV43vlXT2ycH+XlOjWOnLfH8C41z0njK8DHRtEFnp4OVN6E7E5lHBBKDZXCliA=="
+  "resolved" "https://registry.npmjs.org/@nomicfoundation/solidity-analyzer-linux-x64-musl/-/solidity-analyzer-linux-x64-musl-0.0.3.tgz"
   "version" "0.0.3"
 
 "@nomicfoundation/solidity-analyzer@^0.0.3":
@@ -5396,16 +5401,6 @@
   "integrity" "sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw=="
   "resolved" "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
   "version" "1.0.0"
-
-"fsevents@~2.1.1":
-  "integrity" "sha512-Auw9a4AxqWpa9GUfj370BMPzzyncfBABW8Mab7BGWBYDj4Isgq+cDKtx0i6u9jcX9pQDnswsaaOTgTmA5pEjuQ=="
-  "resolved" "https://registry.npmjs.org/fsevents/-/fsevents-2.1.3.tgz"
-  "version" "2.1.3"
-
-"fsevents@~2.3.2":
-  "integrity" "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="
-  "resolved" "https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz"
-  "version" "2.3.2"
 
 "function-bind@^1.1.1", "function-bind@~1.1.1":
   "integrity" "sha512-yIovAzMX49sF8Yl58fSCWJ5svSLuaibPxXQJFLmBObTuCr0Mf1KiPopGM9NiFjiYBCbfaa2Fh6breQ6ANVTI0A=="

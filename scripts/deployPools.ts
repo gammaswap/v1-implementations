@@ -5,24 +5,30 @@ const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.js
 const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json")
 const GammaPoolFactoryJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPoolFactory.sol/GammaPoolFactory.json")
 const GammaPoolJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPool.sol/GammaPool.json")
+const PositionManagerJSON = require("@gammaswap/v1-periphery/artifacts/contracts/PositionManager.sol/PositionManager.json")
 
 const PROTOCOL_ID = 1
 
 export async function main() {
   
   const [owner] = await ethers.getSigners()
+  console.log("owner >> ", owner.address);
   const UniswapV2Factory = new ethers.ContractFactory(UniswapV2FactoryJSON.abi, UniswapV2FactoryJSON.bytecode, owner)
   const GammaPoolFactory = new ethers.ContractFactory(GammaPoolFactoryJSON.abi, GammaPoolFactoryJSON.bytecode, owner)
+  const PositionManager = new ethers.ContractFactory(PositionManagerJSON.abi, PositionManagerJSON.bytecode, owner)
   const TestERC20Contract = await ethers.getContractFactory("TestERC20")
   const GammaPool = new ethers.ContractFactory(GammaPoolJSON.abi, GammaPoolJSON.bytecode, owner)
   const CPMMLongStrategy = await ethers.getContractFactory("CPMMLongStrategy")
   const CPMMShortStrategy = await ethers.getContractFactory("CPMMShortStrategy")
   const CPMMProtocol = await ethers.getContractFactory("CPMMProtocol")
-  
+  //const PositionManager2 = await ethers.getContractFactory("TestPositionManager2")
+  //const TestGammaPool = await ethers.getContractFactory("TestGammaPool")
+  //const TestShortStrategy = await ethers.getContractFactory("TestShortStrategy2")
+
   const abi = ethers.utils.defaultAbiCoder
   const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(GammaPool.bytecode)
   console.log('COMPUTED_INIT_CODE_HASH: ', COMPUTED_INIT_CODE_HASH);
-  
+
   const uniFactory = await UniswapV2Factory.deploy(owner.address)
   const gsFactory = await GammaPoolFactory.deploy(owner.address)
   const longStrategy = await CPMMLongStrategy.deploy()
@@ -32,6 +38,9 @@ export async function main() {
   const tokenC = await TestERC20Contract.deploy("Token C", "TOKC")
   const tokenD = await TestERC20Contract.deploy("Token D", "TOKD")
   const WETH = await TestERC20Contract.deploy("WETH", "WETH")
+  console.log("WETH.address >> ", WETH.address)
+  console.log("tokenA.address >> ", tokenA.address)
+  console.log("tokenB.address >> ", tokenB.address)
 
   await uniFactory.deployed()
   await gsFactory.deployed()
@@ -45,9 +54,13 @@ export async function main() {
 
   const gsFactoryAddress = gsFactory.address
   console.log('gsFactoryAddress: ', gsFactoryAddress);
+
+  const posMgr = await PositionManager.deploy(gsFactoryAddress, WETH.address)
+  console.log('posManagerAddress: ', posMgr.address)
+
   const cfmmFactoryAddress = uniFactory.address
   const cfmmHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // uniFactory init_code_hash
-  
+
   const protocolParams = abi.encode(
     [
       "address",
@@ -122,7 +135,7 @@ export async function main() {
   const token_B_C_Pair = await createPair(tokenB, tokenC)
   const token_A_D_Pair = await createPair(tokenA, tokenD)
   const token_A_WETH_Pair = await createPair(tokenA, WETH)
-  
+
   const createPool = async (cfmmPair: string, token1: string, token2: string) => {
     const CreatePoolParams = {
       cfmm: cfmmPair,
@@ -140,6 +153,7 @@ export async function main() {
         const gammaPool = GammaPool.attach(pool)
         const poolSymbol = await gammaPool.symbol()
         console.log(`${poolSymbol} Address: ${pool}`)
+        return gammaPool;
       } else {
         console.log(`PoolEventsError: no events fired for ${cfmmPair}\n`)
       }
@@ -149,11 +163,61 @@ export async function main() {
     }
   }
 
-  await createPool(token_A_B_Pair as string, tokenA.address, tokenB.address)
-  await createPool(token_A_C_Pair as string, tokenA.address, tokenC.address)
-  await createPool(token_B_C_Pair as string, tokenB.address, tokenC.address)
-  await createPool(token_A_D_Pair as string, tokenA.address, tokenD.address)
-  await createPool(token_A_WETH_Pair as string, tokenA.address, WETH.address)
+  const pool1 = await createPool(token_A_B_Pair as string, tokenA.address, tokenB.address)
+  const pool2 = await createPool(token_A_C_Pair as string, tokenA.address, tokenC.address)
+  const pool3 = await createPool(token_B_C_Pair as string, tokenB.address, tokenC.address)
+  const pool4 = await createPool(token_A_D_Pair as string, tokenA.address, tokenD.address)
+  const pool5 = await createPool(token_A_WETH_Pair as string, tokenA.address, WETH.address)
+
+  //const testGammaPool = await TestGammaPool.deploy();
+  //console.log("testGammaPool >> ", testGammaPool.address);
+  //const testShortStrategy = await TestShortStrategy.deploy()
+
+  //const posMgr2 = await PositionManager2.deploy(testGammaPool.address, testShortStrategy.address, gsFactoryAddress, WETH.address);
+  //console.log('posManagerAddress2: ', posMgr2.address)
+
+  await (await tokenA.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+  await (await tokenB.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+
+  //const cfmmX = await pool1.cfmm();
+  //console.log("cfmmX >> ", cfmmX);
+  // mine 256 blocks
+  await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+  let amt = ethers.utils.parseEther("1")
+
+  const DepositReservesParams = {
+    cfmm: token_A_B_Pair,
+    amountsDesired: [amt, amt],
+    amountsMin: [0, 0],
+    to: owner.address,
+    protocol: PROTOCOL_ID,
+    deadline: ethers.constants.MaxUint256
+  }
+  //const res = await (await posMgr2.depositReserves(DepositReservesParams)).wait();
+  const res = await (await posMgr.depositReserves(DepositReservesParams)).wait();
+  //console.log("res >>")
+  //console.log(res)/**/
+
+  const bal = await pool1.balanceOf(owner.address);
+  console.log("bal >> ", bal);
+
+  await (await pool1.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+
+  const WithdrawReservesParams = {
+    cfmm: token_A_B_Pair,
+    protocol: PROTOCOL_ID,
+    amount: amt.div(2),
+    amountsMin: [0, 0],
+    to: owner.address,
+    deadline: ethers.constants.MaxUint256
+  }
+  const res1 = await (await posMgr.withdrawReserves(WithdrawReservesParams)).wait();
+  //console.log("res1 >>")
+  //console.log(res1)/**/
+
+  const bal2 = await pool1.balanceOf(owner.address);
+  console.log("bal2 >> ", bal2);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
