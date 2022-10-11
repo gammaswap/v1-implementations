@@ -82,7 +82,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return _loan.tokensHeld;
     }
 
-    // TODO: (DONE) Should pass expected minAmts for the withdrawal, prevent front running
+    // TODO: Should pass expected minAmts for the withdrawal, prevent front running
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         require(lpTokens < store.LP_TOKEN_BALANCE, "> bal");// TODO: Must add reserve check of 5% - 20%?
@@ -167,13 +167,11 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         _loan.lpTokens = _loan.lpTokens + lpTokens;
     }
 
-    //TODO: What if fees from token transfer produce a smaller invariant, so we might pay less liquidity than expected if the token has a fee on transfers
-    //with this method the token fee transfer is being paid by the LP, shouldn't do that
-    //so we have to figure out how much LP token we got. and therefore how much invariant if the invariant is less, we take the lower number? Wouldn't that put the position at risk of being undercapitalized?
-    //because that would mean we spent more collateral on less invariant than we expected? It shouldn't be too big a deal though.
     function payLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 liquidity) internal virtual {
         uint256 newLPBalance = GammaSwapLibrary.balanceOf(store.cfmm, address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
-        uint256 lpTokenChange = newLPBalance - store.LP_TOKEN_BALANCE; // the change will always be positive, just might not be greater than expected
+        require(newLPBalance > store.LP_TOKEN_BALANCE, "< lp_bal");// the change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
+
+        uint256 lpTokenChange = newLPBalance - store.LP_TOKEN_BALANCE;
         uint256 paidLiquidity = calcLPInvariant(lpTokenChange, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
         liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
 

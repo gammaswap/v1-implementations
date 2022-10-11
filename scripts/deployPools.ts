@@ -133,7 +133,87 @@ export async function main() {
   positionManager.deployed()
   console.log('positionManager: ', positionManager.address)
 
-  // depositLPToken(AB_GammaPool, positionManager, user.address, tokenA, tokenB, AB_LPTokens as BigNumber)
+  //const testGammaPool = await TestGammaPool.deploy();
+  //console.log("testGammaPool >> ", testGammaPool.address);
+  //const testShortStrategy = await TestShortStrategy.deploy()
+
+  //const posMgr2 = await PositionManager2.deploy(testGammaPool.address, testShortStrategy.address, gsFactoryAddress, WETH.address);
+  //console.log('posManagerAddress2: ', posMgr2.address)
+
+  await (await tokenA.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+  await (await tokenB.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+
+  //const cfmmX = await pool1.cfmm();
+  //console.log("cfmmX >> ", cfmmX);
+  // mine 256 blocks
+  await ethers.provider.send("hardhat_mine", ["0x100"]);
+
+  let amt = ethers.utils.parseEther("1")
+
+  const DepositReservesParams = {
+    cfmm: token_A_B_Pair,
+    amountsDesired: [amt, amt],
+    amountsMin: [0, 0],
+    to: owner.address,
+    protocol: PROTOCOL_ID,
+    deadline: ethers.constants.MaxUint256
+  }
+  //const res = await (await posMgr2.depositReserves(DepositReservesParams)).wait();
+  const res = await (await posMgr.depositReserves(DepositReservesParams)).wait();
+  //console.log("res >>")
+  //console.log(res)/**/
+
+  const bal = await pool1.balanceOf(owner.address);
+  console.log("bal >> ", bal);
+
+  await (await pool1.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
+
+  const WithdrawReservesParams = {
+    cfmm: token_A_B_Pair,
+    protocol: PROTOCOL_ID,
+    amount: amt,
+    amountsMin: [0, 0],
+    to: owner.address,
+    deadline: ethers.constants.MaxUint256
+  }
+  const res1 = await (await posMgr.withdrawReserves(WithdrawReservesParams)).wait();
+  //console.log("res1 >>")
+  //console.log(res1)/**/
+
+  const bal2 = await pool1.balanceOf(owner.address);
+  console.log("bal2 >> ", bal2);
+
+  const pair = new ethers.Contract(token_A_B_Pair, UniswapV2PairJSON.abi, owner)
+  const bal3 = await pair.balanceOf(owner.address);
+  console.log("bal3 >> ", bal3);
+
+  await pair.approve(posMgr.address, ethers.constants.MaxUint256);//must approve before sending tokens
+
+  const DepositWithdrawParams = {
+    cfmm: pair.address,
+    protocol: PROTOCOL_ID,
+    lpTokens: amt,
+    to: owner.address,
+    deadline: ethers.constants.MaxUint256
+  }
+
+  const res3 = await (await posMgr.depositNoPull(DepositWithdrawParams)).wait();
+
+  const bal4 = await pool1.balanceOf(owner.address);
+  console.log("bal4 >> ", bal4);
+
+  const DepositWithdrawParams2 = {
+    cfmm: pair.address,
+    protocol: PROTOCOL_ID,
+    lpTokens: amt,
+    to: owner.address,
+    deadline: ethers.constants.MaxUint256
+  }
+
+  const res4 = await (await posMgr.withdrawNoPull(DepositWithdrawParams2)).wait();
+
+  const bal5 = await pool1.balanceOf(owner.address);
+  console.log("bal5 >> ", bal5);
 }
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
