@@ -1,6 +1,4 @@
 import { ethers } from "hardhat"
-import { Contract, ContractFactory, BigNumber, BigNumberish } from "ethers"
-import type { TestERC20 } from "../typechain"
 import {
   getGammaPoolDetails,
   createPair,
@@ -12,23 +10,17 @@ import {
 } from './helpers'
 
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json")
-const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json")
 const GammaPoolFactoryJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPoolFactory.sol/GammaPoolFactory.json")
 const PositionManagerJSON = require("@gammaswap/v1-periphery/artifacts/contracts/PositionManager.sol/PositionManager.json")
 const GammaPoolJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPool.sol/GammaPool.json")
 const ERC20JSON = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json")
 
 const PROTOCOL_ID = 1
-const AMOUNTS_MIN = [0, 0]
-
-const overrides = {
-  gasLimit: 30000000
-}
 
 export async function main() {
   
   const [owner, user] = await ethers.getSigners()
-  console.log(`user with address ${user.address} logged in`);
+  console.log(`user with address ${owner.address} logged in`);
   const UniswapV2Factory = new ethers.ContractFactory(UniswapV2FactoryJSON.abi, UniswapV2FactoryJSON.bytecode, owner)
   const GammaPoolFactory = new ethers.ContractFactory(GammaPoolFactoryJSON.abi, GammaPoolFactoryJSON.bytecode, owner)
   const PositionManager = new ethers.ContractFactory(PositionManagerJSON.abi, PositionManagerJSON.bytecode, owner)
@@ -56,6 +48,7 @@ export async function main() {
   await uniFactory.deployed()
   await gsFactory.deployed()
   await longStrategy.deployed()
+
   await shortStrategy.deployed()
   await tokenA.deployed()
   await tokenB.deployed()
@@ -65,10 +58,14 @@ export async function main() {
   
   const gsFactoryAddress = gsFactory.address
   console.log('gsFactoryAddress: ', gsFactoryAddress);
-
+  
   const cfmmFactoryAddress = uniFactory.address
   const cfmmHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // uniFactory init_code_hash
 
+  const positionManager = await PositionManager.deploy(gsFactoryAddress, WETH.address)
+  positionManager.deployed()
+  console.log('positionManager: ', positionManager.address)
+  
   const protocolParams = abi.encode(
     [
       "address",
@@ -104,116 +101,67 @@ export async function main() {
   await gsFactory.addProtocol(CPMMProtocolAddress)
   
   // token pair addresses
+  console.log("\nCREATING PAIR ADDRESSES")
+  console.log("========================")
   const token_A_B_Pair_Addr = await createPair(uniFactory, owner, tokenA, tokenB)
   const token_A_C_Pair_Addr = await createPair(uniFactory, owner, tokenA, tokenC)
   const token_B_C_Pair_Addr = await createPair(uniFactory, owner, tokenB, tokenC)
   const token_A_D_Pair_Addr = await createPair(uniFactory, owner, tokenA, tokenD)
   const token_A_WETH_Pair_Addr = await createPair(uniFactory, owner, tokenA, WETH)
+  console.log("\n=========================\n")
 
-  const [token_A_B_Pair, AB_LPTokens] = await depositReservesToPair(token_A_B_Pair_Addr, owner, user.address, tokenA, tokenB, ethers.utils.parseEther("1"), ethers.utils.parseEther("4"))
-  // const [token_A_C_Pair, AC_LPTokens] = await depositReservesToPair(token_A_C_Pair_Addr, owner, user.address, tokenA, tokenC, ethers.utils.parseEther("3"), ethers.utils.parseEther("5"))
-  // const [token_B_C_Pair, BC_LPTokens] = await depositReservesToPair(token_B_C_Pair_Addr, owner, user.address, tokenB, tokenC, ethers.utils.parseEther("2"), ethers.utils.parseEther("6"))
-  // const [token_A_D_Pair, AD_LPTokens] = await depositReservesToPair(token_A_D_Pair_Addr, owner, user.address, tokenA, tokenD, ethers.utils.parseEther("4"), ethers.utils.parseEther("3"))
-  // const [token_A_WETH_Pair, AWETH_LPTokens] = await depositReservesToPair(token_A_WETH_Pair_Addr, owner, user.address, tokenA, WETH, ethers.utils.parseEther("5"), ethers.utils.parseEther("8"))
-
+  console.log("DEPOSITING RESERVES TO UNISWAP PAIR ADDRESSES")
+  console.log("=============================================")
+  const [token_A_B_Pair, AB_LPTokens] = await depositReservesToPair(token_A_B_Pair_Addr, owner, tokenA, tokenB, ethers.utils.parseEther("1"), ethers.utils.parseEther("4"))
+  const [token_A_C_Pair, AC_LPTokens] = await depositReservesToPair(token_A_C_Pair_Addr, owner, tokenA, tokenC, ethers.utils.parseEther("3"), ethers.utils.parseEther("5"))
+  const [token_B_C_Pair, BC_LPTokens] = await depositReservesToPair(token_B_C_Pair_Addr, owner, tokenB, tokenC, ethers.utils.parseEther("2"), ethers.utils.parseEther("6"))
+  const [token_A_D_Pair, AD_LPTokens] = await depositReservesToPair(token_A_D_Pair_Addr, owner, tokenA, tokenD, ethers.utils.parseEther("4"), ethers.utils.parseEther("3"))
+  const [token_A_WETH_Pair, AWETH_LPTokens] = await depositReservesToPair(token_A_WETH_Pair_Addr, owner, tokenA, WETH, ethers.utils.parseEther("5"), ethers.utils.parseEther("8"))
+  console.log("=========================\n")
+ 
   // creating pools
+  console.log("CREATING GAMMASWAP POOLS")
+  console.log("=========================\n")
   const AB_GammaPool_Addr = await createPool(gsFactory, token_A_B_Pair_Addr as string, tokenA.address, tokenB.address)
-  // const AC_GammaPool_Addr = await createPool(gsFactory, token_A_C_Pair_Addr as string, tokenA.address, tokenC.address)
-  // const BC_GammaPool_Addr = await createPool(gsFactory, token_B_C_Pair_Addr as string, tokenB.address, tokenC.address)
-  // const AD_GammaPool_Addr = await createPool(gsFactory, token_A_D_Pair_Addr as string, tokenA.address, tokenD.address)
-  // const AWETH_GammaPool_Addr = await createPool(gsFactory, token_A_WETH_Pair_Addr as string, tokenA.address, WETH.address)
+  const AC_GammaPool_Addr = await createPool(gsFactory, token_A_C_Pair_Addr as string, tokenA.address, tokenC.address)
+  const BC_GammaPool_Addr = await createPool(gsFactory, token_B_C_Pair_Addr as string, tokenB.address, tokenC.address)
+  const AD_GammaPool_Addr = await createPool(gsFactory, token_A_D_Pair_Addr as string, tokenA.address, tokenD.address)
+  const AWETH_GammaPool_Addr = await createPool(gsFactory, token_A_WETH_Pair_Addr as string, tokenA.address, WETH.address)
 
   const AB_GammaPool = await getGammaPoolDetails(GammaPool, AB_GammaPool_Addr)
-  // const AC_GammaPool = await getGammaPoolDetails(GammaPool, AC_GammaPool_Addr)
-  // const BC_GammaPool = await getGammaPoolDetails(GammaPool, BC_GammaPool_Addr)
-  // const AD_GammaPool = await getGammaPoolDetails(GammaPool, AD_GammaPool_Addr)
-  // const AWETH_GammaPool = await getGammaPoolDetails(GammaPool, AWETH_GammaPool_Addr)
+  const AC_GammaPool = await getGammaPoolDetails(GammaPool, AC_GammaPool_Addr)
+  const BC_GammaPool = await getGammaPoolDetails(GammaPool, BC_GammaPool_Addr)
+  const AD_GammaPool = await getGammaPoolDetails(GammaPool, AD_GammaPool_Addr)
+  const AWETH_GammaPool = await getGammaPoolDetails(GammaPool, AWETH_GammaPool_Addr)
+  console.log("\n=========================\n")
 
-  const positionManager = await PositionManager.deploy(gsFactoryAddress, WETH.address)
-  positionManager.deployed()
-  console.log('positionManager: ', positionManager.address)
+  await depositReserves(
+    AB_GammaPool,
+    positionManager,
+    owner.address,
+    tokenA,
+    tokenB,
+    [
+      ethers.utils.parseEther("4"),
+      ethers.utils.parseEther("2")
+    ]
+  )
 
-  //const testGammaPool = await TestGammaPool.deploy();
-  //console.log("testGammaPool >> ", testGammaPool.address);
-  //const testShortStrategy = await TestShortStrategy.deploy()
+  await withdrawReserves(
+    AB_GammaPool,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("1.5"),
+  )
 
-  //const posMgr2 = await PositionManager2.deploy(testGammaPool.address, testShortStrategy.address, gsFactoryAddress, WETH.address);
-  //console.log('posManagerAddress2: ', posMgr2.address)
-
-  await (await tokenA.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
-  await (await tokenB.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
-
-  //const cfmmX = await pool1.cfmm();
-  //console.log("cfmmX >> ", cfmmX);
-  // mine 256 blocks
-  await ethers.provider.send("hardhat_mine", ["0x100"]);
-
-  let amt = ethers.utils.parseEther("1")
-
-  const DepositReservesParams = {
-    cfmm: token_A_B_Pair,
-    amountsDesired: [amt, amt],
-    amountsMin: [0, 0],
-    to: owner.address,
-    protocol: PROTOCOL_ID,
-    deadline: ethers.constants.MaxUint256
-  }
-  //const res = await (await posMgr2.depositReserves(DepositReservesParams)).wait();
-  const res = await (await posMgr.depositReserves(DepositReservesParams)).wait();
-  //console.log("res >>")
-  //console.log(res)/**/
-
-  const bal = await pool1.balanceOf(owner.address);
-  console.log("bal >> ", bal);
-
-  await (await pool1.approve(posMgr.address, ethers.constants.MaxUint256)).wait();
-
-  const WithdrawReservesParams = {
-    cfmm: token_A_B_Pair,
-    protocol: PROTOCOL_ID,
-    amount: amt,
-    amountsMin: [0, 0],
-    to: owner.address,
-    deadline: ethers.constants.MaxUint256
-  }
-  const res1 = await (await posMgr.withdrawReserves(WithdrawReservesParams)).wait();
-  //console.log("res1 >>")
-  //console.log(res1)/**/
-
-  const bal2 = await pool1.balanceOf(owner.address);
-  console.log("bal2 >> ", bal2);
-
-  const pair = new ethers.Contract(token_A_B_Pair, UniswapV2PairJSON.abi, owner)
-  const bal3 = await pair.balanceOf(owner.address);
-  console.log("bal3 >> ", bal3);
-
-  await pair.approve(posMgr.address, ethers.constants.MaxUint256);//must approve before sending tokens
-
-  const DepositWithdrawParams = {
-    cfmm: pair.address,
-    protocol: PROTOCOL_ID,
-    lpTokens: amt,
-    to: owner.address,
-    deadline: ethers.constants.MaxUint256
-  }
-
-  const res3 = await (await posMgr.depositNoPull(DepositWithdrawParams)).wait();
-
-  const bal4 = await pool1.balanceOf(owner.address);
-  console.log("bal4 >> ", bal4);
-
-  const DepositWithdrawParams2 = {
-    cfmm: pair.address,
-    protocol: PROTOCOL_ID,
-    lpTokens: amt,
-    to: owner.address,
-    deadline: ethers.constants.MaxUint256
-  }
-
-  const res4 = await (await posMgr.withdrawNoPull(DepositWithdrawParams2)).wait();
-
-  const bal5 = await pool1.balanceOf(owner.address);
-  console.log("bal5 >> ", bal5);
+  // await depositLPToken(
+  //   AB_GammaPool,
+  //   positionManager,
+  //   owner.address,
+  //   tokenA,
+  //   tokenB,
+  //   ethers.utils.parseEther("1")
+  // )
 }
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
