@@ -1,4 +1,5 @@
 import { ethers } from "hardhat"
+import { Contract } from "ethers"
 import {
   getGammaPoolDetails,
   createPair,
@@ -7,6 +8,7 @@ import {
   depositReserves,
   withdrawReserves,
   depositLPToken,
+  withdrawLPTokens
 } from './helpers'
 
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json")
@@ -135,6 +137,8 @@ export async function main() {
   const AWETH_GammaPool = await getGammaPoolDetails(GammaPool, AWETH_GammaPool_Addr)
   console.log("\n=========================\n")
 
+  console.log("DEPOSITING/WITHDRAWING RESERVE/LP TOKENS")
+  console.log("==========================================")
   await depositReserves(
     AB_GammaPool,
     positionManager,
@@ -154,14 +158,22 @@ export async function main() {
     ethers.utils.parseEther("1.5"),
   )
 
-  // await depositLPToken(
-  //   AB_GammaPool,
-  //   positionManager,
-  //   owner.address,
-  //   tokenA,
-  //   tokenB,
-  //   ethers.utils.parseEther("1")
-  // )
+  await depositLPToken(
+    AB_GammaPool,
+    token_A_B_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("1.23")
+  )
+
+  await withdrawLPTokens(
+    AB_GammaPool,
+    token_A_B_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("0.8")
+  )
+  console.log("\n==========================================")
 }
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.

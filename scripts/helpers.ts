@@ -66,18 +66,15 @@ export const createPool = async (gsFactory: Contract, cfmmPair: string, token1: 
     tokens: [token1, token2]
   }
   
-  try {
-    const res = await (await gsFactory.createPool(CreatePoolParams, overrides)).wait()
+  const res = await (await gsFactory.createPool(CreatePoolParams, overrides)).wait()
 
-    if (res?.events && res?.events[0]?.args) {
-      const key = getGammaPoolKey(cfmmPair, PROTOCOL_ID)
-      const pool = await gsFactory.getPool(key)
+  if (res?.events && res?.events[0]?.args) {
+    const key = getGammaPoolKey(cfmmPair, PROTOCOL_ID)
+    const pool = await gsFactory.getPool(key)
 
-      return pool
-    }
-  } catch (e) {
+    return pool
+  } else {
     console.log(`Could not deploy GammaPool of address ${cfmmPair}\n`)
-    console.log(`PoolCreationError: ${e}`)
   }
 }
 
@@ -207,10 +204,9 @@ export const withdrawReserves = async (
 
 export const depositLPToken = async (
   gammaPool: Contract,
+  pair: Contract,
   positionManager: Contract,
   userAddress: string,
-  token0: TestERC20,
-  token1: TestERC20,
   amount: BigNumber
 ) => {
   const gammaPoolAddress = gammaPool.address
@@ -220,8 +216,7 @@ export const depositLPToken = async (
   const protocolId = await gammaPool.protocolId()
   const cfmmPairAddr = await gammaPool.cfmm()
 
-  await token0.approve(positionManager.address, ethers.constants.MaxUint256)
-  await token1.approve(positionManager.address, ethers.constants.MaxUint256)
+  await pair.approve(positionManager.address, ethers.constants.MaxUint256)
 
   const depositNoPullParams = {
     cfmm: cfmmPairAddr,
@@ -230,27 +225,66 @@ export const depositLPToken = async (
     to: userAddress,
     deadline: ethers.constants.MaxUint256
   }
-  console.log(`depositing ${convertToETH(amount)} LP tokens into ${gammaPoolSymbol} pool...`)
+  console.log(`\ndepositing ${convertToETH(amount)} LP tokens into ${gammaPoolSymbol} pool...`)
   const prevUserBalance = await gammaPool.balanceOf(userAddress)
   console.log(`current balance: ${convertToETH(prevUserBalance)} DEPOSIT LP TOKEN`)
 
-  try {
-    const res = await (await positionManager.depositNoPull(depositNoPullParams, overrides)).wait()
-    if (res?.events && res?.events[res?.events.length - 1]?.args) {
-      const eventsLength = res?.events.length
-      const eventArgs = res?.events[eventsLength - 1]?.args
-      console.log('eventArgs: ', eventArgs);
+  const res = await (await positionManager.depositNoPull(depositNoPullParams, overrides)).wait()
+  
+  if (res?.events && res?.events[res?.events.length - 1]?.args) {
+    const eventsLength = res?.events.length
+    const eventArgs = res?.events[eventsLength - 1]?.args
+    const sharesDeposited = convertToETH(eventArgs.shares)
 
-      // the user's balance inside the gammaPool
-      const userBalance = await gammaPool.balanceOf(userAddress)
-      console.log(`you, ${userAddress}, now have ${convertToETH(userBalance)} of ${gammaPoolSymbol} LP tokens`)
-    } else {
-      console.log(`DepositNoPullEventError: could not fire events for gammaPool of ${gammaPoolAddress}`)
-    }
-  } catch (e) {
+    // the user's balance inside the gammaPool
+    const userBalance = await gammaPool.balanceOf(userAddress)
+    console.log(`you, ${userAddress}, now have ${convertToETH(userBalance)} of ${gammaPoolSymbol} LP tokens`)
+  } else {
     console.log(`DepositLPTokenError: 
     user ${userAddress} could not deposit ${convertToETH(amount)} into gammaPool ${gammaPoolAddress}`)
-    console.error(e)
+  }
+}
+
+export const withdrawLPTokens = async (
+  gammaPool: Contract,
+  pair: Contract,
+  positionManager: Contract,
+  userAddress: string,
+  amount: BigNumber
+) => {
+  const gammaPoolAddress = gammaPool.address
+  const gammaPoolTokens = await gammaPool.lpTokenBalance()
+  console.log('gammaPoolTokens: ', convertToETH(gammaPoolTokens))
+  const gammaPoolSymbol = await gammaPool.symbol()
+  const protocolId = await gammaPool.protocolId()
+  const cfmmPairAddr = await gammaPool.cfmm()
+
+  await pair.approve(positionManager.address, ethers.constants.MaxUint256)
+
+  const withdrawNoPullParams = {
+    cfmm: cfmmPairAddr,
+    protocol: protocolId,
+    lpTokens: amount,
+    to: userAddress,
+    deadline: ethers.constants.MaxUint256
+  }
+  console.log(`\nwithdrawing ${convertToETH(amount)} LP tokens from ${gammaPoolSymbol} pool...`)
+  const prevUserBalance = await gammaPool.balanceOf(userAddress)
+  console.log(`current balance: ${convertToETH(prevUserBalance)} WITHDRAW LP TOKEN`)
+
+  const res = await (await positionManager.withdrawNoPull(withdrawNoPullParams, overrides)).wait()
+
+  if (res?.events && res?.events[res?.events.length - 1]?.args) {
+    const eventsLength = res?.events.length
+    const eventArgs = res?.events[eventsLength - 1]?.args
+    const assetsRemoved = convertToETH(eventArgs.assets)
+
+    // the user's balance inside the gammaPool
+    const userBalance = await gammaPool.balanceOf(userAddress)
+    console.log(`you, ${userAddress}, now have ${convertToETH(userBalance)} of ${gammaPoolSymbol} LP tokens`)
+  } else {
+    console.log(`WithdrawLPTokenError:
+    user ${userAddress} could not withdraw ${convertToETH(amount)} into gammaPool ${gammaPoolAddress}`)
   }
 }
 
