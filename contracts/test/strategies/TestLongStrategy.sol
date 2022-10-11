@@ -100,12 +100,20 @@ contract TestLongStrategy is LongStrategy {
         openLoan(_store, _loan, lpTokens);
     }
 
-    function setLPTokenBalance(uint256 lpTokenBalance, uint256 lpInvariant) public virtual {
+    function testPayLoan(uint256 tokenId, uint256 liquidity) public virtual {
+        GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
+        GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
+        payLoan(_store, _loan, liquidity);
+    }
+
+    function setLPTokenBalance(uint256 lpInvariant, uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
         GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
         _store.LP_TOKEN_BALANCE = lpTokenBalance;
         _store.LP_TOKEN_TOTAL = lpTokenBalance;
         _store.LP_INVARIANT = lpInvariant;
         _store.TOTAL_INVARIANT = lpInvariant;
+        _store.lastCFMMInvariant = lastCFMMInvariant;
+        _store.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
 
     function chargeLPTokenInterest(uint256 tokenId, uint256 lpTokenInterest) public virtual {
@@ -123,12 +131,14 @@ contract TestLongStrategy is LongStrategy {
 
     function getLoanChangeData(uint256 tokenId) public virtual view returns(uint256 loanLiquidity, uint256 loanLpTokens,
         uint256 borrowedInvariant, uint256 lpInvariant, uint256 totalInvariant,
-        uint256 lpTokenBorrowed, uint256 lpTokenBalance, uint256 lpTokenBorrowedPlusInterest, uint256 lpTokenTotal) {
+        uint256 lpTokenBorrowed, uint256 lpTokenBalance, uint256 lpTokenBorrowedPlusInterest,
+        uint256 lpTokenTotal, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
         GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
 
         return(_loan.liquidity, _loan.lpTokens,
             _store.BORROWED_INVARIANT, _store.LP_INVARIANT, _store.TOTAL_INVARIANT,
-            _store.LP_TOKEN_BORROWED, _store.LP_TOKEN_BALANCE, _store.LP_TOKEN_BORROWED_PLUS_INTEREST, _store.LP_TOKEN_TOTAL);
+            _store.LP_TOKEN_BORROWED, _store.LP_TOKEN_BALANCE, _store.LP_TOKEN_BORROWED_PLUS_INTEREST,
+            _store.LP_TOKEN_TOTAL, _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
     }
 }
