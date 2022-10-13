@@ -18,4 +18,4 @@ jobs:
       - run: npm install
         env:
           NODE_AUTH_TOKEN: ${{secrets.GS_TOKEN}}
-      - run: npx hardhat coverage
+      - run: npx hardhat test
