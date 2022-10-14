@@ -213,10 +213,6 @@ contract TestBaseStrategy is BaseStrategy {
         return invariant;
     }
 
-
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
-    }
-
     function depositToCFMM(address, uint256[] memory, address) internal virtual override returns(uint256) { return 0; }
 
     function withdrawFromCFMM(address, address, uint256) internal virtual override returns(uint256[] memory amounts) { return amounts; }

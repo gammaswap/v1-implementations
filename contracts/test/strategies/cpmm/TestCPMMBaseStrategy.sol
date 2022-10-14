@@ -27,10 +27,6 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
         updateReserves(GammaPoolStorage.store());
     }
 
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual override {
-        //sendAmounts(store, to, amounts);
-    }
-
     function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {
         uint256 liquidity = depositToCFMM(cfmm, amounts, to);
         emit DepositToCFMM(cfmm, to, liquidity);

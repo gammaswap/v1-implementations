@@ -22,8 +22,6 @@ abstract contract BaseStrategy is AbstractRateModel {
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual view returns(uint256);
 
-    function preDepositToCFMM(GammaPoolStorage.Store storage store, uint256[] memory amounts, address to, bytes memory data) internal virtual;
-
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual returns(uint256 liquidity);
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
