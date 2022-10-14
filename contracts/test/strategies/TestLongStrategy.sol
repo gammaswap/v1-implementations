@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../strategies/base/LongStrategy.sol";
 import "../../libraries/Math.sol";
+import "../TestCFMM.sol";
 
 contract TestLongStrategy is LongStrategy {
 
@@ -66,10 +67,23 @@ contract TestLongStrategy is LongStrategy {
 
     //LongGamma
     function beforeRepay(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
+        _loan.tokensHeld[0] -= amounts[0];
+        _loan.tokensHeld[1] -= amounts[1];
+    }
+
+    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256 liquidity) {
+        liquidity = amounts[0];
+        TestCFMM(cfmm).mint(liquidity / 2, address(this));
     }
 
     function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
+        amounts[0] = liquidity;
+        amounts[1] = liquidity * 2;
+    }
+
+    function squareRoot(uint256 num) public virtual pure returns(uint256) {
+        return Math.sqrt(num * (10**18));
     }
 
     function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
@@ -86,12 +100,11 @@ contract TestLongStrategy is LongStrategy {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256 liquidity) {
-        return 1;
-    }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
+        amounts[0] = amount * 2;
+        amounts[1] = amount * 4;
     }
 
     function testOpenLoan(uint256 tokenId, uint256 lpTokens) public virtual {
@@ -104,6 +117,33 @@ contract TestLongStrategy is LongStrategy {
         GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
         payLoan(_store, _loan, liquidity);
+    }
+
+    function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal override {
+        //updateIndex(store);
+        uint256 rateIndex = borrowRate;//(10**18);// + (10**17);
+        updateLoanLiquidity(_loan, rateIndex);
+    }
+
+    function setLPTokenLoanBalance(uint256 tokenId, uint256 lpInvariant, uint256 lpTokenBalance, uint256 liquidity, uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
+        GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
+        GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
+
+        _store.LP_INVARIANT = lpInvariant;
+        _store.LP_TOKEN_BALANCE = lpTokenBalance;
+
+        _store.BORROWED_INVARIANT = liquidity;
+        _store.LP_TOKEN_BORROWED = lpTokens;
+        _store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokens;
+
+        _store.TOTAL_INVARIANT = _store.LP_INVARIANT + _store.BORROWED_INVARIANT;
+        _store.LP_TOKEN_TOTAL = _store.LP_TOKEN_BALANCE + _store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+
+        _store.lastCFMMInvariant = lastCFMMInvariant;
+        _store.lastCFMMTotalSupply = lastCFMMTotalSupply;
+
+        _loan.liquidity = liquidity;
+        _loan.lpTokens = lpTokens;
     }
 
     function setLPTokenBalance(uint256 lpInvariant, uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
