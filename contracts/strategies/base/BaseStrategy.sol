@@ -127,7 +127,7 @@ abstract contract BaseStrategy is AbstractRateModel {
         }
     }
 
-    function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal {
+    function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
         updateIndex(store);
         updateLoanLiquidity(_loan, store.accFeeIndex);
     }
