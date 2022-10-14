@@ -25,7 +25,8 @@ export async function main() {
   console.log(`user with address ${owner.address} logged in`);
   const UniswapV2Factory = new ethers.ContractFactory(UniswapV2FactoryJSON.abi, UniswapV2FactoryJSON.bytecode, owner)
   const GammaPoolFactory = new ethers.ContractFactory(GammaPoolFactoryJSON.abi, GammaPoolFactoryJSON.bytecode, owner)
-  const PositionManager = new ethers.ContractFactory(PositionManagerJSON.abi, PositionManagerJSON.bytecode, owner)
+  // const PositionManager = new ethers.ContractFactory(PositionManagerJSON.abi, PositionManagerJSON.bytecode, owner)
+  const PositionManager = await ethers.getContractFactory("TestPositionManager2")
   const TestERC20Contract = await ethers.getContractFactory("TestERC20")
   const ERC20Contract = new ethers.ContractFactory(ERC20JSON.abi, ERC20JSON.bytecode, owner)
   const GammaPool = new ethers.ContractFactory(GammaPoolJSON.abi, GammaPoolJSON.bytecode, owner)
