@@ -1057,34 +1057,24 @@ describe("LongStrategy", function () {
         await strategy._borrowLiquidity(tokenId, lpTokens)
       ).wait();
 
-      const loanUpdatedEvent = res.events[res.events.length - 2];
-      expect(loanUpdatedEvent.event).to.equal("LoanUpdated");
+      checkEventData(
+        res.events[res.events.length - 2],
+        tokenId,
+        amtA,
+        amtB,
+        expectedHeldLiquidity,
+        expectedLiquidity,
+        lpTokens,
+        1
+      );
 
-      expect(loanUpdatedEvent.args.tokenId).to.equal(tokenId);
-      expect(loanUpdatedEvent.args.tokensHeld.length).to.equal(2);
-      expect(loanUpdatedEvent.args.tokensHeld[0]).to.equal(amtA);
-      expect(loanUpdatedEvent.args.tokensHeld[1]).to.equal(amtB);
-      expect(loanUpdatedEvent.args.heldLiquidity).to.equal(
-        expectedHeldLiquidity
-      );
-      expect(loanUpdatedEvent.args.liquidity).to.equal(expectedLiquidity);
-      expect(loanUpdatedEvent.args.lpTokens).to.equal(lpTokens);
-      expect(loanUpdatedEvent.args.rateIndex).to.equal(1);
-
-      const poolUpdatedEvent = res.events[res.events.length - 1];
-      expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
-      expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(
-        startLpTokens.sub(lpTokens)
-      );
-      expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(lpTokens);
-      expect(poolUpdatedEvent.args.lpInvariant).to.equal(
-        startLiquidity.sub(expectedLiquidity)
-      );
-      expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(
+      checkPoolEventData(
+        res.events[res.events.length - 1],
+        startLpTokens.sub(lpTokens),
+        lpTokens,
+        lpTokens,
+        startLiquidity.sub(expectedLiquidity),
         expectedLiquidity
-      );
-      expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(
-        lpTokens
       );
 
       const res2 = await strategy.getLoanChangeData(tokenId);
@@ -1162,36 +1152,24 @@ describe("LongStrategy", function () {
         await strategy._repayLiquidity(tokenId, loanLiquidity.div(2))
       ).wait();
 
-      const loanUpdatedEvent = res.events[res.events.length - 2];
-      expect(loanUpdatedEvent.event).to.equal("LoanUpdated");
+      checkEventData(
+        res.events[res.events.length - 2],
+        tokenId,
+        amtA.div(2),
+        amtB.div(2),
+        heldLiquidity.div(2),
+        loanLiquidity.div(2),
+        loanLPTokens.div(2),
+        ONE
+      );
 
-      expect(loanUpdatedEvent.args.tokenId).to.equal(tokenId);
-      expect(loanUpdatedEvent.args.tokensHeld.length).to.equal(2);
-      expect(loanUpdatedEvent.args.tokensHeld[0]).to.equal(amtA.div(2));
-      expect(loanUpdatedEvent.args.tokensHeld[1]).to.equal(amtB.div(2));
-      expect(loanUpdatedEvent.args.heldLiquidity).to.equal(
-        heldLiquidity.div(2)
-      );
-      expect(loanUpdatedEvent.args.liquidity).to.equal(loanLiquidity.div(2));
-      expect(loanUpdatedEvent.args.lpTokens).to.equal(loanLPTokens.div(2));
-      expect(loanUpdatedEvent.args.rateIndex).to.equal(ONE);
-
-      const poolUpdatedEvent = res.events[res.events.length - 1];
-      expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
-      expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(
-        startLpTokens.add(loanLPTokens.div(2))
-      );
-      expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(
-        loanLPTokens.div(2)
-      );
-      expect(poolUpdatedEvent.args.lpInvariant).to.equal(
-        startLiquidity.add(loanLiquidity.div(2))
-      );
-      expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(
+      checkPoolEventData(
+        res.events[res.events.length - 1],
+        startLpTokens.add(loanLPTokens.div(2)),
+        loanLPTokens.div(2),
+        loanLPTokens.div(2),
+        startLiquidity.add(loanLiquidity.div(2)),
         loanLiquidity.div(2)
-      );
-      expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(
-        loanLPTokens.div(2)
       );
 
       const res2a = await strategy.getLoanChangeData(tokenId);
@@ -1277,29 +1255,25 @@ describe("LongStrategy", function () {
         await strategy._repayLiquidity(tokenId, loanLiquidity.mul(2))
       ).wait();
 
-      const loanUpdatedEvent = res.events[res.events.length - 2];
-      expect(loanUpdatedEvent.event).to.equal("LoanUpdated");
-
-      expect(loanUpdatedEvent.args.tokenId).to.equal(tokenId);
-      expect(loanUpdatedEvent.args.tokensHeld.length).to.equal(2);
-      expect(loanUpdatedEvent.args.tokensHeld[0]).to.equal(0);
-      expect(loanUpdatedEvent.args.tokensHeld[1]).to.equal(0);
-      expect(loanUpdatedEvent.args.heldLiquidity).to.equal(0);
-      expect(loanUpdatedEvent.args.liquidity).to.equal(0);
-      expect(loanUpdatedEvent.args.lpTokens).to.equal(0);
-      expect(loanUpdatedEvent.args.rateIndex).to.equal(ONE);
-
-      const poolUpdatedEvent = res.events[res.events.length - 1];
-      expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
-      expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(
-        startLpTokens.add(loanLPTokens)
+      checkEventData(
+        res.events[res.events.length - 2],
+        tokenId,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ONE
       );
-      expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(0);
-      expect(poolUpdatedEvent.args.lpInvariant).to.equal(
-        startLiquidity.add(loanLiquidity)
+
+      checkPoolEventData(
+        res.events[res.events.length - 1],
+        startLpTokens.add(loanLPTokens),
+        0,
+        0,
+        startLiquidity.add(loanLiquidity),
+        0
       );
-      expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
-      expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
 
       const res2a = await strategy.getLoanChangeData(tokenId);
       expect(res2a.loanLiquidity).to.equal(0);
@@ -1447,31 +1421,30 @@ describe("LongStrategy", function () {
         await strategy._rebalanceCollateral(tokenId, [rebalAmt1, rebalAmt2])
       ).wait();
 
-      const loanUpdatedEvent = res.events[res.events.length - 2];
-      expect(loanUpdatedEvent.event).to.equal("LoanUpdated");
-
       const expAmtA = amtA.add(rebalAmt1);
       const expAmtB = amtB.add(rebalAmt2);
       const heldLiquidity2 = await strategy.squareRoot(
         expAmtA.mul(expAmtB).div(ONE)
       );
-      expect(loanUpdatedEvent.args.tokenId).to.equal(tokenId);
-      expect(loanUpdatedEvent.args.tokensHeld.length).to.equal(2);
-      expect(loanUpdatedEvent.args.tokensHeld[0]).to.equal(expAmtA);
-      expect(loanUpdatedEvent.args.tokensHeld[1]).to.equal(expAmtB);
-      expect(loanUpdatedEvent.args.heldLiquidity).to.equal(heldLiquidity2);
-      expect(loanUpdatedEvent.args.liquidity).to.equal(loanLiquidity);
-      expect(loanUpdatedEvent.args.lpTokens).to.equal(loanLPTokens);
-      expect(loanUpdatedEvent.args.rateIndex).to.equal(ONE);
 
-      const poolUpdatedEvent = res.events[res.events.length - 1];
-      expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
-      expect(poolUpdatedEvent.args.lpTokenBalance).to.equal(startLpTokens);
-      expect(poolUpdatedEvent.args.lpTokenBorrowed).to.equal(loanLPTokens);
-      expect(poolUpdatedEvent.args.lpInvariant).to.equal(startLiquidity);
-      expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(loanLiquidity);
-      expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(
-        loanLPTokens
+      checkEventData(
+        res.events[res.events.length - 2],
+        tokenId,
+        expAmtA,
+        expAmtB,
+        heldLiquidity2,
+        loanLiquidity,
+        loanLPTokens,
+        ONE
+      );
+
+      checkPoolEventData(
+        res.events[res.events.length - 1],
+        startLpTokens,
+        loanLPTokens,
+        loanLPTokens,
+        startLiquidity,
+        loanLiquidity
       );
 
       const res1c = await strategy.getLoanChangeData(tokenId);

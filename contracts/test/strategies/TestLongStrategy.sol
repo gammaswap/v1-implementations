@@ -94,8 +94,6 @@ contract TestLongStrategy is LongStrategy {
         outAmts[1] =  deltas[1] > 0 ? 0 : uint256(-deltas[1]);
         inAmts[0] = deltas[0] > 0 ? uint256(deltas[0]) : 0;
         inAmts[1] = deltas[1] > 0 ? uint256(deltas[1]) : 0;
-        int8 x = -1;
-        uint8 y = uint8(-x);
     }
 
     function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
