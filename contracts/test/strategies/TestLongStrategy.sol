@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../../strategies/base/LongStrategy.sol";
 import "../../libraries/Math.sol";
 import "../TestCFMM.sol";
+import "../TestERC20.sol";
 
 contract TestLongStrategy is LongStrategy {
 
@@ -87,9 +88,28 @@ contract TestLongStrategy is LongStrategy {
     }
 
     function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
+        outAmts = new uint256[](2);
+        inAmts = new uint256[](2);
+        outAmts[0] =  deltas[0] > 0 ? 0 : uint256(-deltas[0]);
+        outAmts[1] =  deltas[1] > 0 ? 0 : uint256(-deltas[1]);
+        inAmts[0] = deltas[0] > 0 ? uint256(deltas[0]) : 0;
+        inAmts[1] = deltas[1] > 0 ? uint256(deltas[1]) : 0;
     }
 
     function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+        address cfmm = store.cfmm;
+
+        if(outAmts[0] > 0) {
+            GammaSwapLibrary.safeTransfer(store.tokens[0], cfmm, outAmts[0]);
+        } else if(outAmts[1] > 0) {
+            GammaSwapLibrary.safeTransfer(store.tokens[1], cfmm, outAmts[1]);
+        }
+
+        if(inAmts[0] > 0) {
+            TestERC20(store.tokens[0]).mint(address(this), inAmts[0]);
+        } else if(inAmts[1] > 0) {
+            TestERC20(store.tokens[1]).mint(address(this), inAmts[1]);
+        }
     }
 
     //BaseStrategy
@@ -99,7 +119,6 @@ contract TestLongStrategy is LongStrategy {
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
         return Math.sqrt(amounts[0] * amounts[1]);
     }
-
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
