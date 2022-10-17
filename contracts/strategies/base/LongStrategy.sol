@@ -12,7 +12,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity)
         internal virtual view returns(uint256[] memory amounts);
 
-    function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual view returns(uint256[] memory outAmts, uint256[] memory inAmts);
+    function beforeSwapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, int256[] calldata deltas) internal virtual returns(uint256[] memory outAmts, uint256[] memory inAmts);
 
     function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
 
@@ -25,12 +25,16 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, "margin");
     }
 
+    function sendToken(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal virtual {
+        require(amount <= balance, "> bal");
+        require(amount <= collateral, "> held");
+        GammaSwapLibrary.safeTransfer(token, to, amount);
+    }
+
     function sendTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
         for (uint256 i = 0; i < store.tokens.length; i++) {
             if(amounts[i] > 0) {
-                require(amounts[i] <= store.TOKEN_BALANCE[i], "> bal");
-                require(amounts[i] <= _loan.tokensHeld[i], "> held");
-                GammaSwapLibrary.safeTransfer(store.tokens[i], to, amounts[i]);
+                sendToken(store.tokens[i], to, amounts[i], store.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
             }
         }
     }
@@ -138,7 +142,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         updateLoan(store,_loan);
 
-        (uint256[] memory outAmts, uint256[] memory inAmts) = calcTokensToSwap(store, deltas);
+        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(store, _loan, deltas);
 
         swapTokens(store, _loan, outAmts, inAmts);
 
