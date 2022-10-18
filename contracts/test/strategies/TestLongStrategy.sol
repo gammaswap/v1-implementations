@@ -87,7 +87,7 @@ contract TestLongStrategy is LongStrategy {
         return Math.sqrt(num * (10**18));
     }
 
-    function calcTokensToSwap(GammaPoolStorage.Store storage store, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
+    function beforeSwapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
         outAmts[0] =  deltas[0] > 0 ? 0 : uint256(-deltas[0]);
