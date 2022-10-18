@@ -48,7 +48,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
                 uint256 _outAmt1 = calcActualOutAmt(store.tokens[1], store.cfmm, outAmt1, store.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 if(_outAmt1 != outAmt1) {
                     outAmt1 = _outAmt1;
-                    inAmt0 = calcAmtIn(outAmt1, reserve0, reserve1);//calc what you'll ask
+                    inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0);//calc what you'll ask
                 }
             } else {
                 outAmt0 = calcAmtOut(inAmt1, reserve0, reserve1);//calc what you'll send
@@ -56,22 +56,19 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
                 uint256 _outAmt0 = calcActualOutAmt(store.tokens[0], store.cfmm, outAmt0, store.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 if(_outAmt0 != outAmt0) {
                     outAmt0 = _outAmt0;
-                    inAmt1 = calcAmtIn(outAmt0, reserve1, reserve0);//calc what you'll ask
+                    inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1);//calc what you'll ask
                 }
             }
         } else {
             outAmt0 = uint256(-delta0);//sell exact token0 (what you'll send)
             outAmt1 = uint256(-delta1);//sell exact token1 (what you'll send) (here we can send then calc how much to ask)
             if(outAmt0 > 0) {
-                //console.log("A");
                 outAmt0 = calcActualOutAmt(store.tokens[0], store.cfmm, outAmt0, store.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 inAmt0 = 0;
-                inAmt1 = calcAmtIn(outAmt0, reserve1, reserve0);//calc what you'll ask
+                inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1);//calc what you'll ask
             } else {
-                console.log("B");
                 outAmt1 = calcActualOutAmt(store.tokens[1], store.cfmm, outAmt1, store.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-                inAmt0 = calcAmtIn(outAmt1, reserve0, reserve1);//calc what you'll ask
-                console.logUint(inAmt0);
+                inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0);//calc what you'll ask
                 inAmt1 = 0;
             }
         }
