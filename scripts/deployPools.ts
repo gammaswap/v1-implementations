@@ -21,7 +21,7 @@ const PROTOCOL_ID = 1
 
 export async function main() {
   
-  const [owner, user] = await ethers.getSigners()
+  const [owner] = await ethers.getSigners()
   console.log(`user with address ${owner.address} logged in`);
   const UniswapV2Factory = new ethers.ContractFactory(UniswapV2FactoryJSON.abi, UniswapV2FactoryJSON.bytecode, owner)
   const GammaPoolFactory = new ethers.ContractFactory(GammaPoolFactoryJSON.abi, GammaPoolFactoryJSON.bytecode, owner)
@@ -137,8 +137,9 @@ export async function main() {
   const AWETH_GammaPool = await getGammaPoolDetails(GammaPool, AWETH_GammaPool_Addr)
   console.log("\n=========================\n")
 
-  console.log("DEPOSITING/WITHDRAWING RESERVE/LP TOKENS")
+  console.log("AB GAMMAPOOL TRANSACTIONS")
   console.log("==========================================")
+  
   await depositReserves(
     AB_GammaPool,
     positionManager,
@@ -156,6 +157,123 @@ export async function main() {
     positionManager,
     owner.address,
     ethers.utils.parseEther("1.5"),
+  )
+
+  await depositLPToken(
+    AB_GammaPool,
+    token_A_B_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("1.23")
+  )
+
+  await withdrawLPTokens(
+    AB_GammaPool,
+    token_A_B_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("0.8")
+  )
+  console.log("\n==========================================")
+
+  console.log("BC GAMMAPOOL TRANSACTIONS")
+  console.log("==========================================")
+  
+  await depositReserves(
+    BC_GammaPool,
+    positionManager,
+    owner.address,
+    tokenB,
+    tokenC,
+    [
+      ethers.utils.parseEther("1"),
+      ethers.utils.parseEther("3")
+    ]
+  )
+
+  await withdrawReserves(
+    BC_GammaPool,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("0.3"),
+  )
+
+  await depositLPToken(
+    BC_GammaPool,
+    token_B_C_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("0.14")
+  )
+
+  await withdrawLPTokens(
+    BC_GammaPool,
+    token_B_C_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("0.112")
+  )
+  console.log("\n==========================================")
+
+  console.log("AD GAMMAPOOL TRANSACTIONS")
+  console.log("==========================================")
+  
+  await depositReserves(
+    AD_GammaPool,
+    positionManager,
+    owner.address,
+    tokenA,
+    tokenD,
+    [
+      ethers.utils.parseEther("14.23"),
+      ethers.utils.parseEther("10")
+    ]
+  )
+
+  await withdrawReserves(
+    AD_GammaPool,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("6.44"),
+  )
+
+  await depositLPToken(
+    AD_GammaPool,
+    token_A_D_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("3.22")
+  )
+
+  await withdrawLPTokens(
+    AD_GammaPool,
+    token_A_D_Pair as Contract,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("1.2343")
+  )
+  console.log("\n==========================================")
+
+  console.log("AC GAMMAPOOL TRANSACTIONS")
+  console.log("==========================================")
+  
+  await depositReserves(
+    AC_GammaPool,
+    positionManager,
+    owner.address,
+    tokenA,
+    tokenC,
+    [
+      ethers.utils.parseEther("8"),
+      ethers.utils.parseEther("7.5")
+    ]
+  )
+
+  await withdrawReserves(
+    AC_GammaPool,
+    positionManager,
+    owner.address,
+    ethers.utils.parseEther("2.23"),
   )
 
   await depositLPToken(
