@@ -112,7 +112,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     }
 
     // TODO: Should pass expected minAmts for the deposit, prevent front running
-    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
+    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
 
@@ -171,6 +171,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 
         _loan.liquidity = _loan.liquidity + liquidityBorrowed;
+        _loan.initLiquidity = _loan.initLiquidity + liquidityBorrowed;
         _loan.lpTokens = _loan.lpTokens + lpTokens;
     }
 
@@ -184,6 +185,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.BORROWED_INVARIANT);// TODO: What about when it's very very small amounts in denominator?
         uint256 lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.lpTokens, _loan.liquidity);
+        uint256 liquidityPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.initLiquidity, _loan.liquidity);
 
         store.LP_TOKEN_BORROWED = store.LP_TOKEN_BORROWED - lpTokenPrincipal;
         store.BORROWED_INVARIANT = store.BORROWED_INVARIANT - liquidity; // won't overflow
@@ -196,6 +198,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 
         _loan.liquidity = _loan.liquidity - liquidity;
+        _loan.initLiquidity = _loan.initLiquidity - liquidityPrincipal;
         _loan.lpTokens = _loan.lpTokens - lpTokenPrincipal;
     }
 }

@@ -92,7 +92,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
 
     }
 
-    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256 liquidityPaid, uint256 lpTokensPaid, uint256[] memory amounts) {
+    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
 
     }
 
