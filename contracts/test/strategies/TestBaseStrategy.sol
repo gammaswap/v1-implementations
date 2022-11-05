@@ -135,15 +135,15 @@ contract TestBaseStrategy is BaseStrategy {
         emit LoanCreated(msg.sender, tokenId);
     }
 
-    function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint256[] memory tokensHeld, uint256 liquidity, uint256 lpTokens, uint256 rateIndex, uint256 blockNum) {
+    function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint256[] memory tokensHeld, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
         GammaPoolStorage.Loan storage _loan = GammaPoolStorage.store().loans[tokenId];
         id = _loan.id;
         poolId = _loan.poolId;
         tokensHeld = _loan.tokensHeld;
+        initLiquidity = _loan.initLiquidity;
         liquidity = _loan.liquidity;
         lpTokens = _loan.lpTokens;
         rateIndex = _loan.rateIndex;
-        blockNum = _loan.blockNum;
     }
 
     function setLoanLiquidity(uint256 tokenId, uint256 liquidity) public virtual {

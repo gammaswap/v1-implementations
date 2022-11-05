@@ -1180,14 +1180,11 @@ describe("BaseStrategy", function () {
       expect(loan.tokensHeld.length).to.equal(2);
       expect(loan.tokensHeld[0]).to.equal(0);
       expect(loan.tokensHeld[1]).to.equal(0);
+      expect(loan.initLiquidity).to.equal(0);
       expect(loan.liquidity).to.equal(0);
       expect(loan.lpTokens).to.equal(0);
       const accFeeIndex = await strategy.getAccFeeIndex();
       expect(loan.rateIndex).to.equal(accFeeIndex);
-
-      const latestBlock = await ethers.provider.getBlock("latest");
-      const blockNumber = BigNumber.from(latestBlock.number);
-      expect(loan.blockNum).to.equal(blockNumber);
 
       const newLiquidity = ONE.mul(1234);
       await (await strategy.setLoanLiquidity(tokenId, newLiquidity)).wait();

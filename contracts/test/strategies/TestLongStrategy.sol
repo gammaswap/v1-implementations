@@ -30,16 +30,16 @@ contract TestLongStrategy is LongStrategy {
     }
 
     function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint256[] memory tokensHeld,
-        uint256 heldLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex, uint256 blockNum) {
+        uint256 heldLiquidity, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
         GammaPoolStorage.Loan storage _loan = getLoan(GammaPoolStorage.store(), tokenId);
         id = _loan.id;
         poolId = _loan.poolId;
         tokensHeld = _loan.tokensHeld;
         heldLiquidity = _loan.heldLiquidity;
+        initLiquidity = _loan.initLiquidity;
         liquidity = _loan.liquidity;
         lpTokens = _loan.lpTokens;
         rateIndex = _loan.rateIndex;
-        blockNum = _loan.blockNum;
     }
 
     function setLiquidity(uint256 tokenId, uint256 liquidity) public virtual {

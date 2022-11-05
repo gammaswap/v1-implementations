@@ -192,11 +192,10 @@ describe("LongStrategy", function () {
       expect(loanInfo.tokensHeld[0]).to.equal(0);
       expect(loanInfo.tokensHeld[1]).to.equal(0);
       expect(loanInfo.heldLiquidity).to.equal(0);
+      expect(loanInfo.initLiquidity).to.equal(0);
       expect(loanInfo.liquidity).to.equal(0);
       expect(loanInfo.lpTokens).to.equal(0);
       expect(loanInfo.rateIndex).to.equal(BigNumber.from(10).pow(18));
-      const latestBlock = await ethers.provider.getBlock("latest");
-      expect(loanInfo.blockNum).to.equal(latestBlock.number);
 
       await expect(strategy.connect(addr1).getLoan(tokenId)).to.be.revertedWith(
         "FORBIDDEN"
