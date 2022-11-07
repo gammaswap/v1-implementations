@@ -200,4 +200,8 @@ contract TestLongStrategy is LongStrategy {
             _store.LP_TOKEN_BORROWED, _store.LP_TOKEN_BALANCE, _store.LP_TOKEN_BORROWED_PLUS_INTEREST,
             _store.LP_TOKEN_TOTAL, _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
     }
+
+    function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256) {
+        return 1;
+    }
 }
