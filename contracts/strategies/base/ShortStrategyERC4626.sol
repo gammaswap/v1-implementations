@@ -14,7 +14,6 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         if(shares == 0) {
             revert ZeroShares();
         }
-        //require((shares = _convertToShares(store, assets)) != 0, "ZERO_SHARES");
         _depositAssetsFrom(store, msg.sender, to, assets, shares);
     }
 
@@ -27,7 +26,6 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         if(assets == 0) {
             revert ZeroAssets();
         }
-        //require((assets = _convertToAssets(store, shares)) != 0, "ZERO_ASSETS");
         _depositAssetsFrom(store, msg.sender, to, assets, shares);
     }
 
@@ -35,8 +33,7 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         updateIndex(store);
 
-        //require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxWithdraw is
-        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
+        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxWithdraw is
             revert ExcessiveWithdrawal();
         }
 
@@ -44,7 +41,6 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         if(shares == 0) {
             revert ZeroShares();
         }
-        //require((shares = _convertToShares(store, assets)) != 0, "ZERO_SHARES");
         _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
     }
 
@@ -55,8 +51,6 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         if(assets == 0) {
             revert ZeroAssets();
         }
-        //require((assets = _convertToAssets(store, shares)) != 0, "ZERO_ASSETS");
-        //require(assets <= store.LP_TOKEN_BALANCE, "redeem > max"); //TODO: This is what maxRedeem is
         if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
             revert ExcessiveWithdrawal();
         }

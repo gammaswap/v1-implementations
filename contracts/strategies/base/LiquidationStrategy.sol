@@ -80,6 +80,5 @@ abstract contract LiquidationStrategy is LongStrategy {
         if(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity) {
             revert HasMargin();
         }
-        //require(_loan.heldLiquidity * limit / 1000 < _loan.liquidity, "> margin");
     }
 }

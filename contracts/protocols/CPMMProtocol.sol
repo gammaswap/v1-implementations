@@ -98,7 +98,6 @@ contract CPMMProtocol is AbstractProtocol, ICPMMStrategy, ILinearKinkedRateModel
     }
 
     function validateCFMM(address[] calldata _tokens, address _cfmm) external virtual override view returns(address[] memory tokens) {
-        //require(isContract(_cfmm) == true, "not contract");
         if(!isContract(_cfmm)) {
             revert NotContract();
         }
@@ -109,6 +108,5 @@ contract CPMMProtocol is AbstractProtocol, ICPMMStrategy, ILinearKinkedRateModel
         if(_cfmm != AddressCalculator.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash)) {
             revert BadProtocol();
         }
-        //require(_cfmm == AddressCalculator.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), "bad protocol");
     }
 }
