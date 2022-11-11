@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "../../../strategies/cpmm/CPMMLongStrategy.sol";
 
@@ -65,7 +65,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     }
 
     function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(token, to, amount, balance, collateral);
+        uint256 actualOutAmount = calcActualOutAmt(IERC20(token), to, amount, balance, collateral);
         emit ActualOutAmount(actualOutAmount);
     }
 

@@ -284,7 +284,7 @@ describe("CPMMLongStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 1])
-      ).to.be.revertedWith("> bal");
+      ).to.be.revertedWith("NotEnoughBalance");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -293,7 +293,7 @@ describe("CPMMLongStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [11, 1])
-      ).to.be.revertedWith("> held");
+      ).to.be.revertedWith("NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -306,7 +306,7 @@ describe("CPMMLongStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 11])
-      ).to.be.revertedWith("> bal");
+      ).to.be.revertedWith("NotEnoughBalance");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -315,7 +315,7 @@ describe("CPMMLongStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 11])
-      ).to.be.revertedWith("> held");
+      ).to.be.revertedWith("NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -373,32 +373,32 @@ describe("CPMMLongStrategy", function () {
   describe("Calc Amt In/Out", function () {
     it("Error Calc Amt In", async function () {
       await expect(strategy.testCalcAmtIn(0, 0, 0)).to.be.revertedWith(
-        "0 reserve"
+        "ZeroReserves"
       );
       await expect(strategy.testCalcAmtIn(1000000000, 0, 0)).to.be.revertedWith(
-        "0 reserve"
+        "ZeroReserves"
       );
       await expect(
         strategy.testCalcAmtIn(1000000000, 1000000000, 0)
-      ).to.be.revertedWith("0 reserve");
+      ).to.be.revertedWith("ZeroReserves");
       await expect(
         strategy.testCalcAmtIn(1000000000, 0, 1000000000)
-      ).to.be.revertedWith("0 reserve");
+      ).to.be.revertedWith("ZeroReserves");
     });
 
     it("Error Calc Amt Out", async function () {
       await expect(strategy.testCalcAmtOut(0, 0, 0)).to.be.revertedWith(
-        "0 reserve"
+        "ZeroReserves"
       );
       await expect(
         strategy.testCalcAmtOut(1000000000, 0, 0)
-      ).to.be.revertedWith("0 reserve");
+      ).to.be.revertedWith("ZeroReserves");
       await expect(
         strategy.testCalcAmtOut(1000000000, 1000000000, 0)
-      ).to.be.revertedWith("0 reserve");
+      ).to.be.revertedWith("ZeroReserves");
       await expect(
         strategy.testCalcAmtOut(1000000000, 0, 1000000000)
-      ).to.be.revertedWith("0 reserve");
+      ).to.be.revertedWith("ZeroReserves");
     });
 
     it("Calc Amt In", async function () {
@@ -552,7 +552,7 @@ describe("CPMMLongStrategy", function () {
           amt.sub(1),
           amt
         )
-      ).to.be.revertedWith("> bal");
+      ).to.be.revertedWith("NotEnoughBalance");
       await expect(
         strategy.testCalcActualOutAmount(
           tokenA.address,
@@ -561,7 +561,7 @@ describe("CPMMLongStrategy", function () {
           amt,
           amt.sub(1)
         )
-      ).to.be.revertedWith("> held");
+      ).to.be.revertedWith("NotEnoughCollateral");
     });
 
     it("Calc Actual Out Amount", async function () {
@@ -595,19 +595,19 @@ describe("CPMMLongStrategy", function () {
       const tokenId = res1.events[0].args.tokenId;
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [0, 0])
-      ).to.be.revertedWith("bad delta");
+      ).to.be.revertedWith("BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [1, 1])
-      ).to.be.revertedWith("bad delta");
+      ).to.be.revertedWith("BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [-1, -1])
-      ).to.be.revertedWith("bad delta");
+      ).to.be.revertedWith("BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [1, -1])
-      ).to.be.revertedWith("bad delta");
+      ).to.be.revertedWith("BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [-1, 1])
-      ).to.be.revertedWith("bad delta");
+      ).to.be.revertedWith("BadDelta");
     });
 
     it("Calc Exact Tokens to Buy", async function () {

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../strategies/base/LongStrategy.sol";
 import "../../libraries/Math.sol";
@@ -100,9 +102,9 @@ contract TestLongStrategy is LongStrategy {
         address cfmm = store.cfmm;
 
         if(outAmts[0] > 0) {
-            GammaSwapLibrary.safeTransfer(store.tokens[0], cfmm, outAmts[0]);
+            GammaSwapLibrary.safeTransfer(IERC20(store.tokens[0]), cfmm, outAmts[0]);
         } else if(outAmts[1] > 0) {
-            GammaSwapLibrary.safeTransfer(store.tokens[1], cfmm, outAmts[1]);
+            GammaSwapLibrary.safeTransfer(IERC20(store.tokens[1]), cfmm, outAmts[1]);
         }
 
         if(inAmts[0] > 0) {

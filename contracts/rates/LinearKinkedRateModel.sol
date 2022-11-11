@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "../libraries/storage/rates/LinearKinkedRateStorage.sol";
 import "../interfaces/rates/ILinearKinkedRateModel.sol";

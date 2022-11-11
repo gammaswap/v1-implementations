@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 pragma abicoder v2;
 
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
@@ -11,6 +11,8 @@ import "../interfaces/rates/ILinearKinkedRateModel.sol";
 
 contract CPMMProtocol is AbstractProtocol, ICPMMStrategy, ILinearKinkedRateModel {
 
+    error NotContract();
+    error BadProtocol();
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
 
@@ -96,10 +98,17 @@ contract CPMMProtocol is AbstractProtocol, ICPMMStrategy, ILinearKinkedRateModel
     }
 
     function validateCFMM(address[] calldata _tokens, address _cfmm) external virtual override view returns(address[] memory tokens) {
-        require(isContract(_cfmm) == true, "not contract");
+        //require(isContract(_cfmm) == true, "not contract");
+        if(!isContract(_cfmm)) {
+            revert NotContract();
+        }
+
         tokens = new address[](2);//In the case of Balancer we would request the tokens here. With Balancer we can probably check the bytecode of the contract to verify it is from balancer
         (tokens[0], tokens[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);//For Uniswap and its clones the user passes the parameters
         CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
-        require(_cfmm == AddressCalculator.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), "bad protocol");
+        if(_cfmm != AddressCalculator.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash)) {
+            revert BadProtocol();
+        }
+        //require(_cfmm == AddressCalculator.calcAddress(store.factory,keccak256(abi.encodePacked(tokens[0], tokens[1])),store.initCodeHash), "bad protocol");
     }
 }

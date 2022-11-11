@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/IShortStrategy.sol";
 import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
@@ -20,7 +22,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
         uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
-        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(cfmm);
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
         uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpBalance, lpBorrowed), lastBlockNum);
         return lpBalance + calcLPTokenBorrowedPlusInterest(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
     }
@@ -32,7 +34,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function _depositAssetsNoPull(address to) internal virtual returns(uint256 shares) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        uint256 assets = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
+        uint256 assets = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this)) - store.LP_TOKEN_BALANCE;
 
         updateIndex(store);
 
@@ -51,12 +53,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         address[] storage tokens = store.tokens;
         uint256[] memory balances = new uint256[](tokens.length);
         for(uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = GammaSwapLibrary.balanceOf(tokens[i], to);
+            balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
         }
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data); // TODO: Risky. Should set sender to PosMgr
         for(uint256 i = 0; i < tokens.length; i++) {
             if(amounts[i] > 0) {
-                if(balances[i] + amounts[i] != GammaSwapLibrary.balanceOf(tokens[i], to)) {
+                if(balances[i] + amounts[i] != GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
                     revert WrongTokenBalance(tokens[i]);
                 }
             }
@@ -87,7 +89,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         assets = _convertToAssets(store, shares);
         if(assets == 0) {
-            revert ZeroShares();
+            revert ZeroAssets();
         }
 
         if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
@@ -106,7 +108,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         uint256 shares
     ) internal virtual {
         _mint(store, receiver, shares);
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this));
 
         emit Deposit(caller, receiver, assets, shares);
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,
@@ -134,9 +136,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         if(askForReserves) {
             reserves = withdrawFromCFMM(store.cfmm, receiver, assets);
         } else {
-            GammaSwapLibrary.safeTransfer(store.cfmm, receiver, assets);
+            GammaSwapLibrary.safeTransfer(IERC20(store.cfmm), receiver, assets);
         }
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));
+        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this));
 
         emit Withdraw(caller, receiver, owner, assets, shares);
         emit PoolUpdated(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED, store.LAST_BLOCK_NUMBER, store.accFeeIndex,

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
@@ -10,6 +12,8 @@ import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
 
+    error ZeroReserves();
+
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
     }
@@ -19,7 +23,7 @@ abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedR
     }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
-        GammaSwapLibrary.safeTransfer(cfmm, cfmm, amount);
+        GammaSwapLibrary.safeTransfer(IERC20(cfmm), cfmm, amount);
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }

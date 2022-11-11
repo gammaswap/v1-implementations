@@ -198,7 +198,7 @@ describe("LongStrategy", function () {
       expect(loanInfo.rateIndex).to.equal(BigNumber.from(10).pow(18));
 
       await expect(strategy.connect(addr1).getLoan(tokenId)).to.be.revertedWith(
-        "FORBIDDEN"
+        "Forbidden"
       );
     });
 
@@ -210,7 +210,7 @@ describe("LongStrategy", function () {
       await (await strategy.setHeldLiquidity(tokenId, ONE)).wait();
       expect(await strategy.checkMargin(tokenId, 1000)).to.equal(true);
       await expect(strategy.checkMargin(tokenId, 999)).to.be.revertedWith(
-        "margin"
+        "Margin"
       );
     });
   });
@@ -399,7 +399,7 @@ describe("LongStrategy", function () {
           [amtA.div(2).add(1), amtB.div(2)],
           owner.address
         )
-      ).to.be.revertedWith("> bal");
+      ).to.be.revertedWith("NotEnoughBalance");
 
       const resp = await (await strategy.createLoan()).wait();
       const tokenId2 = resp.events[0].args.tokenId;
@@ -415,7 +415,7 @@ describe("LongStrategy", function () {
           [amtA.div(2).add(1), amtB.div(2)],
           owner.address
         )
-      ).to.be.revertedWith("> held");
+      ).to.be.revertedWith("NotEnoughCollateral");
 
       await expect(
         strategy._decreaseCollateral(
@@ -423,7 +423,7 @@ describe("LongStrategy", function () {
           [amtA.div(2), amtB.div(2).add(1)],
           owner.address
         )
-      ).to.be.revertedWith("> held");
+      ).to.be.revertedWith("NotEnoughCollateral");
 
       const addr1BalA = await tokenA.balanceOf(addr1.address);
       const addr1BalB = await tokenB.balanceOf(addr1.address);
@@ -483,11 +483,11 @@ describe("LongStrategy", function () {
 
       await expect(
         strategy._decreaseCollateral(tokenId, [1, 0], owner.address)
-      ).to.be.revertedWith("margin");
+      ).to.be.revertedWith("Margin");
 
       await expect(
         strategy._decreaseCollateral(tokenId, [0, 1], owner.address)
-      ).to.be.revertedWith("margin");
+      ).to.be.revertedWith("Margin");
 
       const res4 = await (
         await strategy._decreaseCollateral(tokenId, [0, 0], addr1.address)
@@ -943,7 +943,9 @@ describe("LongStrategy", function () {
 
   describe("Borrow Liquidity", function () {
     it("Error Borrow Liquidity, > bal", async function () {
-      await expect(strategy._borrowLiquidity(0, 1)).to.be.revertedWith("> bal");
+      await expect(strategy._borrowLiquidity(0, 1)).to.be.revertedWith(
+        "ExcessiveBorrowing"
+      );
     });
 
     it("Error Borrow Liquidity, FORBIDDEN", async function () {
@@ -966,17 +968,17 @@ describe("LongStrategy", function () {
       const lpTokens = ONE;
 
       await expect(strategy._borrowLiquidity(0, 0)).to.be.revertedWith(
-        "FORBIDDEN"
+        "Forbidden"
       );
       await expect(strategy._borrowLiquidity(0, 1)).to.be.revertedWith(
-        "FORBIDDEN"
+        "Forbidden"
       );
       await expect(
         strategy._borrowLiquidity(addr3TokenId, 1)
-      ).to.be.revertedWith("FORBIDDEN");
+      ).to.be.revertedWith("Forbidden");
       await expect(
         strategy._borrowLiquidity(addr3TokenId, lpTokens)
-      ).to.be.revertedWith("FORBIDDEN");
+      ).to.be.revertedWith("Forbidden");
     });
 
     it("Error Borrow Liquidity, > margin", async function () {
@@ -1015,7 +1017,7 @@ describe("LongStrategy", function () {
 
       await expect(
         strategy._borrowLiquidity(tokenId, lpTokens)
-      ).to.be.revertedWith("margin");
+      ).to.be.revertedWith("Margin");
     });
 
     it("Borrow Liquidity success", async function () {
@@ -1354,7 +1356,7 @@ describe("LongStrategy", function () {
 
       await expect(
         strategy._rebalanceCollateral(tokenId, [10, 10])
-      ).to.be.revertedWith("margin");
+      ).to.be.revertedWith("Margin");
     });
 
     it("Rebalance success", async function () {

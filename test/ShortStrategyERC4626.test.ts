@@ -439,12 +439,12 @@ describe("ShortStrategyERC4626", function () {
 
         await expect(
           strategy._deposit(ethers.constants.Zero, owner.address)
-        ).to.be.revertedWith("ZERO_SHARES");
+        ).to.be.revertedWith("ZeroShares");
 
         const assets = shares.div(2);
         await expect(
           strategy._deposit(assets, owner.address)
-        ).to.be.revertedWith("STF_FAIL");
+        ).to.be.revertedWith("STF_Fail");
       });
 
       it("First Deposit Assets/LP Tokens", async function () {
@@ -608,11 +608,11 @@ describe("ShortStrategyERC4626", function () {
 
         await expect(
           strategy._mint(ethers.constants.Zero, owner.address)
-        ).to.be.revertedWith("ZERO_ASSETS");
+        ).to.be.revertedWith("ZeroAssets");
 
         const shares = lpTokens.div(2);
         await expect(strategy._mint(shares, owner.address)).to.be.revertedWith(
-          "STF_FAIL"
+          "STF_Fail"
         );
       });
 
@@ -872,7 +872,7 @@ describe("ShortStrategyERC4626", function () {
 
         await expect(
           strategy._withdraw(assets.add(1), addr1.address, owner.address)
-        ).to.be.revertedWith("withdraw > max");
+        ).to.be.revertedWith("ExcessiveWithdrawal");
 
         await expect(
           strategy._withdraw(
@@ -880,7 +880,7 @@ describe("ShortStrategyERC4626", function () {
             addr1.address,
             owner.address
           )
-        ).to.be.revertedWith("ZERO_SHARES");
+        ).to.be.revertedWith("ZeroShares");
       });
 
       it("ERC4626 Withdraw", async function () {
@@ -925,11 +925,11 @@ describe("ShortStrategyERC4626", function () {
 
         await expect(
           strategy._redeem(assets.add(1), addr1.address, owner.address)
-        ).to.be.revertedWith("redeem > max");
+        ).to.be.revertedWith("ExcessiveWithdrawal");
 
         await expect(
           strategy._redeem(ethers.constants.Zero, addr1.address, owner.address)
-        ).to.be.revertedWith("ZERO_ASSETS");
+        ).to.be.revertedWith("ZeroAssets");
       });
 
       it("ERC4626 Redeem", async function () {
