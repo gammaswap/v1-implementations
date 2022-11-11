@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "./ShortStrategy.sol";
 
 abstract contract ShortStrategyERC4626 is ShortStrategy {
+
     function _deposit(uint256 assets, address to) external virtual override lock returns(uint256 shares) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         updateIndex(store);
 
         // Check for rounding error since we round down in previewDeposit.
-        require((shares = _convertToShares(store, assets)) != 0, "ZERO_SHARES");
+        shares = _convertToShares(store, assets);
+        if(shares == 0) {
+            revert ZeroShares();
+        }
         _depositAssetsFrom(store, msg.sender, to, assets, shares);
     }
 
@@ -18,23 +22,38 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         updateIndex(store);
 
         // No need to check for rounding error, previewMint rounds up.
-        require((assets = _convertToAssets(store, shares)) != 0, "ZERO_ASSETS");
+        assets = _convertToAssets(store, shares);
+        if(assets == 0) {
+            revert ZeroAssets();
+        }
         _depositAssetsFrom(store, msg.sender, to, assets, shares);
     }
 
     function _withdraw(uint256 assets, address to, address from) external virtual override lock returns(uint256 shares) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         updateIndex(store);
-        require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxWithdraw is
-        require((shares = _convertToShares(store, assets)) != 0, "ZERO_SHARES");
+
+        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxWithdraw is
+            revert ExcessiveWithdrawal();
+        }
+
+        shares = _convertToShares(store, assets);
+        if(shares == 0) {
+            revert ZeroShares();
+        }
         _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
     }
 
     function _redeem(uint256 shares, address to, address from) external virtual override lock returns(uint256 assets) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         updateIndex(store);
-        require((assets = _convertToAssets(store, shares)) != 0, "ZERO_ASSETS");
-        require(assets <= store.LP_TOKEN_BALANCE, "redeem > max"); //TODO: This is what maxRedeem is
+        assets = _convertToAssets(store, shares);
+        if(assets == 0) {
+            revert ZeroAssets();
+        }
+        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
+            revert ExcessiveWithdrawal();
+        }
         _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
     }
 
@@ -45,7 +64,7 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         uint256 assets,
         uint256 shares
     ) internal virtual {
-        GammaSwapLibrary.safeTransferFrom(store.cfmm, caller, address(this), assets);
+        GammaSwapLibrary.safeTransferFrom(IERC20(store.cfmm), caller, address(this), assets);
         _depositAssets(store, caller, receiver, assets, shares);
     }
 }

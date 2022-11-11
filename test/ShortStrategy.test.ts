@@ -752,7 +752,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawNoPull(owner.address)
-        ).to.be.revertedWith("ZeroShares");
+        ).to.be.revertedWith("ZeroAssets");
 
         await (await strategy.transfer(strategy.address, assets)).wait();
 
@@ -1030,7 +1030,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawReserves(owner.address)
-        ).to.be.revertedWith("ZeroShares");
+        ).to.be.revertedWith("ZeroAssets");
 
         await (await strategy.transfer(strategy.address, assets)).wait();
 

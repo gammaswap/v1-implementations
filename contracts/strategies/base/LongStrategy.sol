@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/ILongStrategy.sol";
 import "./BaseStrategy.sol";
 
 abstract contract LongStrategy is ILongStrategy, BaseStrategy {
+
+    error Forbidden();
+    error Margin();
+    error NotEnoughBalance();
+    error NotEnoughCollateral();
+    error ExcessiveBorrowing();
+    error NotEnoughLPDeposit();
 
     //LongGamma
     function beforeRepay(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory amounts) internal virtual;
@@ -18,23 +26,31 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
     function getLoan(GammaPoolStorage.Store storage store, uint256 tokenId) internal virtual view returns(GammaPoolStorage.Loan storage _loan) {
         _loan = store.loans[tokenId];
-        require(tokenId == uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id))), "FORBIDDEN");
+        if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
+            revert Forbidden();
+        }
     }
 
     function checkMargin(GammaPoolStorage.Loan storage _loan, uint24 limit) internal virtual view {
-        require(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity, "margin");
+        if(_loan.heldLiquidity * limit / 1000 < _loan.liquidity) {
+            revert Margin();
+        }
     }
 
-    function sendToken(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal virtual {
-        require(amount <= balance, "> bal");
-        require(amount <= collateral, "> held");
+    function sendToken(IERC20 token, address to, uint256 amount, uint256 balance, uint256 collateral) internal virtual {
+        if(amount > balance){
+            revert NotEnoughBalance();
+        }
+        if(amount > collateral){
+            revert NotEnoughCollateral();
+        }
         GammaSwapLibrary.safeTransfer(token, to, amount);
     }
 
     function sendTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
         for (uint256 i = 0; i < store.tokens.length; i++) {
             if(amounts[i] > 0) {
-                sendToken(store.tokens[i], to, amounts[i], store.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
+                sendToken(IERC20(store.tokens[i]), to, amounts[i], store.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
             }
         }
     }
@@ -47,18 +63,24 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     // TODO: Should check expected minAmounts. In case token has some type fee structure. If you are better off, allow it, good for you
     function updateCollateral(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
         for (uint256 i = 0; i < store.tokens.length; i++) {
-            uint256 currentBalance = GammaSwapLibrary.balanceOf(store.tokens[i], address(this));
-            if(currentBalance > store.TOKEN_BALANCE[i]) {
-                uint256 balanceChange = currentBalance - store.TOKEN_BALANCE[i];
-                _loan.tokensHeld[i] = _loan.tokensHeld[i] + balanceChange;
-                store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] + balanceChange;
-            } else if(currentBalance < store.TOKEN_BALANCE[i]) {
-                uint256 balanceChange = store.TOKEN_BALANCE[i] - currentBalance;
-                require(_loan.tokensHeld[i] >= balanceChange, "> held");
-                require(store.TOKEN_BALANCE[i] >= balanceChange, "> bal");
+            uint256 currentBalance = GammaSwapLibrary.balanceOf(IERC20(store.tokens[i]), address(this));
+            uint256 tokenBalance = store.TOKEN_BALANCE[i];
+            uint256 tokenHeld = _loan.tokensHeld[i];
+            if(currentBalance > tokenBalance) {
+                uint256 balanceChange = currentBalance - tokenBalance;
+                _loan.tokensHeld[i] = tokenHeld + balanceChange;
+                store.TOKEN_BALANCE[i] = tokenBalance + balanceChange;
+            } else if(currentBalance < tokenBalance) {
+                uint256 balanceChange = tokenBalance - currentBalance;
+                if(balanceChange > tokenBalance){
+                    revert NotEnoughBalance();
+                }
+                if(balanceChange > tokenHeld){
+                    revert NotEnoughCollateral();
+                }
                 unchecked {
-                    _loan.tokensHeld[i] = _loan.tokensHeld[i] - balanceChange;
-                    store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - balanceChange;
+                    _loan.tokensHeld[i] = tokenHeld - balanceChange;
+                    store.TOKEN_BALANCE[i] = tokenBalance - balanceChange;
                 }
             }
         }
@@ -92,7 +114,9 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     // TODO: Should pass expected minAmts for the withdrawal, prevent front running
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        require(lpTokens < store.LP_TOKEN_BALANCE, "> bal");// TODO: Must add reserve check of 5% - 20%?
+        if(lpTokens >= store.LP_TOKEN_BALANCE) {// TODO: Must add reserve check of 5% - 20%?
+            revert ExcessiveBorrowing();
+        }
 
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
         updateLoan(store, _loan);
@@ -159,16 +183,22 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     }
 
     function openLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 lpTokens) internal virtual {
-        uint256 liquidityBorrowed = calcLPInvariant(lpTokens, store.lastCFMMInvariant, store.lastCFMMTotalSupply);// The liquidity it represented at that time
-        store.BORROWED_INVARIANT = store.BORROWED_INVARIANT + liquidityBorrowed;
+        uint256 lastCFMMInvariant = store.lastCFMMInvariant;
+        uint256 lastCFMMTotalSupply = store.lastCFMMTotalSupply;
+        uint256 liquidityBorrowed = calcLPInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);// The liquidity it represented at that time
+        uint256 borrowedInvariant = store.BORROWED_INVARIANT + liquidityBorrowed;
+        store.BORROWED_INVARIANT = borrowedInvariant;
         store.LP_TOKEN_BORROWED = store.LP_TOKEN_BORROWED + lpTokens;
 
-        store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(store.cfmm, address(this));// this can be greater than expected (accrues to LPs), but can't be less (it's withdrawal of LP_TOKENS)
-        store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this));// this can be greater than expected (accrues to LPs), but can't be less (it's withdrawal of LP_TOKENS)
+        store.LP_TOKEN_BALANCE = lpTokenBalance;
+        uint256 lpInvariant = calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply);
+        store.LP_INVARIANT = lpInvariant;
 
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokens;
-        store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
+        uint256 lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokens;
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
+        store.LP_TOKEN_TOTAL = lpTokenBalance + lpTokenBorrowedPlusInterest;
+        store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
         _loan.liquidity = _loan.liquidity + liquidityBorrowed;
         _loan.initLiquidity = _loan.initLiquidity + liquidityBorrowed;
@@ -176,26 +206,35 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     }
 
     function payLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 liquidity) internal virtual {
-        uint256 newLPBalance = GammaSwapLibrary.balanceOf(store.cfmm, address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
-        require(newLPBalance > store.LP_TOKEN_BALANCE, "< lp_bal");// the change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
-
-        uint256 lpTokenChange = newLPBalance - store.LP_TOKEN_BALANCE;
-        uint256 paidLiquidity = calcLPInvariant(lpTokenChange, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
+        uint256 newLPBalance = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
+        uint256 lpTokenBalance = store.LP_TOKEN_BALANCE;
+        if(newLPBalance <= lpTokenBalance) {// the change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
+            revert NotEnoughLPDeposit();
+        }
+        uint256 lpTokenChange = newLPBalance - lpTokenBalance;
+        uint256 lastCFMMInvariant = store.lastCFMMInvariant;
+        uint256 lastCFMMTotalSupply = store.lastCFMMTotalSupply;
+        uint256 paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
         liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
 
-        uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.BORROWED_INVARIANT);// TODO: What about when it's very very small amounts in denominator?
+        uint256 borrowedInvariant = store.BORROWED_INVARIANT;
+        uint256 lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// TODO: What about when it's very very small amounts in denominator?
         uint256 lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.lpTokens, _loan.liquidity);
         uint256 liquidityPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.initLiquidity, _loan.liquidity);
 
         store.LP_TOKEN_BORROWED = store.LP_TOKEN_BORROWED - lpTokenPrincipal;
-        store.BORROWED_INVARIANT = store.BORROWED_INVARIANT - liquidity; // won't overflow
+        borrowedInvariant = borrowedInvariant - liquidity;
+        store.BORROWED_INVARIANT = borrowedInvariant; // won't overflow
 
         store.LP_TOKEN_BALANCE = newLPBalance;// this can be greater than expected (accrues to LPs), or less if there's a token transfer fee
-        store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
+        uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
+        store.LP_INVARIANT = lpInvariant;
 
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = store.LP_TOKEN_BORROWED_PLUS_INTEREST - lpTokenPaid; // won't overflow
-        store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
+        lpTokenBorrowedPlusInterest = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
+        store.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
+        store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
         _loan.liquidity = _loan.liquidity - liquidity;
         _loan.initLiquidity = _loan.initLiquidity - liquidityPrincipal;

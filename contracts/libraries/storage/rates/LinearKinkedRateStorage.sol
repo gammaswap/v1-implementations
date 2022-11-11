@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 library LinearKinkedRateStorage {
+    error RateStoreIsSet();
+
     bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.rates.linearkinked");
 
     struct Store {
@@ -25,7 +27,9 @@ library LinearKinkedRateStorage {
 
     function init(uint256 baseRate, uint256 optimalUtilRate, uint256 slope1, uint256 slope2) internal {
         Store storage _store = store();
-        require(_store.isSet == false, "SET");
+        if(_store.isSet) {
+            revert RateStoreIsSet();
+        }
         _store.isSet = true;
         _store.ONE = 10**18;
         _store.YEAR_BLOCK_COUNT = 2252571;

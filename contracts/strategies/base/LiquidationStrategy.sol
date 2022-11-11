@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "./LongStrategy.sol";
 
 abstract contract LiquidationStrategy is LongStrategy {
+
+    error NotFullLiquidation();
+    error HasMargin();
 
     function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
@@ -34,18 +37,20 @@ abstract contract LiquidationStrategy is LongStrategy {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = store.loans[tokenId];
 
-        uint256 lpDeposit = GammaSwapLibrary.balanceOf(store.cfmm, address(this)) - store.LP_TOKEN_BALANCE;
+        uint256 lpDeposit = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this)) - store.LP_TOKEN_BALANCE;
 
         updateLoan(store, _loan);
         canLiquidate(_loan, 900);
 
         uint256 invDeposit = lpDeposit * store.lastCFMMInvariant / store.lastCFMMTotalSupply;
-        require(invDeposit > _loan.liquidity, "< liq");
+        if(invDeposit < _loan.liquidity) {
+            revert NotFullLiquidation();
+        }
 
         uint256 invReturn = invDeposit - _loan.liquidity;
         if(invReturn > 0) {
             uint256 lpReturn = invReturn * store.lastCFMMTotalSupply / store.lastCFMMInvariant;
-            GammaSwapLibrary.safeTransfer(store.cfmm, msg.sender, lpReturn);
+            GammaSwapLibrary.safeTransfer(IERC20(store.cfmm), msg.sender, lpReturn);
         }
 
         return payLoanAndRefundLiquidator(tokenId, store, _loan);
@@ -58,7 +63,7 @@ abstract contract LiquidationStrategy is LongStrategy {
             store.TOKEN_BALANCE[i] = store.TOKEN_BALANCE[i] - tokensHeld;
             _loan.tokensHeld[i] = 0;
             refund[i] = tokensHeld;
-            GammaSwapLibrary.safeTransfer(store.tokens[i], msg.sender, tokensHeld);
+            GammaSwapLibrary.safeTransfer(IERC20(store.tokens[i]), msg.sender, tokensHeld);
         }
         _loan.heldLiquidity = 0;
         payLoan(store, _loan, _loan.liquidity);
@@ -72,6 +77,8 @@ abstract contract LiquidationStrategy is LongStrategy {
     }
 
     function canLiquidate(GammaPoolStorage.Loan storage _loan, uint24 limit) internal virtual {
-        require(_loan.heldLiquidity * limit / 1000 < _loan.liquidity, "> margin");
+        if(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity) {
+            revert HasMargin();
+        }
     }
 }

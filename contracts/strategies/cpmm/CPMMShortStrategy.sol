@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "../../interfaces/external/ICPMM.sol";
 import "../base/ShortStrategyERC4626.sol";
@@ -7,9 +7,14 @@ import "./CPMMBaseStrategy.sol";
 
 contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
 
+    error ZeroDeposits();
+    error NotOptimalDeposit();
+
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override view returns (uint256[] memory amounts, address payee) {
-        require(amountsDesired[0] > 0 && amountsDesired[1] > 0, "0 amount");
+        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) {
+            revert ZeroDeposits();
+        }
 
         (uint256 reserve0, uint256 reserve1,) = ICPMM(store.cfmm).getReserves();
 
@@ -18,7 +23,9 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
             return(amountsDesired, payee);
         }
 
-        require(reserve0 > 0 && reserve1 > 0, "0 reserve");
+        if(reserve0 == 0 || reserve1 == 0) {
+            revert ZeroReserves();
+        }
 
         amounts = new uint256[](2);
 
@@ -36,7 +43,9 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
     }
 
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
-        require(amountOptimal >= amountMin, "< minAmt");
+        if(amountOptimal < amountMin) {
+            revert NotOptimalDeposit();
+        }
     }
 
     function getReserves(address cfmm) internal virtual override view returns(uint256[] memory reserves) {

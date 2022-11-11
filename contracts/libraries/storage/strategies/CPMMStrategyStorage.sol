@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 library CPMMStrategyStorage {
+    error StrategyStoreIsSet();
+
     bytes32 constant STRUCT_POSITION = keccak256("com.gammaswap.strategies.cpmm");
 
     struct Store {
@@ -25,7 +27,9 @@ library CPMMStrategyStorage {
 
     function init(address factory, bytes32 initCodeHash, uint16 tradingFee1, uint16 tradingFee2) internal {
         Store storage _store = store();
-        require(_store.isSet == false, "SET");
+        if(_store.isSet) {
+            revert StrategyStoreIsSet();
+        }
         _store.isSet = true;
         _store.factory = factory;
         _store.initCodeHash = initCodeHash;

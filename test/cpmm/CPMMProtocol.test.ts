@@ -271,7 +271,7 @@ describe("CPMMProtocol", function () {
       );
       await expect(
         protocol.testInitializeStrategyParams(newParams)
-      ).to.be.revertedWith("SET");
+      ).to.be.revertedWith("StrategyStoreIsSet");
     });
 
     it("Initialize Strategy Params", async function () {
@@ -333,7 +333,7 @@ describe("CPMMProtocol", function () {
 
       await expect(
         protocol.testInitializeRateParams(newParams)
-      ).to.be.revertedWith("SET");
+      ).to.be.revertedWith("RateStoreIsSet");
     });
 
     it("Initialize Rate Params", async function () {
@@ -399,7 +399,7 @@ describe("CPMMProtocol", function () {
     it("Error is Not Contract", async function () {
       await expect(
         protocol.validateCFMM([tokenA.address, tokenB.address], owner.address)
-      ).to.be.revertedWith("not contract");
+      ).to.be.revertedWith("NotContract");
     });
 
     it("Error Not Right Contract", async function () {
@@ -408,13 +408,13 @@ describe("CPMMProtocol", function () {
           [tokenA.address, tokenB.address],
           protocol2.address
         )
-      ).to.be.revertedWith("bad protocol");
+      ).to.be.revertedWith("BadProtocol");
     });
 
     it("Error Not Right Tokens", async function () {
       await expect(
         protocol.validateCFMM([tokenA.address, tokenC.address], cfmm.address)
-      ).to.be.revertedWith("bad protocol");
+      ).to.be.revertedWith("BadProtocol");
     });
 
     it("Error Bad Hash", async function () {
@@ -422,7 +422,7 @@ describe("CPMMProtocol", function () {
       expect(await badProtocol.initCodeHash()).to.not.equal(cfmmHash);
       await expect(
         badProtocol.validateCFMM([tokenA.address, tokenB.address], cfmm.address)
-      ).to.be.revertedWith("bad protocol");
+      ).to.be.revertedWith("BadProtocol");
     });
 
     it("Error Bad Factory", async function () {
@@ -433,7 +433,7 @@ describe("CPMMProtocol", function () {
           [tokenA.address, tokenB.address],
           cfmm.address
         )
-      ).to.be.revertedWith("bad protocol");
+      ).to.be.revertedWith("BadProtocol");
     });
 
     it("Correct Validation", async function () {

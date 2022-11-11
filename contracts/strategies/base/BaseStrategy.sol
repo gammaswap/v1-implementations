@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/libraries/storage/GammaPoolStorage.sol";
 
 import "../../libraries/GammaSwapLibrary.sol";
@@ -67,7 +68,7 @@ abstract contract BaseStrategy is AbstractRateModel {
     function updateCFMMIndex(GammaPoolStorage.Store storage store) internal virtual {
         updateReserves(store);
         uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
-        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(store.cfmm);
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(store.cfmm));
         store.lastCFMMFeeIndex = calcCFMMFeeIndex(lastCFMMInvariant, lastCFMMTotalSupply, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
         store.lastCFMMInvariant = lastCFMMInvariant;
         store.lastCFMMTotalSupply = lastCFMMTotalSupply;
