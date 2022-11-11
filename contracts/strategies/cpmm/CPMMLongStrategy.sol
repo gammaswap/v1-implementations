@@ -12,12 +12,6 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
         price = reserves[1] * factor / reserves[0];
     }
 
-    function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256 price) {
-        uint256[] memory reserves = new uint256[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
-        price = reserves[1] * factor / reserves[0];
-    }
-
     function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = store.lastCFMMInvariant;
