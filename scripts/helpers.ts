@@ -210,7 +210,8 @@ export const depositLPToken = async (
   amount: BigNumber
 ) => {
   const gammaPoolAddress = gammaPool.address
-  const gammaPoolTokens = await gammaPool.lpTokenBalance()
+  const poolBalances = await gammaPool.getPoolBalances()
+  const gammaPoolTokens = poolBalances.lpTokenBalance
   console.log('gammaPoolTokens: ', convertToETH(gammaPoolTokens))
   const gammaPoolSymbol = await gammaPool.symbol()
   const protocolId = await gammaPool.protocolId()
@@ -253,7 +254,8 @@ export const withdrawLPTokens = async (
   amount: BigNumber
 ) => {
   const gammaPoolAddress = gammaPool.address
-  const gammaPoolTokens = await gammaPool.lpTokenBalance()
+  const poolBalances = await gammaPool.getPoolBalances()
+  const gammaPoolTokens = poolBalances.lpTokenBalance
   console.log('gammaPoolTokens: ', convertToETH(gammaPoolTokens))
   const gammaPoolSymbol = await gammaPool.symbol()
   const protocolId = await gammaPool.protocolId()

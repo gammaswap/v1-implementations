@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../base/LongStrategy.sol";
+import "../base/LiquidationStrategy.sol";
 import "./CPMMBaseStrategy.sol";
-import "hardhat/console.sol";
 
-contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
+contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
+
+    function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256 price) {
+        uint256[] memory reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
+        price = reserves[1] * factor / reserves[0];
+    }
 
     function calcTokensToRepay(GammaPoolStorage.Store storage store, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);

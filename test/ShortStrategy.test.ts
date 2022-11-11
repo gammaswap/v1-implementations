@@ -397,7 +397,7 @@ describe("ShortStrategy", function () {
           strategy.address,
           allowance.add(1)
         )
-      ).to.be.revertedWith("amt > allow");
+      ).to.be.revertedWith("ExcessiveSpend");
 
       await (
         await strategy.spendAllowance(
@@ -581,7 +581,7 @@ describe("ShortStrategy", function () {
         const shares = ONE.mul(200);
         await (await cfmm.mint(shares, owner.address)).wait();
         await expect(strategy._depositNoPull(owner.address)).to.be.revertedWith(
-          "ZERO_SHARES"
+          "ZeroShares"
         );
       });
 
@@ -752,7 +752,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawNoPull(owner.address)
-        ).to.be.revertedWith("ZERO_ASSETS");
+        ).to.be.revertedWith("ZeroShares");
 
         await (await strategy.transfer(strategy.address, assets)).wait();
 
@@ -760,7 +760,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawNoPull(owner.address)
-        ).to.be.revertedWith("withdraw > max");
+        ).to.be.revertedWith("ExcessiveWithdrawal");
       });
 
       it("Withdraw Shares", async function () {
@@ -810,7 +810,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           posManager.depositReserves(owner.address, [0, 0], [0, 0])
-        ).to.be.revertedWith("ZERO_SHARES");
+        ).to.be.revertedWith("ZeroShares");
 
         const amtDesired1 = [1, 1];
         const amtMin1 = [0, 0];
@@ -827,15 +827,15 @@ describe("ShortStrategy", function () {
 
         await expect(
           posManager.depositReserves(owner.address, [1, 2], [0, 0])
-        ).to.be.revertedWith("WL");
+        ).to.be.revertedWith("WrongTokenBalance");
 
         await expect(
           posManager.depositReserves(owner.address, [2, 1], [0, 0])
-        ).to.be.revertedWith("WL");
+        ).to.be.revertedWith("WrongTokenBalance");
 
         await expect(
           posManager.depositReserves(owner.address, [1, 1], [0, 0])
-        ).to.be.revertedWith("WL");
+        ).to.be.revertedWith("WrongTokenBalance");
       });
 
       it("First Deposit Reserves", async function () {
@@ -1030,7 +1030,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawReserves(owner.address)
-        ).to.be.revertedWith("ZERO_ASSETS");
+        ).to.be.revertedWith("ZeroShares");
 
         await (await strategy.transfer(strategy.address, assets)).wait();
 
@@ -1038,7 +1038,7 @@ describe("ShortStrategy", function () {
 
         await expect(
           strategy._withdrawReserves(owner.address)
-        ).to.be.revertedWith("withdraw > max");
+        ).to.be.revertedWith("ExcessiveWithdrawal");
       });
 
       it("Withdraw Reserves", async function () {

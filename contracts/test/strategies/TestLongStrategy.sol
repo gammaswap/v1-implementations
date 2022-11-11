@@ -200,4 +200,16 @@ contract TestLongStrategy is LongStrategy {
             _store.LP_TOKEN_BORROWED, _store.LP_TOKEN_BALANCE, _store.LP_TOKEN_BORROWED_PLUS_INTEREST,
             _store.LP_TOKEN_TOTAL, _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
     }
+
+    function _getCFMMPrice(address cfmm, uint256 factor) external override view returns(uint256) {
+        return 0;
+    }
+
+    function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override virtual returns(uint256[] memory) {
+        return new uint256[](0);
+    }
+
+    function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256[] memory) {
+        return new uint256[](0);
+    }
 }

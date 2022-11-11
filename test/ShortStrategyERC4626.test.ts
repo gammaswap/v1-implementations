@@ -366,7 +366,7 @@ describe("ShortStrategyERC4626", function () {
           strategy.address,
           allowance.add(1)
         )
-      ).to.be.revertedWith("amt > allow");
+      ).to.be.revertedWith("ExcessiveSpend");
 
       await (
         await strategy.spendAllowance(
@@ -795,7 +795,7 @@ describe("ShortStrategyERC4626", function () {
             assets,
             shares
           )
-        ).to.be.revertedWith("amt > allow");
+        ).to.be.revertedWith("ExcessiveSpend");
       });
 
       it("Withdraw Assets", async function () {
