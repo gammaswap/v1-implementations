@@ -7,6 +7,12 @@ import "./BaseStrategy.sol";
 
 abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
+    error ZeroShares();
+    error ZeroAssets();
+    error ExcessiveWithdrawal();
+    error WrongTokenBalance(address);
+    error ExcessiveSpend();
+
     //ShortGamma
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual view returns (uint256[] memory reserves, address payee);
 
@@ -30,7 +36,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         updateIndex(store);
 
-        require((shares = _convertToShares(store, assets)) != 0, "ZERO_SHARES");
+        shares = _convertToShares(store, assets);
+        if(shares == 0) {
+            revert ZeroShares();
+        }
         _depositAssets(store, msg.sender, to, assets, shares);
     }
 
@@ -46,7 +55,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         }
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data); // TODO: Risky. Should set sender to PosMgr
         for(uint256 i = 0; i < tokens.length; i++) {
-            if(amounts[i] > 0) require(balances[i] + amounts[i] == GammaSwapLibrary.balanceOf(tokens[i], to), "WL");
+            if(amounts[i] > 0) {
+                if(balances[i] + amounts[i] != GammaSwapLibrary.balanceOf(tokens[i], to)) {
+                    revert WrongTokenBalance(tokens[i]);
+                }
+            }
         }
     }
 
@@ -72,8 +85,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         updateIndex(store);
 
-        require((assets = _convertToAssets(store, shares)) != 0, "ZERO_ASSETS");
-        require(assets <= store.LP_TOKEN_BALANCE, "withdraw > max"); //TODO: This is what maxRedeem is
+        assets = _convertToAssets(store, shares);
+        if(assets == 0) {
+            revert ZeroShares();
+        }
+
+        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
+            revert ExcessiveWithdrawal();
+        }
         reserves = _withdrawAssets(store, address(this), to, address(this), assets, shares, askForReserves);
     }
 
@@ -132,7 +151,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     ) internal virtual {
         uint256 allowed = store.allowance[owner][spender]; // Saves gas for limited approvals.
         if (allowed != type(uint256).max) {
-            require(allowed >= amount, "amt > allow");
+            if(allowed < amount) {
+                revert ExcessiveSpend();
+            }
             unchecked {
                 store.allowance[owner][spender] = allowed - amount;
             }

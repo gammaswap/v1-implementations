@@ -7,6 +7,9 @@ import "../../libraries/GammaSwapLibrary.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 
 abstract contract BaseStrategy is AbstractRateModel {
+    error ZeroAmount();
+    error ZeroAddress();
+    error ExcessiveBurn();
 
     event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
         uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
@@ -138,16 +141,22 @@ abstract contract BaseStrategy is AbstractRateModel {
     }
 
     function _mint(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
-        require(amount > 0, "0 amt");
+        if(amount == 0) {
+            revert ZeroAmount();
+        }
         store.totalSupply += amount;
         store.balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);
     }
 
     function _burn(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
-        require(account != address(0), "0 address");
+        if(account == address(0)) {
+            revert ZeroAddress();
+        }
         uint256 accountBalance = store.balanceOf[account];
-        require(accountBalance >= amount, "> balance");
+        if(amount > accountBalance) {
+            revert ExcessiveBurn();
+        }
         unchecked {
             store.balanceOf[account] = accountBalance - amount;
         }

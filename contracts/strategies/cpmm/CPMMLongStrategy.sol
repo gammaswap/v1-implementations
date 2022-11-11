@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../base/LongStrategy.sol";
+import "../base/LiquidationStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
-contract CPMMLongStrategy is CPMMBaseStrategy, LongStrategy {
+contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
 
     function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256 price) {
         uint256[] memory reserves = new uint256[](2);
