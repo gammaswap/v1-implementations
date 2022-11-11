@@ -202,7 +202,7 @@ contract TestLongStrategy is LongStrategy {
     }
 
     function _getCFMMPrice(address cfmm, uint256 factor) external override view returns(uint256) {
-        return 0;
+        return 1;
     }
 
     function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override virtual returns(uint256[] memory) {
