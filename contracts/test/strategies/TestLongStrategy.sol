@@ -14,7 +14,10 @@ contract TestLongStrategy is LongStrategy {
     uint256 public borrowRate = 1;
 
     constructor() {
-        GammaPoolStorage.init();
+    }
+
+    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
     }
 
     function tokens() public virtual view returns(address[] memory) {

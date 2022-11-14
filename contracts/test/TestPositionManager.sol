@@ -17,20 +17,14 @@ contract TestPositionManager is ISendTokensCallback {
 
     event DepositReserve(address indexed pool, uint256 reservesLen, uint256[] reserves, uint256 shares);
 
-    address public immutable factory;
     address public immutable pool;
     address public immutable cfmm;
     uint24 public immutable protocol;
 
-    constructor(address _factory, address _pool, address _cfmm, uint24 _protocol) {
-        factory = _factory;
+    constructor(address _pool, address _cfmm, uint24 _protocol) {
         pool = _pool;
         cfmm = _cfmm;
         protocol = _protocol;
-    }
-
-    function getGammaPoolAddress(address cfmm, uint24 protocol) internal virtual view returns(address) {
-        return AddressCalculator.calcAddress(factory, AddressCalculator.getGammaPoolKey(cfmm, protocol));
     }
 
     function sendTokensCallback(address[] calldata tokens, uint256[] calldata amounts, address payee, bytes calldata data) external virtual override {
@@ -55,10 +49,10 @@ contract TestPositionManager is ISendTokensCallback {
     function send(address token, address sender, address to, uint256 amount) internal {
         if (sender == address(this)) {
             // send with tokens already in the contract
-            TransferHelper.safeTransfer(token, to, amount);
+            TransferHelper.safeTransfer(IERC20(token), to, amount);
         } else {
             // pull transfer
-            TransferHelper.safeTransferFrom(token, sender, to, amount);
+            TransferHelper.safeTransferFrom(IERC20(token), sender, to, amount);
         }
     }
 }

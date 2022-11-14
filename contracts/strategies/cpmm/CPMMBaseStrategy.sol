@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
-import "../../libraries/storage/strategies/CPMMStrategyStorage.sol";
 import "../../rates/LinearKinkedRateModel.sol";
 import "../../interfaces/strategies/ICPMMStrategy.sol";
 import "../base/BaseStrategy.sol";
@@ -13,6 +12,14 @@ import "../base/BaseStrategy.sol";
 abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
 
     error ZeroReserves();
+
+    uint16 immutable public override tradingFee1;
+    uint16 immutable public override tradingFee2;
+
+    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) LinearKinkedRateModel(_baseRate, _optimalUtilRate, _slope1, _slope2){
+        tradingFee1 = _tradingFee1;
+        tradingFee2 = _tradingFee2;
+    }
 
     function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
         (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
@@ -30,22 +37,5 @@ abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedR
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
         return Math.sqrt(amounts[0] * amounts[1]);
-    }
-
-    //this is the factory of the protocol (Not all protocols have a factory)
-    function factory() external virtual override view returns(address) {
-        return CPMMStrategyStorage.store().factory;
-    }
-
-    function initCodeHash() external virtual override view returns(bytes32) {
-        return CPMMStrategyStorage.store().initCodeHash;
-    }
-
-    function tradingFee1() external virtual override view returns(uint16) {
-        return CPMMStrategyStorage.store().tradingFee1;
-    }
-
-    function tradingFee2() external virtual override view returns(uint16) {
-        return CPMMStrategyStorage.store().tradingFee2;
     }
 }

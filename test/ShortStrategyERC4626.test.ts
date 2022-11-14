@@ -9,19 +9,15 @@ describe("ShortStrategyERC4626", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestStrategy: any;
-  let TestStrategyFactory: any;
   let TestProtocol: any;
-  let TestDeployer: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
-  let factory: any;
   let strategy: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
   let protocol: any;
-  let deployer: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -29,11 +25,7 @@ describe("ShortStrategyERC4626", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCFMM = await ethers.getContractFactory("TestCFMM");
-    TestStrategyFactory = await ethers.getContractFactory(
-      "TestStrategyFactory"
-    );
     TestStrategy = await ethers.getContractFactory("TestShortStrategyERC4626");
-    TestDeployer = await ethers.getContractFactory("TestShortERC4626Deployer");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
     [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -48,25 +40,18 @@ describe("ShortStrategyERC4626", function () {
     );
 
     protocol = await TestProtocol.deploy(
-      addr1.address,
-      addr2.address,
-      PROTOCOL_ID
-    );
-    factory = await TestStrategyFactory.deploy(
-      cfmm.address,
       PROTOCOL_ID,
-      [tokenA.address, tokenB.address],
-      protocol.address
+      addr1.address,
+      addr2.address
     );
 
-    deployer = await TestDeployer.deploy(factory.address);
-
-    await (await factory.createStrategy(deployer.address)).wait();
-    const strategyAddr = await factory.strategy();
-
-    strategy = await TestStrategy.attach(
-      strategyAddr // The deployed contract address
-    );
+    strategy = await TestStrategy.deploy();
+    await (
+      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
+        tokenA.address,
+        tokenB.address,
+      ])
+    ).wait();
   });
 
   async function convertToShares(

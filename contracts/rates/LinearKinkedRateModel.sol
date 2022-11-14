@@ -1,42 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../libraries/storage/rates/LinearKinkedRateStorage.sol";
 import "../interfaces/rates/ILinearKinkedRateModel.sol";
 import "../interfaces/rates/AbstractRateModel.sol";
 
 abstract contract LinearKinkedRateModel is AbstractRateModel, ILinearKinkedRateModel {
+
+    uint256 immutable public override baseRate;
+    uint256 immutable public override optimalUtilRate;
+    uint256 immutable public override slope1;
+    uint256 immutable public override slope2;
+
+    constructor(uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) {
+        baseRate = _baseRate;
+        optimalUtilRate = _optimalUtilRate;
+        slope1 = _slope1;
+        slope2 = _slope2;
+    }
 
     function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
         uint256 totalLp = lpBalance + lpBorrowed;
         if(totalLp == 0)
             return 0;
 
-        LinearKinkedRateStorage.Store storage store = LinearKinkedRateStorage.store();
-        uint256 utilizationRate = (lpBorrowed * store.ONE) / totalLp;
-        if(utilizationRate <= store.optimalUtilRate) {
-            uint256 variableRate = (utilizationRate * store.slope1) / store.optimalUtilRate;
-            return (store.baseRate + variableRate);
+        uint256 utilizationRate = (lpBorrowed * 10**18) / totalLp;
+        if(utilizationRate <= optimalUtilRate) {
+            uint256 variableRate = (utilizationRate * slope1) / optimalUtilRate;
+            return (baseRate + variableRate);
         } else {
-            uint256 utilizationRateDiff = utilizationRate - store.optimalUtilRate;
-            uint256 variableRate = (utilizationRateDiff * store.slope2) / (store.ONE - store.optimalUtilRate);
-            return (store.baseRate + store.slope1 + variableRate);
+            uint256 utilizationRateDiff = utilizationRate - optimalUtilRate;
+            uint256 variableRate = (utilizationRateDiff * slope2) / (10**18 - optimalUtilRate);
+            return (baseRate + slope1 + variableRate);
         }
-    }
-
-    function baseRate() external virtual override view returns(uint256) {
-        return LinearKinkedRateStorage.store().baseRate;
-    }
-
-    function optimalUtilRate() external virtual override view returns(uint256) {
-        return LinearKinkedRateStorage.store().optimalUtilRate;
-    }
-
-    function slope1() external virtual override view returns(uint256) {
-        return LinearKinkedRateStorage.store().slope1;
-    }
-
-    function slope2() external virtual override view returns(uint256) {
-        return LinearKinkedRateStorage.store().slope2;
     }
 }

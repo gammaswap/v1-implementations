@@ -13,7 +13,10 @@ contract TestBaseStrategy is BaseStrategy {
     uint256 public borrowRate = 10**18;
 
     constructor() {
-        GammaPoolStorage.init();
+    }
+
+    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
     }
 
     function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint24 protocolId, address protocol) {

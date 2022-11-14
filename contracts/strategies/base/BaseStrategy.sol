@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@gammaswap/v1-core/contracts/GammaPoolFactory.sol";
 import "@gammaswap/v1-core/contracts/libraries/storage/GammaPoolStorage.sol";
 
 import "../../libraries/GammaSwapLibrary.sol";
