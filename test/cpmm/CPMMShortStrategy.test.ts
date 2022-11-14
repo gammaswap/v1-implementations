@@ -10,35 +10,24 @@ const PROTOCOL_ID = 1;
 describe("CPMMShortStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
-  let TestStrategy2: any;
-  let TestStrategyFactory: any;
   let TestProtocol: any;
-  let TestDeployer: any;
-  let TestDeployer2: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
-  let factory: any;
   let uniFactory: any;
   let strategy: any;
-  let strategy2: any;
   let owner: any;
   let addr1: any;
   let addr2: any;
   let protocol: any;
-  let deployer: any;
-  let deployer2: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    TestStrategyFactory = await ethers.getContractFactory(
-      "TestStrategyFactory"
-    );
     [owner, addr1, addr2] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
@@ -51,14 +40,7 @@ describe("CPMMShortStrategy", function () {
       owner
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMShortStrategy");
-    TestStrategy2 = await ethers.getContractFactory("TestCPMMShortStrategy2");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
-    TestDeployer = await ethers.getContractFactory(
-      "TestCPMMShortStrategyDeployer"
-    );
-    TestDeployer2 = await ethers.getContractFactory(
-      "TestCPMMShortStrategyDeployer2"
-    );
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -79,34 +61,32 @@ describe("CPMMShortStrategy", function () {
     );
 
     protocol = await TestProtocol.deploy(
-      addr1.address,
-      addr2.address,
-      PROTOCOL_ID
-    );
-    factory = await TestStrategyFactory.deploy(
-      cfmm.address,
       PROTOCOL_ID,
-      [tokenA.address, tokenB.address],
-      protocol.address
+      addr1.address,
+      addr2.address
     );
 
-    deployer = await TestDeployer.deploy(factory.address);
+    const ONE = BigNumber.from(10).pow(18);
+    const baseRate = ONE.div(100);
+    const optimalUtilRate = ONE.mul(8).div(10);
+    const slope1 = ONE.mul(4).div(100);
+    const slope2 = ONE.mul(75).div(100);
 
-    await (await factory.createStrategy(deployer.address)).wait();
-    const strategyAddr = await factory.strategy();
-
-    strategy = await TestStrategy.attach(
-      strategyAddr // The deployed contract address
+    strategy = await TestStrategy.deploy(
+      997,
+      1000,
+      baseRate,
+      optimalUtilRate,
+      slope1,
+      slope2
     );
 
-    deployer2 = await TestDeployer2.deploy(factory.address);
-
-    await (await factory.createStrategy(deployer2.address)).wait();
-    const strategy2Addr = await factory.strategy();
-
-    strategy2 = await TestStrategy2.attach(
-      strategy2Addr // The deployed contract address
-    );
+    await (
+      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
+        tokenA.address,
+        tokenB.address,
+      ])
+    ).wait();
   });
 
   async function createPair(token1: any, token2: any) {
@@ -129,12 +109,17 @@ describe("CPMMShortStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.factory()).to.equal(factory.address);
-      expect(await strategy.initCodeHash()).to.equal(
-        await strategy.INIT_CODE_HASH()
-      );
-      expect(await strategy.tradingFee1()).to.equal(1);
-      expect(await strategy.tradingFee2()).to.equal(2);
+      expect(await strategy.tradingFee1()).to.equal(997);
+      expect(await strategy.tradingFee2()).to.equal(1000);
+      const ONE = BigNumber.from(10).pow(18);
+      const baseRate = ONE.div(100);
+      const optimalUtilRate = ONE.mul(8).div(10);
+      const slope1 = ONE.mul(4).div(100);
+      const slope2 = ONE.mul(75).div(100);
+      expect(await strategy.baseRate()).to.equal(baseRate);
+      expect(await strategy.optimalUtilRate()).to.equal(optimalUtilRate);
+      expect(await strategy.slope1()).to.equal(slope1);
+      expect(await strategy.slope2()).to.equal(slope2);
     });
   });
 
@@ -197,13 +182,13 @@ describe("CPMMShortStrategy", function () {
 
     it("Error Calc Deposit Amounts, 0 amt", async function () {
       await expect(
-        strategy2.testCalcDeposits([0, 0], [0, 0])
+        strategy.testCalcDeposits([0, 0], [0, 0])
       ).to.be.revertedWith("ZeroDeposits");
       await expect(
-        strategy2.testCalcDeposits([1, 0], [0, 0])
+        strategy.testCalcDeposits([1, 0], [0, 0])
       ).to.be.revertedWith("ZeroDeposits");
       await expect(
-        strategy2.testCalcDeposits([0, 1], [0, 0])
+        strategy.testCalcDeposits([0, 1], [0, 0])
       ).to.be.revertedWith("ZeroDeposits");
     });
 
@@ -211,7 +196,7 @@ describe("CPMMShortStrategy", function () {
       await (await tokenB.transfer(cfmm.address, 1)).wait();
       await (await cfmm.sync()).wait();
       await expect(
-        strategy2.testCalcDeposits([1, 1], [0, 0])
+        strategy.testCalcDeposits([1, 1], [0, 0])
       ).to.be.revertedWith("ZeroReserves");
     });
 
@@ -219,7 +204,7 @@ describe("CPMMShortStrategy", function () {
       await (await tokenA.transfer(cfmm.address, 1)).wait();
       await (await cfmm.sync()).wait();
       await expect(
-        strategy2.testCalcDeposits([1, 1], [0, 0])
+        strategy.testCalcDeposits([1, 1], [0, 0])
       ).to.be.revertedWith("ZeroReserves");
     });
 
@@ -228,18 +213,18 @@ describe("CPMMShortStrategy", function () {
       await (await tokenB.transfer(cfmm.address, 1)).wait();
       await (await cfmm.sync()).wait();
       await expect(
-        strategy2.testCalcDeposits([1, 1], [0, 2])
+        strategy.testCalcDeposits([1, 1], [0, 2])
       ).to.be.revertedWith("NotOptimalDeposit");
 
       await (await tokenB.transfer(cfmm.address, 1)).wait();
       await (await cfmm.sync()).wait();
       await expect(
-        strategy2.testCalcDeposits([1, 1], [2, 0])
+        strategy.testCalcDeposits([1, 1], [2, 0])
       ).to.be.revertedWith("NotOptimalDeposit");
     });
 
     it("Empty reserves", async function () {
-      const res = await strategy2.testCalcDeposits([1, 1], [0, 0]);
+      const res = await strategy.testCalcDeposits([1, 1], [0, 0]);
       expect(res.amounts.length).to.equal(2);
       expect(res.amounts[0]).to.equal(1);
       expect(res.amounts[1]).to.equal(1);
@@ -251,7 +236,7 @@ describe("CPMMShortStrategy", function () {
       await (await tokenA.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await cfmm.sync()).wait();
-      const res = await strategy2.testCalcDeposits(
+      const res = await strategy.testCalcDeposits(
         [ONE.mul(100), ONE.mul(100)],
         [0, 0]
       );
@@ -263,7 +248,7 @@ describe("CPMMShortStrategy", function () {
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
       await (await cfmm.sync()).wait();
 
-      const res1 = await strategy2.testCalcDeposits(
+      const res1 = await strategy.testCalcDeposits(
         [ONE.mul(100), ONE.mul(100)],
         [0, 0]
       );
@@ -275,7 +260,7 @@ describe("CPMMShortStrategy", function () {
       await (await tokenA.transfer(cfmm.address, ONE.mul(300))).wait();
       await (await cfmm.sync()).wait();
 
-      const res2 = await strategy2.testCalcDeposits(
+      const res2 = await strategy.testCalcDeposits(
         [ONE.mul(100), ONE.mul(100)],
         [0, 0]
       );

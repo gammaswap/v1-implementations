@@ -8,6 +8,10 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
 
     error BadDelta();
 
+    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2)
+        CPMMBaseStrategy(_tradingFee1, _tradingFee2, _baseRate, _optimalUtilRate, _slope1, _slope2) {
+    }
+
     function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256 price) {
         uint256[] memory reserves = new uint256[](2);
         (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
@@ -88,9 +92,8 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
         if(reserveOut == 0 || reserveIn == 0) {
             revert ZeroReserves();
         }
-        CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
-        uint256 amountOutWithFee = amountOut * store.tradingFee1;
-        uint256 denominator = (reserveOut * store.tradingFee2) + amountOutWithFee;
+        uint256 amountOutWithFee = amountOut * tradingFee1;
+        uint256 denominator = (reserveOut * tradingFee2) + amountOutWithFee;
         return amountOutWithFee * reserveIn / denominator;
     }
 
@@ -99,8 +102,7 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
         if(reserveOut == 0 || reserveIn == 0) {
             revert ZeroReserves();
         }
-        CPMMStrategyStorage.Store storage store = CPMMStrategyStorage.store();
-        uint256 denominator = (reserveIn - amountIn) * store.tradingFee1;
-        return (reserveOut * amountIn * store.tradingFee2 / denominator) + 1;
+        uint256 denominator = (reserveIn - amountIn) * tradingFee1;
+        return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
     }
 }

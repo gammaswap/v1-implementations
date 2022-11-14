@@ -5,11 +5,16 @@ import "../../../strategies/cpmm/CPMMShortStrategy.sol";
 
 contract TestCPMMShortStrategy is CPMMShortStrategy {
 
-    bytes32 public constant INIT_CODE_HASH = 0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f;
+    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2)
+        CPMMShortStrategy(_tradingFee1, _tradingFee2, _baseRate, _optimalUtilRate, _slope1, _slope2) {
+    }
 
-    constructor() {
-        GammaPoolStorage.init();
-        CPMMStrategyStorage.init(msg.sender, INIT_CODE_HASH, 1, 2);
+    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    }
+
+    function testCalcDeposits(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) public virtual view returns(uint256[] memory amounts, address payee) {
+        (amounts, payee) = calcDepositAmounts(GammaPoolStorage.store(), amountsDesired, amountsMin);
     }
 
     function testCheckOptimalAmt(uint256 amountOptimal, uint256 amountMin) public virtual pure returns(uint8){

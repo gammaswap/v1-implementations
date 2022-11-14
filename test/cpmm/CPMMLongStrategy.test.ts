@@ -11,9 +11,7 @@ describe("CPMMLongStrategy", function () {
   let TestERC20: any;
   let TestERC20WithFee: any;
   let TestStrategy: any;
-  let TestStrategyFactory: any;
   let TestProtocol: any;
-  let TestDeployer: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -22,8 +20,6 @@ describe("CPMMLongStrategy", function () {
   let tokenBFee: any;
   let cfmm: any;
   let cfmmFee: any;
-  let factory: any;
-  let factoryFee: any;
   let uniFactory: any;
   let strategy: any;
   let strategyFee: any;
@@ -32,7 +28,6 @@ describe("CPMMLongStrategy", function () {
   let addr2: any;
   let addr3: any;
   let protocol: any;
-  let deployer: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -40,9 +35,6 @@ describe("CPMMLongStrategy", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    TestStrategyFactory = await ethers.getContractFactory(
-      "TestStrategyFactory"
-    );
     [owner, addr1, addr2, addr3] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
@@ -56,9 +48,6 @@ describe("CPMMLongStrategy", function () {
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMLongStrategy");
     TestProtocol = await ethers.getContractFactory("TestProtocol");
-    TestDeployer = await ethers.getContractFactory(
-      "TestCPMMLongStrategyDeployer"
-    );
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
 
@@ -78,26 +67,32 @@ describe("CPMMLongStrategy", function () {
     );
 
     protocol = await TestProtocol.deploy(
-      addr1.address,
-      addr2.address,
-      PROTOCOL_ID
-    );
-
-    factory = await TestStrategyFactory.deploy(
-      cfmm.address,
       PROTOCOL_ID,
-      [tokenA.address, tokenB.address],
-      protocol.address
+      addr1.address,
+      addr2.address
     );
 
-    deployer = await TestDeployer.deploy(factory.address);
+    const ONE = BigNumber.from(10).pow(18);
+    const baseRate = ONE.div(100);
+    const optimalUtilRate = ONE.mul(8).div(10);
+    const slope1 = ONE.mul(4).div(100);
+    const slope2 = ONE.mul(75).div(100);
 
-    await (await factory.createStrategy(deployer.address)).wait();
-    const strategyAddr = await factory.strategy();
-
-    strategy = await TestStrategy.attach(
-      strategyAddr // The deployed contract address
+    strategy = await TestStrategy.deploy(
+      997,
+      1000,
+      baseRate,
+      optimalUtilRate,
+      slope1,
+      slope2
     );
+
+    await (
+      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
+        tokenA.address,
+        tokenB.address,
+      ])
+    ).wait();
   });
 
   async function createStrategy(tok0Fee: any, tok1Fee: any) {
@@ -136,21 +131,29 @@ describe("CPMMLongStrategy", function () {
       await (await tokenBFee.setFee(fee)).wait();
     }
 
-    factoryFee = await TestStrategyFactory.deploy(
-      cfmmFee.address,
-      PROTOCOL_ID,
-      [tokenAFee.address, tokenBFee.address],
-      protocol.address
+    const ONE = BigNumber.from(10).pow(18);
+    const baseRate = ONE.div(100);
+    const optimalUtilRate = ONE.mul(8).div(10);
+    const slope1 = ONE.mul(4).div(100);
+    const slope2 = ONE.mul(75).div(100);
+
+    strategyFee = await TestStrategy.deploy(
+      997,
+      1000,
+      baseRate,
+      optimalUtilRate,
+      slope1,
+      slope2
     );
 
-    const _deployer = await TestDeployer.deploy(factoryFee.address);
-
-    await (await factoryFee.createStrategy(_deployer.address)).wait();
-    const strategyAddr = await factoryFee.strategy();
-
-    strategyFee = await TestStrategy.attach(
-      strategyAddr // The deployed contract address
-    );
+    await (
+      await strategyFee.initialize(
+        cfmmFee.address,
+        PROTOCOL_ID,
+        protocol.address,
+        [tokenAFee.address, tokenBFee.address]
+      )
+    ).wait();
   }
 
   async function createPair(token1: any, token2: any) {
@@ -233,9 +236,17 @@ describe("CPMMLongStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.factory()).to.equal(factory.address);
       expect(await strategy.tradingFee1()).to.equal(997);
       expect(await strategy.tradingFee2()).to.equal(1000);
+      const ONE = BigNumber.from(10).pow(18);
+      const baseRate = ONE.div(100);
+      const optimalUtilRate = ONE.mul(8).div(10);
+      const slope1 = ONE.mul(4).div(100);
+      const slope2 = ONE.mul(75).div(100);
+      expect(await strategy.baseRate()).to.equal(baseRate);
+      expect(await strategy.optimalUtilRate()).to.equal(optimalUtilRate);
+      expect(await strategy.slope1()).to.equal(slope1);
+      expect(await strategy.slope2()).to.equal(slope2);
     });
   });
 

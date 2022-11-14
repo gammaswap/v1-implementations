@@ -10,7 +10,10 @@ import "../TestERC20.sol";
 abstract contract TestBaseShortStrategy is ShortStrategy {
 
     constructor() {
-        GammaPoolStorage.init();
+    }
+
+    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
     }
 
     function setTotalSupply(uint256 _totalSupply) public virtual {
@@ -113,9 +116,9 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
 
         uint256 fromBalance = store.balanceOf[from];
         require(fromBalance >= amount);
-    unchecked {
-        store.balanceOf[from] = fromBalance - amount;
-    }
+        unchecked {
+            store.balanceOf[from] = fromBalance - amount;
+        }
         store.balanceOf[to] += amount;
 
         emit Transfer(from, to, amount);
