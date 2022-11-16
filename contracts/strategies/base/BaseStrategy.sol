@@ -78,7 +78,7 @@ abstract contract BaseStrategy is AbstractRateModel {
     }
 
     function updateFeeIndex(GammaPoolStorage.Store storage store) internal virtual {
-        store.borrowRate = calcBorrowRate(store.LP_TOKEN_BALANCE, store.LP_TOKEN_BORROWED);
+        store.borrowRate = calcBorrowRate(store.LP_INVARIANT, store.BORROWED_INVARIANT);
         store.lastFeeIndex = calcFeeIndex(store.lastCFMMFeeIndex, store.borrowRate, store.LAST_BLOCK_NUMBER);
     }
 

@@ -14,40 +14,12 @@ contract CPMMProtocol is AbstractProtocol {
     //0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f UniswapV2
     //0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303 SushiSwap
 
-    /*struct CPMMProtocolParams {
-        address factory;
-        bytes32 initCodeHash;
-        uint16 tradingFee1;
-        uint16 tradingFee2;
-        uint256 baseRate;
-        uint256 optimalUtilRate;
-        uint256 slope1;
-        uint256 slope2;
-    }/**/
-
     address immutable public factory;
     bytes32 immutable public initCodeHash;
-    /*uint16 immutable public override tradingFee1;
-    uint16 immutable public override tradingFee2;
 
-    uint256 immutable public override baseRate;
-    uint256 immutable public override optimalUtilRate;
-    uint256 immutable public override slope1;
-    uint256 immutable public override slope2;/**/
-
-    //constructor(uint24 _protocolId, address longStrategy, address shortStrategy, bytes memory pData) AbstractProtocol(_protocolId, longStrategy, shortStrategy) {
     constructor(uint24 _protocolId, address longStrategy, address shortStrategy, address _factory, bytes32 _initCodeHash) AbstractProtocol(_protocolId, longStrategy, shortStrategy) {
         factory = _factory;
         initCodeHash = _initCodeHash;
-        /*CPMMProtocolParams memory params = abi.decode(pData, (CPMMProtocolParams));
-        factory = params.factory;
-        initCodeHash = params.initCodeHash;
-        /*tradingFee1 = params.tradingFee1;
-        tradingFee2 = params.tradingFee2;
-        baseRate = params.baseRate;
-        optimalUtilRate = params.optimalUtilRate;
-        slope1 = params.slope1;
-        slope2 = params.slope2;/**/
     }
 
     function validateCFMM(address[] calldata _tokens, address _cfmm) external virtual override view returns(address[] memory tokens) {

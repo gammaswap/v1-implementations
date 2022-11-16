@@ -132,9 +132,9 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         return _convertToAssets(GammaPoolStorage.store(), shares);
     }
 
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
-        uint256 totalLP = lpBalance + lpBorrowed;
-        return totalLP == 0 ? 0 : lpBorrowed * (10**18) / totalLP;
+    function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {
+        uint256 totalInvariant = lpInvariant + borrowedInvariant;
+        return totalInvariant == 0 ? 0 : borrowedInvariant * (10**18) / totalInvariant;
     }
 
     //ShortGamma

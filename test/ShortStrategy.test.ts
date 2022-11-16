@@ -704,7 +704,6 @@ describe("ShortStrategy", function () {
           cfmm.address,
           params1.borrowedInvariant,
           params1.lpBalance,
-          params1.lpBorrowed,
           params1.prevCFMMInvariant,
           params1.prevCFMMTotalSupply,
           params1.lastBlockNum.sub(2) // to account for the next 2 blocks update
@@ -979,7 +978,6 @@ describe("ShortStrategy", function () {
           cfmm.address,
           params1.borrowedInvariant,
           params1.lpBalance,
-          params1.lpBorrowed,
           params1.prevCFMMInvariant,
           params1.prevCFMMTotalSupply,
           params1.lastBlockNum.sub(1) // to account for the next 1 block update

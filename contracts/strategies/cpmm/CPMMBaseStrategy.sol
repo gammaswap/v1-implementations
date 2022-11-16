@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/ICPMM.sol";
 import "../../libraries/Math.sol";
-import "../../rates/LinearKinkedRateModel.sol";
+import "../../rates/LogDerivativeRateModel.sol";
 import "../../interfaces/strategies/ICPMMStrategy.sol";
 import "../base/BaseStrategy.sol";
 
-abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LinearKinkedRateModel {
+abstract contract CPMMBaseStrategy is ICPMMStrategy, BaseStrategy, LogDerivativeRateModel {
 
     error ZeroReserves();
 
     uint16 immutable public override tradingFee1;
     uint16 immutable public override tradingFee2;
 
-    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2) LinearKinkedRateModel(_baseRate, _optimalUtilRate, _slope1, _slope2){
+    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy){
         tradingFee1 = _tradingFee1;
         tradingFee2 = _tradingFee2;
     }

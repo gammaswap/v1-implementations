@@ -74,18 +74,10 @@ describe("CPMMLongStrategy", function () {
 
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
-    const optimalUtilRate = ONE.mul(8).div(10);
-    const slope1 = ONE.mul(4).div(100);
-    const slope2 = ONE.mul(75).div(100);
+    const factor = ONE.mul(4).div(100);
+    const maxApy = ONE.mul(75).div(100);
 
-    strategy = await TestStrategy.deploy(
-      997,
-      1000,
-      baseRate,
-      optimalUtilRate,
-      slope1,
-      slope2
-    );
+    strategy = await TestStrategy.deploy(997, 1000, baseRate, factor, maxApy);
 
     await (
       await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
@@ -133,17 +125,15 @@ describe("CPMMLongStrategy", function () {
 
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
-    const optimalUtilRate = ONE.mul(8).div(10);
-    const slope1 = ONE.mul(4).div(100);
-    const slope2 = ONE.mul(75).div(100);
+    const factor = ONE.mul(4).div(100);
+    const maxApy = ONE.mul(75).div(100);
 
     strategyFee = await TestStrategy.deploy(
       997,
       1000,
       baseRate,
-      optimalUtilRate,
-      slope1,
-      slope2
+      factor,
+      maxApy
     );
 
     await (
@@ -240,13 +230,11 @@ describe("CPMMLongStrategy", function () {
       expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
-      const optimalUtilRate = ONE.mul(8).div(10);
-      const slope1 = ONE.mul(4).div(100);
-      const slope2 = ONE.mul(75).div(100);
+      const factor = ONE.mul(4).div(100);
+      const maxApy = ONE.mul(75).div(100);
       expect(await strategy.baseRate()).to.equal(baseRate);
-      expect(await strategy.optimalUtilRate()).to.equal(optimalUtilRate);
-      expect(await strategy.slope1()).to.equal(slope1);
-      expect(await strategy.slope2()).to.equal(slope2);
+      expect(await strategy.factor()).to.equal(factor);
+      expect(await strategy.maxApy()).to.equal(maxApy);
     });
   });
 

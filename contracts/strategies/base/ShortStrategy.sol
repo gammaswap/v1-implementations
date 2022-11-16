@@ -20,10 +20,11 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function getReserves(address cfmm) internal virtual view returns(uint256[] memory);
 
-    function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
+    function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
         uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
         uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
-        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpBalance, lpBorrowed), lastBlockNum);
+        uint256 lpInvariant = calcLPInvariant(lpBalance, prevCFMMInvariant, prevCFMMTotalSupply);
+        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpInvariant, borrowedInvariant), lastBlockNum);
         return lpBalance + calcLPTokenBorrowedPlusInterest(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
     }
 
