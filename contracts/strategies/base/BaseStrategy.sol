@@ -56,7 +56,7 @@ abstract contract BaseStrategy is AbstractRateModel {
         if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
             uint256 prevInvariant = borrowedInvariant > prevCFMMInvariant ? borrowedInvariant : prevCFMMInvariant; // deleverage CFMM Yield
             uint256 denominator = (prevInvariant * lastCFMMTotalSupply) / ONE;
-            return (lastCFMMInvariant * prevCFMMTotalSupply) / denominator;
+            return (lastCFMMInvariant * prevCFMMTotalSupply + lastCFMMTotalSupply * (prevInvariant - prevCFMMInvariant)) / denominator;
         }
         return ONE;
     }
