@@ -9,7 +9,7 @@ contract TestLinearKinkedRateModel is LinearKinkedRateModel {
         LinearKinkedRateModel(_baseRate, _optimalUtilRate, _slope1, _slope2){
     }
 
-    function testCalcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) public virtual view returns(uint256) {
-        return calcBorrowRate(lpBalance, lpBorrowed);
+    function testCalcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) public virtual view returns(uint256) {
+        return calcBorrowRate(lpInvariant, borrowedInvariant);
     }
 }

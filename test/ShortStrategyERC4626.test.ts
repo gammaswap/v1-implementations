@@ -565,7 +565,6 @@ describe("ShortStrategyERC4626", function () {
           cfmm.address,
           params1.borrowedInvariant,
           params1.lpBalance,
-          params1.lpBorrowed,
           params1.prevCFMMInvariant,
           params1.prevCFMMTotalSupply,
           params1.lastBlockNum.sub(1) // to account for the next block update
@@ -705,7 +704,6 @@ describe("ShortStrategyERC4626", function () {
           cfmm.address,
           params1.borrowedInvariant,
           params1.lpBalance,
-          params1.lpBorrowed,
           params1.prevCFMMInvariant,
           params1.prevCFMMTotalSupply,
           params1.lastBlockNum.sub(1) // to account for the next block update
@@ -743,7 +741,6 @@ describe("ShortStrategyERC4626", function () {
           cfmm.address,
           params2.borrowedInvariant,
           params2.lpBalance,
-          params2.lpBorrowed,
           params2.prevCFMMInvariant,
           params2.prevCFMMTotalSupply,
           params2.lastBlockNum.sub(1) // to account for the next block update
@@ -964,7 +961,6 @@ describe("ShortStrategyERC4626", function () {
         cfmm.address,
         params.borrowedInvariant,
         params.lpBalance,
-        params.lpBorrowed,
         params.prevCFMMInvariant,
         params.prevCFMMTotalSupply,
         params.lastBlockNum.sub(1) // to account for the next block update
@@ -984,7 +980,6 @@ describe("ShortStrategyERC4626", function () {
         cfmm.address,
         params1.borrowedInvariant,
         params1.lpBalance,
-        params1.lpBorrowed,
         params1.prevCFMMInvariant,
         params1.prevCFMMTotalSupply,
         params1.lastBlockNum.sub(1) // to account for the next block update
@@ -1033,7 +1028,6 @@ describe("ShortStrategyERC4626", function () {
         cfmm.address,
         params.borrowedInvariant,
         params.lpBalance,
-        params.lpBorrowed,
         params.prevCFMMInvariant,
         params.prevCFMMTotalSupply,
         params.lastBlockNum.sub(1) // to account for the next block update

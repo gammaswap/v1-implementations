@@ -3,33 +3,26 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
-describe("LinearKinkedRateModel", function () {
+describe("LogDerivativeRateModel", function () {
   let RateModel: any;
   let rateModel: any;
   let baseRate: any;
-  let optimalUtilRate: any;
-  let slope1: any;
-  let slope2: any;
+  let factor: any;
+  let maxApy: any;
   let ONE: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
-    RateModel = await ethers.getContractFactory("TestLinearKinkedRateModel");
+    RateModel = await ethers.getContractFactory("TestLogDerivativeRateModel");
 
     ONE = BigNumber.from(10).pow(18);
     baseRate = ONE.div(100);
-    optimalUtilRate = ONE.mul(8).div(10);
-    slope1 = ONE.mul(4).div(100);
-    slope2 = ONE.mul(75).div(100);
+    factor = ONE.mul(4).div(100);
+    maxApy = ONE.mul(75).div(100);
 
-    rateModel = await RateModel.deploy(
-      baseRate,
-      optimalUtilRate,
-      slope1,
-      slope2
-    );
+    rateModel = await RateModel.deploy(baseRate, factor, maxApy);
   });
 
   function calcBorrowRate(
@@ -38,25 +31,55 @@ describe("LinearKinkedRateModel", function () {
   ): BigNumber {
     const totalInvariant = borrowedInvariant.add(lpInvariant);
     const utilizationRate = borrowedInvariant.mul(ONE).div(totalInvariant);
-    if (utilizationRate.lte(optimalUtilRate)) {
-      const variableRate = utilizationRate.mul(slope1).div(optimalUtilRate);
-      return baseRate.add(variableRate);
-    } else {
-      const utilizationRateDiff = utilizationRate.sub(optimalUtilRate);
-      const optimalUtilRateDiff = ONE.sub(optimalUtilRate);
-      const variableRate = utilizationRateDiff
-        .mul(slope2)
-        .div(optimalUtilRateDiff);
-      return baseRate.add(slope1).add(variableRate);
+    const utilizationRateSquare = utilizationRate.pow(2);
+    const deonominator = BigNumber.from(10)
+      .pow(36)
+      .sub(utilizationRateSquare)
+      .add(1);
+    const numerator = factor.mul(utilizationRateSquare);
+    const rate = numerator.div(deonominator).add(baseRate);
+
+    if (rate.gt(maxApy)) {
+      return maxApy;
     }
+    return rate;
   }
 
   describe("Deployment", function () {
     it("Should set right init params", async function () {
       expect(await rateModel.baseRate()).to.equal(baseRate);
-      expect(await rateModel.optimalUtilRate()).to.equal(optimalUtilRate);
-      expect(await rateModel.slope1()).to.equal(slope1);
-      expect(await rateModel.slope2()).to.equal(slope2);
+      expect(await rateModel.factor()).to.equal(factor);
+      expect(await rateModel.maxApy()).to.equal(maxApy);
+    });
+  });
+
+  describe("Edge Cases", function () {
+    it("Max APY", async function () {
+      const lpInvariant = ONE.mul(1);
+      const borrowedInvariant = ONE.mul(100);
+      expect(
+        await rateModel.testCalcBorrowRate(lpInvariant, borrowedInvariant)
+      ).to.equal(maxApy);
+      expect(
+        await rateModel.testCalcBorrowRate(
+          lpInvariant.mul(10),
+          borrowedInvariant
+        )
+      ).to.lt(maxApy);
+    });
+
+    it("No Free Funds Available Rate", async function () {
+      const lpInvariant = ONE.mul(1);
+      const borrowedInvariant = ONE.mul(100);
+      expect(await rateModel.testCalcBorrowRate(0, borrowedInvariant)).to.equal(
+        maxApy
+      );
+      expect(
+        await rateModel.testCalcBorrowRate(
+          lpInvariant.mul(10),
+          borrowedInvariant
+        )
+      ).to.lt(maxApy);
     });
   });
 

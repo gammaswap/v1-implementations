@@ -18,12 +18,8 @@ abstract contract LinearKinkedRateModel is AbstractRateModel, ILinearKinkedRateM
         slope2 = _slope2;
     }
 
-    function calcBorrowRate(uint256 lpBalance, uint256 lpBorrowed) internal virtual override view returns(uint256) {
-        uint256 totalLp = lpBalance + lpBorrowed;
-        if(totalLp == 0)
-            return 0;
-
-        uint256 utilizationRate = (lpBorrowed * 10**18) / totalLp;
+    function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {
+        uint256 utilizationRate = calcUtilizationRate(lpInvariant, borrowedInvariant);
         if(utilizationRate <= optimalUtilRate) {
             uint256 variableRate = (utilizationRate * slope1) / optimalUtilRate;
             return (baseRate + variableRate);
