@@ -51,10 +51,11 @@ abstract contract BaseStrategy is AbstractRateModel {
         store.lastBlockTimestamp = blockTimestamp;
     }
 
-    function calcCFMMFeeIndex(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
+    function calcCFMMFeeIndex(uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
         uint256 ONE = 10**18;
         if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
-            uint256 denominator = (prevCFMMInvariant * lastCFMMTotalSupply) / ONE;
+            uint256 prevInvariant = borrowedInvariant > prevCFMMInvariant ? borrowedInvariant : prevCFMMInvariant; // deleverage CFMM Yield
+            uint256 denominator = (prevInvariant * lastCFMMTotalSupply) / ONE;
             return (lastCFMMInvariant * prevCFMMTotalSupply) / denominator;
         }
         return ONE;
@@ -70,7 +71,8 @@ abstract contract BaseStrategy is AbstractRateModel {
         updateReserves(store);
         uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
         uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(store.cfmm));
-        store.lastCFMMFeeIndex = calcCFMMFeeIndex(lastCFMMInvariant, lastCFMMTotalSupply, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
+        uint256 lastCFMMFeeIndex = calcCFMMFeeIndex(store.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
+        store.lastCFMMFeeIndex = lastCFMMFeeIndex;
         store.lastCFMMInvariant = lastCFMMInvariant;
         store.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
