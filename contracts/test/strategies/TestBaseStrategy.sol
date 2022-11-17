@@ -50,8 +50,10 @@ contract TestBaseStrategy is BaseStrategy {
 
         lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         lpInvariant = store.LP_INVARIANT;
-        lpTokenTotal = store.LP_TOKEN_TOTAL;
-        totalInvariant = store.TOTAL_INVARIANT;
+        //lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenTotal = lpTokenBalance + lpTokenBorrowedPlusInterest;
+        //totalInvariant = store.TOTAL_INVARIANT;
+        totalInvariant = lpInvariant + borrowedInvariant;
         lastBlockNumber = store.LAST_BLOCK_NUMBER;
     }
 
@@ -106,10 +108,12 @@ contract TestBaseStrategy is BaseStrategy {
         accFeeIndex = store.accFeeIndex;
         borrowedInvariant = store.BORROWED_INVARIANT;
         lpInvariant = store.LP_INVARIANT;
-        totalInvariant = store.TOTAL_INVARIANT;
+        //totalInvariant = store.TOTAL_INVARIANT;
+        totalInvariant = lpInvariant + borrowedInvariant;
         lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
         lpTokenBal = store.LP_TOKEN_BALANCE;
-        lpTokenTotal = store.LP_TOKEN_TOTAL;
+        //lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenTotal = lpTokenBal + lpTokenBorrowedPlusInterest;
         lastBlockNumber = store.LAST_BLOCK_NUMBER;
     }
 

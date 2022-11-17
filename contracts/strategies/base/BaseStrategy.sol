@@ -99,8 +99,8 @@ abstract contract BaseStrategy is AbstractRateModel {
 
         store.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(store.BORROWED_INVARIANT, store.lastCFMMTotalSupply, store.lastCFMMInvariant);
         store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
-        store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
+        //store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        //store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
 
         store.accFeeIndex = (store.accFeeIndex * store.lastFeeIndex) / store.ONE;
         store.LAST_BLOCK_NUMBER = block.number;
