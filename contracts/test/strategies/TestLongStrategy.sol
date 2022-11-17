@@ -160,8 +160,8 @@ contract TestLongStrategy is LongStrategy {
         _store.LP_TOKEN_BORROWED = lpTokens;
         _store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokens;
 
-        _store.TOTAL_INVARIANT = _store.LP_INVARIANT + _store.BORROWED_INVARIANT;
-        _store.LP_TOKEN_TOTAL = _store.LP_TOKEN_BALANCE + _store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        //_store.TOTAL_INVARIANT = _store.LP_INVARIANT + _store.BORROWED_INVARIANT;
+        //_store.LP_TOKEN_TOTAL = _store.LP_TOKEN_BALANCE + _store.LP_TOKEN_BORROWED_PLUS_INTEREST;
 
         _store.lastCFMMInvariant = lastCFMMInvariant;
         _store.lastCFMMTotalSupply = lastCFMMTotalSupply;
@@ -173,9 +173,9 @@ contract TestLongStrategy is LongStrategy {
     function setLPTokenBalance(uint256 lpInvariant, uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
         GammaPoolStorage.Store storage _store = GammaPoolStorage.store();
         _store.LP_TOKEN_BALANCE = lpTokenBalance;
-        _store.LP_TOKEN_TOTAL = lpTokenBalance;
+        //_store.LP_TOKEN_TOTAL = lpTokenBalance;
         _store.LP_INVARIANT = lpInvariant;
-        _store.TOTAL_INVARIANT = lpInvariant;
+        //_store.TOTAL_INVARIANT = lpInvariant;
         _store.lastCFMMInvariant = lastCFMMInvariant;
         _store.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
@@ -187,10 +187,10 @@ contract TestLongStrategy is LongStrategy {
         uint256 invariantInterest = lpTokenInterest * _store.LP_INVARIANT / _store.LP_TOKEN_BALANCE;
         _loan.liquidity = _loan.liquidity + invariantInterest;
         _store.BORROWED_INVARIANT = _store.BORROWED_INVARIANT + invariantInterest;
-        _store.TOTAL_INVARIANT = _store.TOTAL_INVARIANT + invariantInterest;
+        //_store.TOTAL_INVARIANT = _store.TOTAL_INVARIANT + invariantInterest;
 
         _store.LP_TOKEN_BORROWED_PLUS_INTEREST = _store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokenInterest;
-        _store.LP_TOKEN_TOTAL = _store.LP_TOKEN_TOTAL + lpTokenInterest;
+        //_store.LP_TOKEN_TOTAL = _store.LP_TOKEN_TOTAL + lpTokenInterest;
     }
 
     function getLoanChangeData(uint256 tokenId) public virtual view returns(uint256 loanLiquidity, uint256 loanLpTokens,
@@ -201,9 +201,11 @@ contract TestLongStrategy is LongStrategy {
         GammaPoolStorage.Loan storage _loan = getLoan(_store, tokenId);
 
         return(_loan.liquidity, _loan.lpTokens,
-            _store.BORROWED_INVARIANT, _store.LP_INVARIANT, _store.TOTAL_INVARIANT,
+            //_store.BORROWED_INVARIANT, _store.LP_INVARIANT, _store.TOTAL_INVARIANT,
+            _store.BORROWED_INVARIANT, _store.LP_INVARIANT, (_store.BORROWED_INVARIANT + _store.LP_INVARIANT),
             _store.LP_TOKEN_BORROWED, _store.LP_TOKEN_BALANCE, _store.LP_TOKEN_BORROWED_PLUS_INTEREST,
-            _store.LP_TOKEN_TOTAL, _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
+            (_store.LP_TOKEN_BALANCE + _store.LP_TOKEN_BORROWED_PLUS_INTEREST), _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
+            //_store.LP_TOKEN_TOTAL, _store.lastCFMMInvariant, _store.lastCFMMTotalSupply);
     }
 
     function _getCFMMPrice(address cfmm, uint256 factor) external override view returns(uint256) {

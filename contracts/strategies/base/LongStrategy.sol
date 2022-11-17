@@ -197,8 +197,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         uint256 lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokens;
         store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
-        store.LP_TOKEN_TOTAL = lpTokenBalance + lpTokenBorrowedPlusInterest;
-        store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
+        //store.LP_TOKEN_TOTAL = lpTokenBalance + lpTokenBorrowedPlusInterest;
+        //store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
         _loan.liquidity = _loan.liquidity + liquidityBorrowed;
         _loan.initLiquidity = _loan.initLiquidity + liquidityBorrowed;
@@ -233,8 +233,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         lpTokenBorrowedPlusInterest = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
         store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
-        store.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
-        store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
+        //store.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
+        //store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
         _loan.liquidity = _loan.liquidity - liquidity;
         _loan.initLiquidity = _loan.initLiquidity - liquidityPrincipal;

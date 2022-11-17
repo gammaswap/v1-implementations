@@ -25,11 +25,13 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     }
 
     function setTotalAssets(uint256 _totalAssets) public virtual {
-        GammaPoolStorage.store().LP_TOKEN_TOTAL = _totalAssets;
+        //GammaPoolStorage.store().LP_TOKEN_TOTAL = _totalAssets;
+        GammaPoolStorage.store().LP_TOKEN_BALANCE = _totalAssets;
     }
 
     function getTotalAssets() public virtual view returns(uint256 _totalAssets) {
-        _totalAssets = GammaPoolStorage.store().LP_TOKEN_TOTAL;
+        //_totalAssets = GammaPoolStorage.store().LP_TOKEN_TOTAL;
+        _totalAssets = GammaPoolStorage.store().LP_TOKEN_BALANCE + GammaPoolStorage.store().LP_TOKEN_BORROWED_PLUS_INTEREST;
     }
 
     function getTotalAssetsParams() public virtual view returns(uint256 borrowedInvariant, uint256 lpBalance, uint256 lpBorrowed, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum,
@@ -41,8 +43,9 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         prevCFMMInvariant = store.lastCFMMInvariant;
         prevCFMMTotalSupply = store.lastCFMMTotalSupply;
         lastBlockNum = store.LAST_BLOCK_NUMBER;
-        lpTokenTotal = store.LP_TOKEN_TOTAL;
         lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        //lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenTotal = lpBalance + lpTokenBorrowedPlusInterest;
     }
 
     function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint256 borrowedInv) public virtual {
