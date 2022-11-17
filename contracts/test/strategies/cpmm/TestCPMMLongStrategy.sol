@@ -102,10 +102,6 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override returns(uint256[] memory val) {
     }
 
-    function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override virtual returns(uint256[] memory) {
-        return new uint256[](0);
-    }
-
     function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256[] memory) {
         return new uint256[](0);
     }
