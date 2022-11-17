@@ -167,13 +167,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function _convertToShares(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        uint256 _totalAssets = store.LP_TOKEN_TOTAL;
+        uint256 _totalAssets = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;//store.LP_TOKEN_TOTAL;
         return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
     }
 
     function _convertToAssets(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
         uint256 supply = store.totalSupply;
-        return supply == 0 ? shares : (shares * store.LP_TOKEN_TOTAL) / supply;
+        //return supply == 0 ? shares : (shares * store.LP_TOKEN_TOTAL) / supply;
+        return supply == 0 ? shares : (shares * (store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST)) / supply;
     }
 
     //INTERNAL HOOKS LOGIC
