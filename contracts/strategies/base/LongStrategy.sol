@@ -24,6 +24,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
     function swapTokens(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
 
+    function originationFee() internal virtual view returns(uint16);
+
     function getLoan(GammaPoolStorage.Store storage store, uint256 tokenId) internal virtual view returns(GammaPoolStorage.Loan storage _loan) {
         _loan = store.loans[tokenId];
         if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
@@ -179,7 +181,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
     function openLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan, uint256 lpTokens) internal virtual {
         uint256 lastCFMMInvariant = store.lastCFMMInvariant;
         uint256 lastCFMMTotalSupply = store.lastCFMMTotalSupply;
-        uint256 liquidityBorrowed = calcLPInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);// The liquidity it represented at that time
+        uint256 lpTokensPlusOrigFee = lpTokens + lpTokens * originationFee() / 10000;
+        uint256 liquidityBorrowed = calcLPInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);// The liquidity it represented at that time
         uint256 borrowedInvariant = store.BORROWED_INVARIANT + liquidityBorrowed;
         store.BORROWED_INVARIANT = borrowedInvariant;
         store.LP_TOKEN_BORROWED = store.LP_TOKEN_BORROWED + lpTokens;
@@ -189,8 +192,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         uint256 lpInvariant = calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         store.LP_INVARIANT = lpInvariant;
 
-        uint256 lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokens;
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = store.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokensPlusOrigFee;
         //store.LP_TOKEN_TOTAL = lpTokenBalance + lpTokenBorrowedPlusInterest;
         //store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
@@ -225,8 +227,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         store.LP_INVARIANT = lpInvariant;
 
-        lpTokenBorrowedPlusInterest = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest;
+        store.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
         //store.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
         //store.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 

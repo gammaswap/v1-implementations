@@ -12,6 +12,7 @@ contract TestLongStrategy is LongStrategy {
 
     event LoanCreated(address indexed caller, uint256 tokenId);
     uint256 public borrowRate = 1;
+    uint16 public origFee = 0;
 
     constructor() {
     }
@@ -218,5 +219,13 @@ contract TestLongStrategy is LongStrategy {
 
     function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256[] memory) {
         return new uint256[](0);
+    }
+
+    function setOriginationFee(uint16 _origFee) external virtual {
+        origFee = _origFee;
+    }
+
+    function originationFee() internal override virtual view returns(uint16) {
+        return origFee;
     }
 }

@@ -10,8 +10,8 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
     error ZeroDeposits();
     error NotOptimalDeposit();
 
-    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
-        CPMMBaseStrategy(_tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+        CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
     }
 
     function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)

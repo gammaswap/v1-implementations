@@ -7,8 +7,8 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     event DepositToCFMM(address cfmm, address to, uint256 liquidity);
     event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
-    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
-        CPMMBaseStrategy(_tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+        CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {

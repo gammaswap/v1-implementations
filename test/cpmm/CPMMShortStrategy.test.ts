@@ -71,7 +71,7 @@ describe("CPMMShortStrategy", function () {
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
 
-    strategy = await TestStrategy.deploy(997, 1000, baseRate, factor, maxApy);
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
 
     await (
       await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
@@ -101,8 +101,8 @@ describe("CPMMShortStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.tradingFee1()).to.equal(997);
-      expect(await strategy.tradingFee2()).to.equal(1000);
+      //expect(await strategy.tradingFee1()).to.equal(997);
+      //expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);

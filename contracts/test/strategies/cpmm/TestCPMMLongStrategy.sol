@@ -11,8 +11,8 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
-        CPMMLongStrategy(_tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+        CPMMLongStrategy(_originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
