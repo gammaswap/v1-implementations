@@ -33,7 +33,7 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         updateIndex(store);
 
-        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxWithdraw is
+        if(assets > store.LP_TOKEN_BALANCE) {
             revert ExcessiveWithdrawal();
         }
 
@@ -51,7 +51,7 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         if(assets == 0) {
             revert ZeroAssets();
         }
-        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
+        if(assets > store.LP_TOKEN_BALANCE) {
             revert ExcessiveWithdrawal();
         }
         _withdrawAssets(store, msg.sender, to, from, assets, shares, false);
