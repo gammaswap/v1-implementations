@@ -78,7 +78,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         shares = _depositAssetsNoPull(to);
     }
 
-    function _withdrawReserves(address to) external virtual override lock returns(uint256[] memory reserves, uint256 assets) {//TODO: Should probably change the name of this function (maybe withdrawReserves)
+    function _withdrawReserves(address to) external virtual override lock returns(uint256[] memory reserves, uint256 assets) {
         (reserves, assets) = _withdrawAssetsNoPull(to, true);
     }
 
@@ -93,7 +93,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
             revert ZeroAssets();
         }
 
-        if(assets > store.LP_TOKEN_BALANCE) {//TODO: assets <= store.LP_TOKEN_BALANCE must be true. This is what maxRedeem is
+        if(assets > store.LP_TOKEN_BALANCE) {
             revert ExcessiveWithdrawal();
         }
         reserves = _withdrawAssets(store, address(this), to, address(this), assets, shares, askForReserves);

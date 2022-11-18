@@ -60,7 +60,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return depositToCFMM(store.cfmm, amounts, address(this));//in balancer pulls tokens here and mints, in Uni it just mints)
     }
 
-    // TODO: Should check expected minAmounts. In case token has some type fee structure. If you are better off, allow it, good for you
     function updateCollateral(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
         for (uint256 i = 0; i < store.tokens.length; i++) {
             uint256 currentBalance = GammaSwapLibrary.balanceOf(IERC20(store.tokens[i]), address(this));
@@ -87,7 +86,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         _loan.heldLiquidity = calcInvariant(store.cfmm, _loan.tokensHeld);
     }
 
-    // TODO: Should pass expected minAmts
     function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint256[] memory) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
@@ -96,7 +94,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return _loan.tokensHeld;
     }
 
-    // TODO: Should pass expected minAmts
     function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override lock returns(uint256[] memory) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
@@ -111,10 +108,9 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         return _loan.tokensHeld;
     }
 
-    // TODO: Should pass expected minAmts for the withdrawal, prevent front running
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        if(lpTokens >= store.LP_TOKEN_BALANCE) {// TODO: Must add reserve check of 5% - 20%?
+        if(lpTokens >= store.LP_TOKEN_BALANCE) {
             revert ExcessiveBorrowing();
         }
 
@@ -123,7 +119,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         amounts = withdrawFromCFMM(store.cfmm, address(this), lpTokens);
 
-        updateCollateral(store, _loan);// TODO: Must check that you received at least the min collateral you expected to receive, but ok to receive more.
+        updateCollateral(store, _loan);
 
         openLoan(store, _loan, lpTokens);
 
@@ -135,7 +131,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
-    // TODO: Should pass expected minAmts for the deposit, prevent front running
     function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override lock returns(uint256 liquidityPaid, uint256[] memory amounts) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
@@ -146,10 +141,10 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         amounts = calcTokensToRepay(store, liquidityPaid);// Now this amounts will always be correct. The other way, the user might have sometimes paid more than he wanted to just to pay off the loan.
 
-        repayTokens(store, _loan, amounts);//SO real lptokens can be greater than we expected in repaying. Because real can go up untracked but can't go down untracked. So we might have repaid more than we expected even though we sent a smaller amount.
+        repayTokens(store, _loan, amounts);//So real lptokens can be greater than we expected in repaying. Because real can go up untracked but can't go down untracked. So we might have repaid more than we expected even though we sent a smaller amount.
 
         // then update collateral
-        updateCollateral(store, _loan);// TODO: check that you got the min amount you expected. You might send less amounts than you expected. Which is good for you. It's only bad if sent out more, that's where slippage protection comes in.
+        updateCollateral(store, _loan);
 
         payLoan(store, _loan, liquidityPaid);
 
@@ -159,7 +154,6 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
             store.lastFeeIndex, store.LP_TOKEN_BORROWED_PLUS_INTEREST, store.LP_INVARIANT, store.BORROWED_INVARIANT);
     }
 
-    // TODO: Should pass expected minAmts for the swap, prevent front running
     function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint256[] memory) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         GammaPoolStorage.Loan storage _loan = getLoan(store, tokenId);
@@ -224,8 +218,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         uint256 liquidityPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.initLiquidity, _loan.liquidity);
 
         store.LP_TOKEN_BORROWED = store.LP_TOKEN_BORROWED - lpTokenPrincipal;
-        borrowedInvariant = borrowedInvariant - liquidity;
-        store.BORROWED_INVARIANT = borrowedInvariant; // won't overflow
+        borrowedInvariant = borrowedInvariant - liquidity; // won't overflow
+        store.BORROWED_INVARIANT = borrowedInvariant;
 
         store.LP_TOKEN_BALANCE = newLPBalance;// this can be greater than expected (accrues to LPs), or less if there's a token transfer fee
         uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
