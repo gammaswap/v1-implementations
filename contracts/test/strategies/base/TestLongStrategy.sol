@@ -3,10 +3,10 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../../strategies/base/LongStrategy.sol";
-import "../../libraries/Math.sol";
-import "../TestCFMM.sol";
-import "../TestERC20.sol";
+import "../../../strategies/base/LongStrategy.sol";
+import "../../../libraries/Math.sol";
+import "../../TestCFMM.sol";
+import "../../TestERC20.sol";
 
 contract TestLongStrategy is LongStrategy {
 
