@@ -8,8 +8,19 @@ contract CPMMLongStrategy is CPMMBaseStrategy, LiquidationStrategy {
 
     error BadDelta();
 
-    constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
-        CPMMBaseStrategy(_tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    uint16 immutable public origFee;
+    uint16 immutable public tradingFee1;
+    uint16 immutable public tradingFee2;
+
+    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+        CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
+        origFee = _originationFee;
+        tradingFee1 = _tradingFee1;
+        tradingFee2 = _tradingFee2;
+    }
+
+    function originationFee() internal virtual override view returns(uint16) {
+        return origFee;
     }
 
     function _getCFMMPrice(address cfmm, uint256 factor) public virtual override view returns(uint256 price) {

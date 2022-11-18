@@ -561,7 +561,7 @@ describe("LongStrategy", function () {
         addr1BalB.add(amtB.div(2))
       );
 
-      await checkStrategyTokenBalances(0, 0);/**/
+      await checkStrategyTokenBalances(0, 0);
     });
 
     it("Decrease Collateral, UpdateIndex", async function () {
@@ -731,6 +731,78 @@ describe("LongStrategy", function () {
         lpTokens.add(lpTokens1)
       );
       expect(res3.lpTokenTotal).to.equal(startLpTokens);
+      expect(res3.lastCFMMInvariant).to.equal(lastCFMMInvariant);
+      expect(res3.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+    });
+
+    it("Open Loan with Origination Fee", async function () {
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
+
+      await strategy.setOriginationFee(10);
+      const ONE = BigNumber.from(10).pow(18);
+      const startLiquidity = ONE.mul(800);
+      const startLpTokens = ONE.mul(400);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (
+        await strategy.setLPTokenBalance(
+          startLiquidity,
+          startLpTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
+
+      await (await cfmm.mint(startLpTokens, strategy.address)).wait();
+
+      const lpTokens = ONE.mul(100);
+      const liquidity = ONE.mul(200);
+      await (await cfmm.burn(lpTokens, strategy.address)).wait();
+      await (await strategy.testOpenLoan(tokenId, lpTokens)).wait();
+      const res2 = await strategy.getLoanChangeData(tokenId);
+
+      const fee = liquidity.mul(10).div(10000);
+      const feeLP = lpTokens.mul(10).div(10000);
+
+      expect(res2.loanLiquidity).to.equal(liquidity.add(fee));
+      expect(res2.loanLpTokens).to.equal(lpTokens);
+      expect(res2.borrowedInvariant).to.equal(liquidity.add(fee));
+      expect(res2.lpInvariant).to.equal(startLiquidity.sub(liquidity));
+      expect(res2.totalInvariant).to.equal(startLiquidity.add(fee));
+      expect(res2.lpTokenBorrowed).to.equal(lpTokens);
+      expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
+      expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens.add(feeLP));
+      expect(res2.lpTokenTotal).to.equal(startLpTokens.add(feeLP));
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
+      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+
+      const lpTokens1 = ONE.mul(300);
+      const liquidity1 = ONE.mul(600);
+      await (await cfmm.burn(lpTokens1, strategy.address)).wait();
+      await (await strategy.testOpenLoan(tokenId, lpTokens1)).wait();
+      const res3 = await strategy.getLoanChangeData(tokenId);
+
+      const fee1 = fee.add(liquidity1.mul(10).div(10000));
+      const feeLP1 = feeLP.add(lpTokens1.mul(10).div(10000));
+
+      expect(res3.loanLiquidity).to.equal(liquidity.add(liquidity1).add(fee1));
+      expect(res3.loanLpTokens).to.equal(lpTokens.add(lpTokens1));
+      expect(res3.borrowedInvariant).to.equal(
+        liquidity.add(liquidity1).add(fee1)
+      );
+      expect(res3.lpInvariant).to.equal(
+        startLiquidity.sub(liquidity).sub(liquidity1)
+      );
+      expect(res3.totalInvariant).to.equal(startLiquidity.add(fee1));
+      expect(res3.lpTokenBorrowed).to.equal(lpTokens.add(lpTokens1));
+      expect(res3.lpTokenBalance).to.equal(
+        startLpTokens.sub(lpTokens).sub(lpTokens1)
+      );
+      expect(res3.lpTokenBorrowedPlusInterest).to.equal(
+        lpTokens.add(lpTokens1).add(feeLP1)
+      );
+      expect(res3.lpTokenTotal).to.equal(startLpTokens.add(feeLP1));
       expect(res3.lastCFMMInvariant).to.equal(lastCFMMInvariant);
       expect(res3.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
     });

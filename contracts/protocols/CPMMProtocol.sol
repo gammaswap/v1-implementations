@@ -4,8 +4,6 @@ pragma abicoder v2;
 
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/protocols/AbstractProtocol.sol";
-import "../interfaces/strategies/ICPMMStrategy.sol";
-import "../interfaces/rates/ILinearKinkedRateModel.sol";
 
 contract CPMMProtocol is AbstractProtocol {
 
