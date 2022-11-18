@@ -54,11 +54,7 @@ describe("LiquidationStrategy", function () {
       addr2.address
     );
 
-    const baseRate = ONE.div(100);
-    const factor = ONE.mul(4).div(100);
-    const maxApy = ONE.mul(75).div(100);
-
-    strategy = await TestStrategy.deploy(997, 1000, baseRate, factor, maxApy);
+    strategy = await TestStrategy.deploy();
 
     await (
       await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
@@ -101,13 +97,35 @@ describe("LiquidationStrategy", function () {
       ).to.be.revertedWith("HasMargin");
     });
 
-    it("does not have enough enough margin", async function () {
+    it("does not have enough margin so it liquidates", async function () {
       await depositToStrategy(FOUR);
       const res = await (await strategy.createLoan()).wait();
       const tokenId = res.events[0].args.tokenId;
       await (await strategy.testOpenLoan(tokenId, ONE)).wait();
-      await borrowMostOfIt(TWO) // spike up interest
+      await borrowMostOfIt(TWO); // spike up interest
+      await (
+        await strategy.setTokenBalances(tokenId, 400, 400, 400, 400)
+      ).wait();
       await strategy._liquidate(tokenId, false, [0, 0]);
     });
+  });
+
+  describe("Test _liquidateWithLP", function () {
+    // it("returns error HasMargin", async function () {
+    //   const res = await (await strategy.createLoan()).wait();
+    //   const tokenId = res.events[0].args.tokenId;
+    //   await expect(
+    //     strategy._liquidate(tokenId, false, [0, 0])
+    //   ).to.be.revertedWith("HasMargin");
+    // });
+
+    // it("does not have enough enough margin", async function () {
+    //   await depositToStrategy(FOUR);
+    //   const res = await (await strategy.createLoan()).wait();
+    //   const tokenId = res.events[0].args.tokenId;
+    //   await (await strategy.testOpenLoan(tokenId, ONE)).wait();
+    //   await borrowMostOfIt(TWO); // spike up interest
+    //   await strategy._liquidate(tokenId, false, [0, 0]);
+    // });
   });
 });
