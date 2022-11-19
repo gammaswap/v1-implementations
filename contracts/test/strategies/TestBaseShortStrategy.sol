@@ -8,20 +8,20 @@ import "../TestCFMM.sol";
 import "../TestERC20.sol";
 
 abstract contract TestBaseShortStrategy is ShortStrategy {
-
+    
     constructor() {
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, tokens);
     }
 
     function setTotalSupply(uint256 _totalSupply) public virtual {
-        GammaPoolStorage.store().totalSupply = _totalSupply;
+        GammaPoolStorage.erc20().totalSupply = _totalSupply;
     }
 
     function totalSupply() public virtual view returns (uint256) {
-        return GammaPoolStorage.store().totalSupply;
+        return GammaPoolStorage.erc20().totalSupply;
     }
 
     function setTotalAssets(uint256 _totalAssets) public virtual {
@@ -61,16 +61,16 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     }
 
     function checkAllowance(address owner, address spender) public virtual view returns(uint256) {
-        return GammaPoolStorage.store().allowance[owner][spender];
+        return GammaPoolStorage.erc20().allowance[owner][spender];
     }
 
     function setAllowance(address owner, address spender, uint256 amount) public virtual {
-        GammaPoolStorage.store().allowance[owner][spender] = amount;
+        GammaPoolStorage.erc20().allowance[owner][spender] = amount;
     }
 
     function spendAllowance(address owner, address spender, uint256 amount) public virtual {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        _spendAllowance(GammaPoolStorage.store(), owner, spender, amount);
+        _spendAllowance(GammaPoolStorage.erc20(), owner, spender, amount);
     }
 
     function withdrawAssets(address caller, address receiver, address owner, uint256 assets, uint256 shares) public virtual {
@@ -83,14 +83,14 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     }
 
     function balanceOf(address account) public virtual view returns(uint256) {
-        return GammaPoolStorage.store().balanceOf[account];
+        return GammaPoolStorage.erc20().balanceOf[account];
     }
 
     function depositLPTokens(address to) public virtual {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256 assets = IERC20(store.cfmm).balanceOf(address(this)) - store.LP_TOKEN_BALANCE;
         uint256 shares = _convertToShares(store, assets);
-        _mint(store, to, shares);
+        _mint(to, shares);
         store.LP_TOKEN_BALANCE = IERC20(store.cfmm).balanceOf(address(this));
     }
 
@@ -115,7 +115,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     ) internal virtual {
         require(from != address(0));
         require(to != address(0));
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
+        GammaPoolStorage.ERC20 storage store = GammaPoolStorage.erc20();
 
         uint256 fromBalance = store.balanceOf[from];
         require(fromBalance >= amount);

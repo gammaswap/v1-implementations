@@ -8,15 +8,12 @@ describe("BaseStrategy", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestStrategy: any;
-  let TestProtocol: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
   let strategy: any;
   let owner: any;
   let addr1: any;
-  let addr2: any;
-  let protocol: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -25,8 +22,7 @@ describe("BaseStrategy", function () {
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCFMM = await ethers.getContractFactory("TestCFMM");
     TestStrategy = await ethers.getContractFactory("TestBaseStrategy");
-    TestProtocol = await ethers.getContractFactory("TestProtocol");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner, addr1] = await ethers.getSigners();
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -38,18 +34,9 @@ describe("BaseStrategy", function () {
       "TCFMM"
     );
 
-    protocol = await TestProtocol.deploy(
-      PROTOCOL_ID,
-      addr1.address,
-      addr2.address
-    );
-
-    strategy = await TestStrategy.deploy();
+    strategy = await TestStrategy.deploy(owner.address, PROTOCOL_ID);
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
     ).wait();
   });
 
@@ -275,7 +262,6 @@ describe("BaseStrategy", function () {
       expect(params.tokens[0]).to.equal(tokenA.address);
       expect(params.tokens[1]).to.equal(tokenB.address);
       expect(params.protocolId).to.equal(PROTOCOL_ID);
-      expect(params.protocol).to.equal(protocol.address);
 
       const cfmmData = await strategy.getCFMMData();
       const ONE = ethers.BigNumber.from(10).pow(18);

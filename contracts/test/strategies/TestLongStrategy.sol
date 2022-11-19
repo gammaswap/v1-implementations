@@ -13,12 +13,14 @@ contract TestLongStrategy is LongStrategy {
     event LoanCreated(address indexed caller, uint256 tokenId);
     uint256 public borrowRate = 1;
     uint16 public origFee = 0;
+    uint16 public protocolId;
 
     constructor() {
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, uint16 _protocolId, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, tokens);
+        protocolId = _protocolId;
     }
 
     function tokens() public virtual view returns(address[] memory) {

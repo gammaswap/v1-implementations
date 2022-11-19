@@ -8,7 +8,6 @@ describe("LongStrategy", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestStrategy: any;
-  let TestProtocol: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
@@ -16,8 +15,6 @@ describe("LongStrategy", function () {
   let owner: any;
   let addr1: any;
   let addr2: any;
-  let addr3: any;
-  let protocol: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -26,8 +23,7 @@ describe("LongStrategy", function () {
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCFMM = await ethers.getContractFactory("TestCFMM");
     TestStrategy = await ethers.getContractFactory("TestLongStrategy");
-    TestProtocol = await ethers.getContractFactory("TestProtocol");
-    [owner, addr1, addr2, addr3] = await ethers.getSigners();
+    [owner, addr1, addr2] = await ethers.getSigners();
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -39,15 +35,9 @@ describe("LongStrategy", function () {
       "TCFMM"
     );
 
-    protocol = await TestProtocol.deploy(
-      PROTOCOL_ID,
-      addr1.address,
-      addr2.address
-    );
-
     strategy = await TestStrategy.deploy();
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
+      await strategy.initialize(cfmm.address, PROTOCOL_ID, [
         tokenA.address,
         tokenB.address,
       ])
@@ -1019,7 +1009,7 @@ describe("LongStrategy", function () {
         )
       ).wait();
 
-      const res1 = await (await strategy.connect(addr3).createLoan()).wait();
+      const res1 = await (await strategy.connect(addr2).createLoan()).wait();
       const addr3TokenId = res1.events[0].args.tokenId;
       const lpTokens = ONE;
 

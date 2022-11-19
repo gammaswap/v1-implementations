@@ -84,7 +84,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function _withdrawAssetsNoPull(address to, bool askForReserves) internal virtual returns(uint256[] memory reserves, uint256 assets) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        uint256 shares = store.balanceOf[address(this)];
+        uint256 shares = GammaPoolStorage.erc20().balanceOf[address(this)];
 
         updateIndex(store);
 
@@ -108,7 +108,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         uint256 assets,
         uint256 shares
     ) internal virtual {
-        _mint(store, receiver, shares);
+        _mint(receiver, shares);
         store.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(store.cfmm), address(this));
 
         emit Deposit(caller, receiver, assets, shares);
@@ -128,12 +128,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         bool askForReserves
     ) internal virtual returns(uint256[] memory reserves){
         if (caller != owner) {
-            _spendAllowance(store, owner, caller, shares);
+            _spendAllowance(GammaPoolStorage.erc20(), owner, caller, shares);
         }
 
         beforeWithdraw(store, assets, shares);
 
-        _burn(store, owner, shares);
+        _burn(owner, shares);
         if(askForReserves) {
             reserves = withdrawFromCFMM(store.cfmm, receiver, assets);
         } else {
@@ -147,7 +147,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     }
 
     function _spendAllowance(
-        GammaPoolStorage.Store storage store,
+        GammaPoolStorage.ERC20 storage store,
         address owner,
         address spender,
         uint256 amount
@@ -166,13 +166,13 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     //ACCOUNTING LOGIC
 
     function _convertToShares(GammaPoolStorage.Store storage store, uint256 assets) internal view virtual returns (uint256) {
-        uint256 supply = store.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+        uint256 supply = GammaPoolStorage.erc20().totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         uint256 _totalAssets = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;//store.LP_TOKEN_TOTAL;
         return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
     }
 
     function _convertToAssets(GammaPoolStorage.Store storage store, uint256 shares) internal view virtual returns (uint256) {
-        uint256 supply = store.totalSupply;
+        uint256 supply = GammaPoolStorage.erc20().totalSupply;
         //return supply == 0 ? shares : (shares * store.LP_TOKEN_TOTAL) / supply;
         return supply == 0 ? shares : (shares * (store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST)) / supply;
     }

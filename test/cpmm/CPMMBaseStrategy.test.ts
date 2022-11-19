@@ -5,12 +5,9 @@ import { BigNumber } from "ethers";
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
-const PROTOCOL_ID = 1;
-
 describe("CPMMBaseStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
-  let TestProtocol: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -19,16 +16,13 @@ describe("CPMMBaseStrategy", function () {
   let uniFactory: any;
   let strategy: any;
   let owner: any;
-  let addr1: any;
-  let addr2: any;
-  let protocol: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -40,7 +34,6 @@ describe("CPMMBaseStrategy", function () {
       owner
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMBaseStrategy");
-    TestProtocol = await ethers.getContractFactory("TestProtocol");
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -60,12 +53,6 @@ describe("CPMMBaseStrategy", function () {
       token1addr // The deployed contract address
     );
 
-    protocol = await TestProtocol.deploy(
-      PROTOCOL_ID,
-      addr1.address,
-      addr2.address
-    );
-
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
@@ -73,10 +60,7 @@ describe("CPMMBaseStrategy", function () {
 
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
     ).wait();
   });
 
@@ -100,9 +84,6 @@ describe("CPMMBaseStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      //expect(await strategy.tradingFee1()).to.equal(997);
-      //expect(await strategy.tradingFee2()).to.equal(1000);
-
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);

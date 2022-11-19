@@ -5,13 +5,10 @@ import { BigNumber } from "ethers";
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
-const PROTOCOL_ID = 1;
-
 describe("CPMMLongStrategy", function () {
   let TestERC20: any;
   let TestERC20WithFee: any;
   let TestStrategy: any;
-  let TestProtocol: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -25,9 +22,6 @@ describe("CPMMLongStrategy", function () {
   let strategyFee: any;
   let owner: any;
   let addr1: any;
-  let addr2: any;
-  let addr3: any;
-  let protocol: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -35,7 +29,7 @@ describe("CPMMLongStrategy", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1, addr2, addr3] = await ethers.getSigners();
+    [owner, addr1] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -47,7 +41,6 @@ describe("CPMMLongStrategy", function () {
       owner
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMLongStrategy");
-    TestProtocol = await ethers.getContractFactory("TestProtocol");
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
 
@@ -66,12 +59,6 @@ describe("CPMMLongStrategy", function () {
       token1addr // The deployed contract address
     );
 
-    protocol = await TestProtocol.deploy(
-      PROTOCOL_ID,
-      addr1.address,
-      addr2.address
-    );
-
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
@@ -87,10 +74,7 @@ describe("CPMMLongStrategy", function () {
     );
 
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
     ).wait();
   });
 
@@ -145,12 +129,10 @@ describe("CPMMLongStrategy", function () {
     );
 
     await (
-      await strategyFee.initialize(
-        cfmmFee.address,
-        PROTOCOL_ID,
-        protocol.address,
-        [tokenAFee.address, tokenBFee.address]
-      )
+      await strategyFee.initialize(cfmmFee.address, [
+        tokenAFee.address,
+        tokenBFee.address,
+      ])
     ).wait();
   }
 
@@ -555,7 +537,7 @@ describe("CPMMLongStrategy", function () {
       await expect(
         strategy.testCalcActualOutAmount(
           tokenA.address,
-          addr3.address,
+          addr1.address,
           amt,
           amt.sub(1),
           amt
@@ -564,7 +546,7 @@ describe("CPMMLongStrategy", function () {
       await expect(
         strategy.testCalcActualOutAmount(
           tokenA.address,
-          addr3.address,
+          addr1.address,
           amt,
           amt,
           amt.sub(1)
@@ -577,13 +559,13 @@ describe("CPMMLongStrategy", function () {
       const amt = ONE.mul(100);
 
       await (await tokenA.transfer(strategy.address, amt)).wait();
-      await (await tokenA.transfer(addr3.address, amt)).wait();
+      await (await tokenA.transfer(addr1.address, amt)).wait();
 
-      const balance0 = await tokenA.balanceOf(addr3.address);
+      const balance0 = await tokenA.balanceOf(addr1.address);
       const res = await (
         await strategy.testCalcActualOutAmount(
           tokenA.address,
-          addr3.address,
+          addr1.address,
           amt,
           amt,
           amt
@@ -592,7 +574,7 @@ describe("CPMMLongStrategy", function () {
       const evt = res.events[res.events.length - 1];
       expect(evt.args.outAmount).to.equal(amt);
 
-      const balance1 = await tokenA.balanceOf(addr3.address);
+      const balance1 = await tokenA.balanceOf(addr1.address);
       expect(evt.args.outAmount).to.equal(balance1.sub(balance0));
     });
   });

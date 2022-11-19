@@ -3,21 +3,16 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { Address } from "cluster";
 
-const PROTOCOL_ID = 1;
-
 describe("ShortStrategyERC4626", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestStrategy: any;
-  let TestProtocol: any;
   let tokenA: any;
   let tokenB: any;
   let cfmm: any;
   let strategy: any;
   let owner: any;
   let addr1: any;
-  let addr2: any;
-  let protocol: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -26,8 +21,7 @@ describe("ShortStrategyERC4626", function () {
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCFMM = await ethers.getContractFactory("TestCFMM");
     TestStrategy = await ethers.getContractFactory("TestShortStrategyERC4626");
-    TestProtocol = await ethers.getContractFactory("TestProtocol");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner, addr1] = await ethers.getSigners();
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -39,18 +33,9 @@ describe("ShortStrategyERC4626", function () {
       "TCFMM"
     );
 
-    protocol = await TestProtocol.deploy(
-      PROTOCOL_ID,
-      addr1.address,
-      addr2.address
-    );
-
     strategy = await TestStrategy.deploy();
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, protocol.address, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
     ).wait();
   });
 

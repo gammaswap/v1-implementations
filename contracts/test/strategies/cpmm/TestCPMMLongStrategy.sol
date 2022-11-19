@@ -15,8 +15,8 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         CPMMLongStrategy(_originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, tokens);
     }
 
     function cfmm() public view returns(address) {

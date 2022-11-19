@@ -11,21 +11,24 @@ contract TestBaseStrategy is BaseStrategy {
 
     uint256 public invariant;
     uint256 public borrowRate = 10**18;
+    address public _factory;
+    uint16 public _protocolId;
 
-    constructor() {
+    constructor(address factory, uint16 protocolId) {
+        _factory = factory;
+        _protocolId = protocolId;
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        GammaPoolStorage.init(cfmm, tokens);
     }
 
-    function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint24 protocolId, address protocol) {
+    function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint16 protocolId) {
         GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        factory = store.factory;
+        factory = _factory;
         cfmm = store.cfmm;
         tokens = store.tokens;
-        protocolId = store.protocolId;
-        protocol = store.protocol;
+        protocolId = _protocolId;
     }
 
     function setUpdateStoreFields(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) public virtual {
@@ -181,19 +184,19 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testMint(address account, uint256 amount) public virtual {
-        _mint(GammaPoolStorage.store(), account, amount);
+        _mint(account, amount);
     }
 
     function testBurn(address account, uint256 amount) public virtual {
-        _burn(GammaPoolStorage.store(), account, amount);
+        _burn(account, amount);
     }
 
     function totalSupply() public virtual view returns(uint256) {
-        return GammaPoolStorage.store().totalSupply;
+        return GammaPoolStorage.erc20().totalSupply;
     }
 
     function balanceOf(address account) public virtual view returns(uint256) {
-        return GammaPoolStorage.store().balanceOf[account];
+        return GammaPoolStorage.erc20().balanceOf[account];
     }
 
     function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {

@@ -119,7 +119,7 @@ abstract contract BaseStrategy is AbstractRateModel {
     }
 
     function mintToDevs(GammaPoolStorage.Store storage store) internal {
-        (address feeTo, uint256 devFee) = IGammaPoolFactory(store.factory).feeInfo();
+        /*(address feeTo, uint256 devFee) = IGammaPoolFactory(store.factory).feeInfo();
         if(feeTo != address(0) && devFee > 0) {
             //Formula:
             //        accumulatedGrowth: (1 - [borrowedInvariant/(borrowedInvariant*index)])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
@@ -131,7 +131,7 @@ abstract contract BaseStrategy is AbstractRateModel {
             uint256 accGrowth = (factor * store.BORROWED_INVARIANT) / (store.BORROWED_INVARIANT + totalInvariantInCFMM);
             //_mint(store, feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
             _mint(store, feeTo, (store.totalSupply * accGrowth) / (store.ONE - accGrowth));
-        }
+        }/**/
     }
 
     function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
@@ -144,7 +144,8 @@ abstract contract BaseStrategy is AbstractRateModel {
         _loan.rateIndex = accFeeIndex;
     }
 
-    function _mint(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
+    function _mint(address account, uint256 amount) internal virtual {
+        GammaPoolStorage.ERC20 storage store = GammaPoolStorage.erc20();
         if(amount == 0) {
             revert ZeroAmount();
         }
@@ -153,7 +154,8 @@ abstract contract BaseStrategy is AbstractRateModel {
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(GammaPoolStorage.Store storage store, address account, uint256 amount) internal virtual {
+    function _burn(address account, uint256 amount) internal virtual {
+        GammaPoolStorage.ERC20 storage store = GammaPoolStorage.erc20();
         if(account == address(0)) {
             revert ZeroAddress();
         }

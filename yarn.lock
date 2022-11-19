@@ -499,6 +499,13 @@
   dependencies:
     "@openzeppelin/contracts" "^4.7.0"
 
+"@gammaswap/v1-core@^0.1.28":
+  version "0.1.28"
+  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.1.28/a453cdca159c2c42a1ffaaa2c0a3ce1eceff00ed#a453cdca159c2c42a1ffaaa2c0a3ce1eceff00ed"
+  integrity sha512-3zvoIeuldtQzRFiGFJhWsiYx3O8qISA5lTgdKNqaKY4b2RdDGOPn7JLtQu2EnjLMv1V0GqZQQTWEhUqaayPcqQ==
+  dependencies:
+    "@openzeppelin/contracts" "^4.7.0"
+
 "@gammaswap/v1-periphery@^0.1.16":
   version "0.1.16"
   resolved "https://npm.pkg.github.com/download/@gammaswap/v1-periphery/0.1.16/b9cdaee382a2c1471f8b3e3fc9014d48d358f38b#b9cdaee382a2c1471f8b3e3fc9014d48d358f38b"
