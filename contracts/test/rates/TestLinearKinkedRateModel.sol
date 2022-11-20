@@ -5,7 +5,7 @@ import "../../rates/LinearKinkedRateModel.sol";
 
 contract TestLinearKinkedRateModel is LinearKinkedRateModel {
 
-    constructor(uint256 _baseRate, uint256 _optimalUtilRate, uint256 _slope1, uint256 _slope2)
+    constructor(uint64 _baseRate, uint64 _optimalUtilRate, uint64 _slope1, uint64 _slope2)
         LinearKinkedRateModel(_baseRate, _optimalUtilRate, _slope1, _slope2){
     }
 

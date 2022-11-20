@@ -5,24 +5,14 @@ import "../../../strategies/cpmm/CPMMShortStrategy.sol";
 
 contract TestCPMMShortStrategy is CPMMShortStrategy {
 
-    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+    using LibStorage for LibStorage.Storage;
+
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         CPMMShortStrategy(_baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.cfmm = cfmm;
-        s.tokens = tokens;
-        s.factory = msg.sender;
-        s.TOKEN_BALANCE = new uint256[](tokens.length);
-        s.CFMM_RESERVES = new uint256[](tokens.length);
-
-        s.accFeeIndex = 10**18;
-        s.lastFeeIndex = 10**18;
-        s.lastCFMMFeeIndex = 10**18;
-        s.LAST_BLOCK_NUMBER = block.number;
-        s.nextId = 1;
-        s.unlocked = 1;
-        s.ONE = 10**18;
+        s.initialize(msg.sender, cfmm, tokens);
     }
 
     function testCalcDeposits(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) public virtual view returns(uint256[] memory amounts, address payee) {
@@ -34,7 +24,7 @@ contract TestCPMMShortStrategy is CPMMShortStrategy {
         return 3;
     }
 
-    function testGetReserves(address cfmm) public virtual view returns(uint256[] memory reserves){
+    function testGetReserves(address cfmm) public virtual view returns(uint128[] memory reserves){
         return getReserves(cfmm);
     }
 }

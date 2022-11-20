@@ -9,10 +9,12 @@ contract TestBaseStrategy is BaseStrategy {
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    uint256 public invariant;
-    uint256 public borrowRate = 10**18;
-    address public _factory;
+    using LibStorage for LibStorage.Storage;
+
     uint16 public _protocolId;
+    uint256 public borrowRate = 10**18;
+    uint256 public invariant;
+    address public _factory;
 
     constructor(address factory, uint16 protocolId) {
         _factory = factory;
@@ -20,19 +22,7 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.cfmm = cfmm;
-        s.tokens = tokens;
-        s.factory = msg.sender;
-        s.TOKEN_BALANCE = new uint256[](tokens.length);
-        s.CFMM_RESERVES = new uint256[](tokens.length);
-
-        s.accFeeIndex = 10**18;
-        s.lastFeeIndex = 10**18;
-        s.lastCFMMFeeIndex = 10**18;
-        s.LAST_BLOCK_NUMBER = block.number;
-        s.nextId = 1;
-        s.unlocked = 1;
-        s.ONE = 10**18;
+        s.initialize(_factory, cfmm, tokens);
     }
 
     function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint16 protocolId) {
@@ -43,12 +33,12 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function setUpdateStoreFields(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) public virtual {
-        s.accFeeIndex = accFeeIndex;
-        s.lastFeeIndex = lastFeeIndex;
+        s.accFeeIndex = uint96(accFeeIndex);
+        s.lastFeeIndex = uint80(lastFeeIndex);
         s.LP_TOKEN_BALANCE = lpTokenBalance;
-        s.BORROWED_INVARIANT = borrowedInvariant;
+        s.BORROWED_INVARIANT = uint128(borrowedInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
-        s.lastCFMMInvariant = lastCFMMInvariant;
+        s.lastCFMMInvariant = uint128(lastCFMMInvariant);
     }
 
     function getUpdateStoreFields() public virtual view returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply,
@@ -69,7 +59,7 @@ contract TestBaseStrategy is BaseStrategy {
         lastBlockNumber = s.LAST_BLOCK_NUMBER;
     }
 
-    function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint256 borrowedInv) public virtual {
+    function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint128 borrowedInv) public virtual {
         s.LP_TOKEN_BALANCE = lpTokenBal;
         s.BORROWED_INVARIANT = borrowedInv;
     }
@@ -83,19 +73,19 @@ contract TestBaseStrategy is BaseStrategy {
         borrowRate = _borrowRate;
     }
 
-    function setLastBlockNumber(uint256 lastBlockNumber) public virtual {
+    function setLastBlockNumber(uint48 lastBlockNumber) public virtual {
         s.LAST_BLOCK_NUMBER = lastBlockNumber;
     }
 
     function updateLastBlockNumber() public virtual {
-        s.LAST_BLOCK_NUMBER = block.number;
+        s.LAST_BLOCK_NUMBER = uint48(block.number);
     }
 
     function getLastBlockNumber() public virtual view returns(uint256) {
         return s.LAST_BLOCK_NUMBER;
     }
 
-    function setCFMMIndex(uint256 cfmmIndex) public virtual {
+    function setCFMMIndex(uint80 cfmmIndex) public virtual {
         s.lastCFMMFeeIndex = cfmmIndex;
     }
 
@@ -138,7 +128,7 @@ contract TestBaseStrategy is BaseStrategy {
         updateStore();
     }
 
-    function setAccFeeIndex(uint256 accFeeIndex) public virtual {
+    function setAccFeeIndex(uint96 accFeeIndex) public virtual {
         s.accFeeIndex = accFeeIndex;
     }
 
@@ -147,24 +137,12 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function createLoan() public virtual returns(uint256 tokenId) {
-        uint256 id = s.nextId++;
-        tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
-
-        s.loans[tokenId] = Loan({
-            id: id,
-            poolId: address(this),
-            tokensHeld: new uint[](s.tokens.length),
-            heldLiquidity: 0,
-            initLiquidity: 0,
-            liquidity: 0,
-            lpTokens: 0,
-            rateIndex: s.accFeeIndex
-        });
+        tokenId = s.createLoan(s.tokens.length);
         emit LoanCreated(msg.sender, tokenId);
     }
 
-    function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint256[] memory tokensHeld, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
-        Loan storage _loan = s.loans[tokenId];
+    function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint128[] memory tokensHeld, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
         id = _loan.id;
         poolId = _loan.poolId;
         tokensHeld = _loan.tokensHeld;
@@ -174,18 +152,18 @@ contract TestBaseStrategy is BaseStrategy {
         rateIndex = _loan.rateIndex;
     }
 
-    function setLoanLiquidity(uint256 tokenId, uint256 liquidity) public virtual {
-        Loan storage _loan = s.loans[tokenId];
+    function setLoanLiquidity(uint256 tokenId, uint128 liquidity) public virtual {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
         _loan.liquidity = liquidity;
     }
 
-    function testUpdateLoanLiquidity(uint256 tokenId, uint256 accFeeIndex) public virtual {
-        Loan storage _loan = s.loans[tokenId];
+    function testUpdateLoanLiquidity(uint256 tokenId, uint96 accFeeIndex) public virtual {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
         updateLoanLiquidity(_loan, accFeeIndex);
     }
 
     function testUpdateLoan(uint256 tokenId) public virtual {
-        Loan storage _loan = s.loans[tokenId];
+        LibStorage.Loan storage _loan = s.loans[tokenId];
         updateLoan(_loan);
     }
 
@@ -219,7 +197,7 @@ contract TestBaseStrategy is BaseStrategy {
         return borrowRate;
     }
 
-    function getReserves() public virtual view returns(uint256[] memory) {
+    function getReserves() public virtual view returns(uint128[] memory) {
         return s.CFMM_RESERVES;
     }
 
@@ -235,7 +213,7 @@ contract TestBaseStrategy is BaseStrategy {
         invariant = _invariant;
     }
 
-    function calcInvariant(address, uint256[] memory) internal virtual override view returns(uint256) {
+    function calcInvariant(address, uint128[] memory) internal virtual override view returns(uint256) {
         return invariant;
     }
 

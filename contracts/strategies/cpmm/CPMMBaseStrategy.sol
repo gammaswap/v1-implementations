@@ -10,9 +10,7 @@ import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
-    error ZeroReserves();
-
-    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
     }
 
     function updateReserves() internal virtual override {
@@ -29,7 +27,7 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }
 
-    function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
-        return Math.sqrt(amounts[0] * amounts[1]);
+    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
+        return Math.sqrt(uint256(amounts[0]) * amounts[1]);
     }
 }

@@ -5,7 +5,7 @@ import "../../rates/LogDerivativeRateModel.sol";
 
 contract TestLogDerivativeRateModel is LogDerivativeRateModel {
 
-    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         LogDerivativeRateModel(_baseRate, _factor, _maxApy){
     }
 

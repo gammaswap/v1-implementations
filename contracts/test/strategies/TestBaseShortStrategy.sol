@@ -8,24 +8,14 @@ import "../TestCFMM.sol";
 import "../TestERC20.sol";
 
 abstract contract TestBaseShortStrategy is ShortStrategy {
-    
+
+    using LibStorage for LibStorage.Storage;
+
     constructor() {
     }
 
     function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.cfmm = cfmm;
-        s.tokens = tokens;
-        s.factory = msg.sender;
-        s.TOKEN_BALANCE = new uint256[](tokens.length);
-        s.CFMM_RESERVES = new uint256[](tokens.length);
-
-        s.accFeeIndex = 10**18;
-        s.lastFeeIndex = 10**18;
-        s.lastCFMMFeeIndex = 10**18;
-        s.LAST_BLOCK_NUMBER = block.number;
-        s.nextId = 1;
-        s.unlocked = 1;
-        s.ONE = 10**18;
+        s.initialize(msg.sender, cfmm, tokens);
     }
 
     function setTotalSupply(uint256 _totalSupply) public virtual {
@@ -57,7 +47,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         lpTokenTotal = lpBalance + lpTokenBorrowedPlusInterest;
     }
 
-    function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint256 borrowedInv) public virtual {
+    function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint128 borrowedInv) public virtual {
         s.LP_TOKEN_BALANCE = lpTokenBal;
         s.BORROWED_INVARIANT = borrowedInv;
     }
@@ -101,7 +91,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     function borrowLPTokens(uint256 lpTokens) public virtual {
         require(lpTokens < s.LP_TOKEN_BALANCE);
         TestCFMM(s.cfmm).burn(lpTokens, address(this));
-        s.BORROWED_INVARIANT += TestCFMM(s.cfmm).convertSharesToInvariant(lpTokens);
+        s.BORROWED_INVARIANT += uint128(TestCFMM(s.cfmm).convertSharesToInvariant(lpTokens));
         s.LP_TOKEN_BORROWED += lpTokens;
         s.LP_TOKEN_BALANCE = IERC20(s.cfmm).balanceOf(address(this));
     }
@@ -139,7 +129,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
 
     function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {
         uint256 totalInvariant = lpInvariant + borrowedInvariant;
-        return totalInvariant == 0 ? 0 : borrowedInvariant * (10**18) / totalInvariant;
+        return totalInvariant == 0 ? 0 : (borrowedInvariant * (10**18) / totalInvariant);
     }
 
     //ShortGamma
@@ -147,8 +137,8 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         return (amountsDesired, s.cfmm);
     }
 
-    function getReserves(address cfmm) internal override virtual view returns(uint256[] memory reserves){
-        reserves = new uint256[](2);
+    function getReserves(address cfmm) internal override virtual view returns(uint128[] memory reserves){
+        reserves = new uint128[](2);
         (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
     }
 
@@ -156,7 +146,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(s.cfmm).getReserves();
     }
 
-    function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual override view returns(uint256) {
+    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
         return TestCFMM(cfmm).invariant();
     }
 

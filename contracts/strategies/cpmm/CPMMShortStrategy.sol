@@ -9,8 +9,9 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
 
     error ZeroDeposits();
     error NotOptimalDeposit();
+    error ZeroReserves();
 
-    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy)
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
     }
 
@@ -52,8 +53,8 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
         }
     }
 
-    function getReserves(address cfmm) internal virtual override view returns(uint256[] memory reserves) {
-        reserves = new uint256[](2);
+    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
+        reserves = new uint128[](2);
         (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
     }
 }
