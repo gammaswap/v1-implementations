@@ -15,46 +15,65 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         CPMMLongStrategy(_originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        s.cfmm = cfmm;
+        s.tokens = tokens;
+        s.factory = msg.sender;
+        s.TOKEN_BALANCE = new uint256[](tokens.length);
+        s.CFMM_RESERVES = new uint256[](tokens.length);
+
+        s.accFeeIndex = 10**18;
+        s.lastFeeIndex = 10**18;
+        s.lastCFMMFeeIndex = 10**18;
+        s.LAST_BLOCK_NUMBER = block.number;
+        s.nextId = 1;
+        s.unlocked = 1;
+        s.ONE = 10**18;
     }
 
     function cfmm() public view returns(address) {
-        return GammaPoolStorage.store().cfmm;
+        return s.cfmm;
     }
 
-    function createLoan() external virtual {
-        uint256 tokenId = GammaPoolStorage.createLoan();
+    function createLoan() external virtual returns(uint256 tokenId) {
+        uint256 id = s.nextId++;
+        tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
+
+        s.loans[tokenId] = Loan({
+            id: id,
+            poolId: address(this),
+            tokensHeld: new uint[](s.tokens.length),
+            heldLiquidity: 0,
+            initLiquidity: 0,
+            liquidity: 0,
+            lpTokens: 0,
+            rateIndex: s.accFeeIndex
+        });
         emit LoanCreated(msg.sender, tokenId);
     }
 
     function setTokenBalances(uint256 tokenId, uint256 collateral0, uint256 collateral1, uint256 balance0, uint256 balance1) external virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage loan = store.loans[tokenId];
+        Loan storage loan = s.loans[tokenId];
         loan.tokensHeld[0] = collateral0;
         loan.tokensHeld[1] = collateral1;
-        store.TOKEN_BALANCE[0] = balance0;
-        store.TOKEN_BALANCE[1] = balance1;
+        s.TOKEN_BALANCE[0] = balance0;
+        s.TOKEN_BALANCE[1] = balance1;
     }
 
     function setCFMMReserves(uint256 reserve0, uint256 reserve1, uint256 lastCFMMInvariant) external virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        store.CFMM_RESERVES[0] = reserve0;
-        store.CFMM_RESERVES[1] = reserve1;
-        store.lastCFMMInvariant = lastCFMMInvariant;
+        s.CFMM_RESERVES[0] = reserve0;
+        s.CFMM_RESERVES[1] = reserve1;
+        s.lastCFMMInvariant = lastCFMMInvariant;
     }
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
         uint256[] memory amounts;
-        amounts = calcTokensToRepay(store, liquidity);
+        amounts = calcTokensToRepay(liquidity);
         return(amounts[0], amounts[1]);
     }
 
     function testBeforeRepay(uint256 tokenId, uint256[] memory amounts) external virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage loan = store.loans[tokenId];
-        beforeRepay(store, loan, amounts);
+        beforeRepay(s.loans[tokenId], amounts);
     }
 
     // selling exactly amountOut
@@ -73,21 +92,19 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage loan = store.loans[tokenId];
-        (outAmts, inAmts) = beforeSwapTokens(store, loan, deltas);
+        Loan storage loan = s.loans[tokenId];
+        (outAmts, inAmts) = beforeSwapTokens(loan, deltas);
         emit CalcAmounts(outAmts, inAmts);
     }
 
     function testSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage loan = store.loans[tokenId];
-        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(store, loan, deltas);
-        swapTokens(store, loan, outAmts, inAmts);
+        Loan storage loan = s.loans[tokenId];
+        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas);
+        swapTokens(loan, outAmts, inAmts);
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function updateCollateral(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal override virtual {
+    function updateCollateral(Loan storage _loan) internal override virtual {
 
     }
 
@@ -110,7 +127,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         return new uint256[](0);
     }
 
-    function payLoanAndRefundLiquidator(uint256 tokenId, GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal override virtual returns(uint256[] memory refund) {
+    function payLoanAndRefundLiquidator(uint256 tokenId, Loan storage _loan) internal override virtual returns(uint256[] memory refund) {
         return new uint256[](0);
     }
 }

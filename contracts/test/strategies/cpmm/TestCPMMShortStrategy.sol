@@ -9,12 +9,24 @@ contract TestCPMMShortStrategy is CPMMShortStrategy {
         CPMMShortStrategy(_baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        s.cfmm = cfmm;
+        s.tokens = tokens;
+        s.factory = msg.sender;
+        s.TOKEN_BALANCE = new uint256[](tokens.length);
+        s.CFMM_RESERVES = new uint256[](tokens.length);
+
+        s.accFeeIndex = 10**18;
+        s.lastFeeIndex = 10**18;
+        s.lastCFMMFeeIndex = 10**18;
+        s.LAST_BLOCK_NUMBER = block.number;
+        s.nextId = 1;
+        s.unlocked = 1;
+        s.ONE = 10**18;
     }
 
     function testCalcDeposits(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) public virtual view returns(uint256[] memory amounts, address payee) {
-        (amounts, payee) = calcDepositAmounts(GammaPoolStorage.store(), amountsDesired, amountsMin);
+        (amounts, payee) = calcDepositAmounts(amountsDesired, amountsMin);
     }
 
     function testCheckOptimalAmt(uint256 amountOptimal, uint256 amountMin) public virtual pure returns(uint8){

@@ -11,62 +11,72 @@ contract TestBaseStrategy is BaseStrategy {
 
     uint256 public invariant;
     uint256 public borrowRate = 10**18;
+    address public _factory;
+    uint16 public _protocolId;
 
-    constructor() {
+    constructor(address factory, uint16 protocolId) {
+        _factory = factory;
+        _protocolId = protocolId;
     }
 
-    function initialize(address cfmm, uint24 protocolId, address protocol, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, protocolId, protocol, tokens, address(this), address(this));
+    function initialize(address cfmm, address[] calldata tokens) external virtual {
+        s.cfmm = cfmm;
+        s.tokens = tokens;
+        s.factory = msg.sender;
+        s.TOKEN_BALANCE = new uint256[](tokens.length);
+        s.CFMM_RESERVES = new uint256[](tokens.length);
+
+        s.accFeeIndex = 10**18;
+        s.lastFeeIndex = 10**18;
+        s.lastCFMMFeeIndex = 10**18;
+        s.LAST_BLOCK_NUMBER = block.number;
+        s.nextId = 1;
+        s.unlocked = 1;
+        s.ONE = 10**18;
     }
 
-    function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint24 protocolId, address protocol) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        factory = store.factory;
-        cfmm = store.cfmm;
-        tokens = store.tokens;
-        protocolId = store.protocolId;
-        protocol = store.protocol;
+    function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint16 protocolId) {
+        factory = _factory;
+        cfmm = s.cfmm;
+        tokens = s.tokens;
+        protocolId = _protocolId;
     }
 
     function setUpdateStoreFields(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) public virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        store.accFeeIndex = accFeeIndex;
-        store.lastFeeIndex = lastFeeIndex;
-        store.LP_TOKEN_BALANCE = lpTokenBalance;
-        store.BORROWED_INVARIANT = borrowedInvariant;
-        store.lastCFMMTotalSupply = lastCFMMTotalSupply;
-        store.lastCFMMInvariant = lastCFMMInvariant;
+        s.accFeeIndex = accFeeIndex;
+        s.lastFeeIndex = lastFeeIndex;
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
+        s.BORROWED_INVARIANT = borrowedInvariant;
+        s.lastCFMMTotalSupply = lastCFMMTotalSupply;
+        s.lastCFMMInvariant = lastCFMMInvariant;
     }
 
     function getUpdateStoreFields() public virtual view returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply,
         uint256 lastCFMMInvariant, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 lpTokenTotal, uint256 totalInvariant, uint256 lastBlockNumber) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        accFeeIndex = store.accFeeIndex;
-        lastFeeIndex = store.lastFeeIndex;
-        lpTokenBalance = store.LP_TOKEN_BALANCE;
-        borrowedInvariant = store.BORROWED_INVARIANT;
-        lastCFMMTotalSupply = store.lastCFMMTotalSupply;
-        lastCFMMInvariant = store.lastCFMMInvariant;
+        accFeeIndex = s.accFeeIndex;
+        lastFeeIndex = s.lastFeeIndex;
+        lpTokenBalance = s.LP_TOKEN_BALANCE;
+        borrowedInvariant = s.BORROWED_INVARIANT;
+        lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        lastCFMMInvariant = s.lastCFMMInvariant;
 
-        lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        lpInvariant = store.LP_INVARIANT;
-        //lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        lpInvariant = s.LP_INVARIANT;
+        //lpTokenTotal = s.LP_TOKEN_TOTAL;
         lpTokenTotal = lpTokenBalance + lpTokenBorrowedPlusInterest;
-        //totalInvariant = store.TOTAL_INVARIANT;
+        //totalInvariant = s.TOTAL_INVARIANT;
         totalInvariant = lpInvariant + borrowedInvariant;
-        lastBlockNumber = store.LAST_BLOCK_NUMBER;
+        lastBlockNumber = s.LAST_BLOCK_NUMBER;
     }
 
     function setLPTokenBalAndBorrowedInv(uint256 lpTokenBal, uint256 borrowedInv) public virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        store.LP_TOKEN_BALANCE = lpTokenBal;
-        store.BORROWED_INVARIANT = borrowedInv;
+        s.LP_TOKEN_BALANCE = lpTokenBal;
+        s.BORROWED_INVARIANT = borrowedInv;
     }
 
     function getLPTokenBalAndBorrowedInv() public virtual view returns(uint256 lpTokenBal, uint256 borrowedInv) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        lpTokenBal = store.LP_TOKEN_BALANCE;
-        borrowedInv = store.BORROWED_INVARIANT;
+        lpTokenBal = s.LP_TOKEN_BALANCE;
+        borrowedInv = s.BORROWED_INVARIANT;
     }
 
     function setBorrowRate(uint256 _borrowRate) public virtual {
@@ -74,76 +84,87 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function setLastBlockNumber(uint256 lastBlockNumber) public virtual {
-        GammaPoolStorage.store().LAST_BLOCK_NUMBER = lastBlockNumber;
+        s.LAST_BLOCK_NUMBER = lastBlockNumber;
     }
 
     function updateLastBlockNumber() public virtual {
-        GammaPoolStorage.store().LAST_BLOCK_NUMBER = block.number;
+        s.LAST_BLOCK_NUMBER = block.number;
     }
 
     function getLastBlockNumber() public virtual view returns(uint256) {
-        return GammaPoolStorage.store().LAST_BLOCK_NUMBER;
+        return s.LAST_BLOCK_NUMBER;
     }
 
     function setCFMMIndex(uint256 cfmmIndex) public virtual {
-        GammaPoolStorage.store().lastCFMMFeeIndex = cfmmIndex;
+        s.lastCFMMFeeIndex = cfmmIndex;
     }
 
     function getCFMMIndex() public virtual view returns(uint256){
-        return GammaPoolStorage.store().lastCFMMFeeIndex;
+        return s.lastCFMMFeeIndex;
     }
 
     function testUpdateIndex() public virtual {
-        updateIndex(GammaPoolStorage.store());
+        updateIndex();
     }
 
     function getUpdateIndexFields() public virtual view returns(uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant, uint256 lastCFMMFeeIndex,
         uint256 lastFeeIndex, uint256 accFeeIndex, uint256 borrowedInvariant, uint256 lpInvariant, uint256 totalInvariant,
         uint256 lpTokenBorrowedPlusInterest, uint256 lpTokenBal, uint256 lpTokenTotal, uint256 lastBlockNumber) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        lastCFMMTotalSupply = store.lastCFMMTotalSupply;
-        lastCFMMInvariant = store.lastCFMMInvariant;
-        lastCFMMFeeIndex = store.lastCFMMFeeIndex;
-        lastFeeIndex = store.lastFeeIndex;
-        accFeeIndex = store.accFeeIndex;
-        borrowedInvariant = store.BORROWED_INVARIANT;
-        lpInvariant = store.LP_INVARIANT;
-        //totalInvariant = store.TOTAL_INVARIANT;
+        lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        lastCFMMInvariant = s.lastCFMMInvariant;
+        lastCFMMFeeIndex = s.lastCFMMFeeIndex;
+        lastFeeIndex = s.lastFeeIndex;
+        accFeeIndex = s.accFeeIndex;
+        borrowedInvariant = s.BORROWED_INVARIANT;
+        lpInvariant = s.LP_INVARIANT;
+        //totalInvariant = s.TOTAL_INVARIANT;
         totalInvariant = lpInvariant + borrowedInvariant;
-        lpTokenBorrowedPlusInterest = store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        lpTokenBal = store.LP_TOKEN_BALANCE;
-        //lpTokenTotal = store.LP_TOKEN_TOTAL;
+        lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        lpTokenBal = s.LP_TOKEN_BALANCE;
+        //lpTokenTotal = s.LP_TOKEN_TOTAL;
         lpTokenTotal = lpTokenBal + lpTokenBorrowedPlusInterest;
-        lastBlockNumber = store.LAST_BLOCK_NUMBER;
+        lastBlockNumber = s.LAST_BLOCK_NUMBER;
     }
 
     function testUpdateCFMMIndex() public virtual {
-        updateCFMMIndex(GammaPoolStorage.store());
+        updateCFMMIndex();
     }
 
     function testUpdateFeeIndex() public virtual {
-        updateFeeIndex(GammaPoolStorage.store());
+        updateFeeIndex();
     }
 
     function testUpdateStore() public virtual {
-        updateStore(GammaPoolStorage.store());
+        updateStore();
     }
 
     function setAccFeeIndex(uint256 accFeeIndex) public virtual {
-        GammaPoolStorage.store().accFeeIndex = accFeeIndex;
+        s.accFeeIndex = accFeeIndex;
     }
 
     function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex){
-        accFeeIndex = GammaPoolStorage.store().accFeeIndex;
+        accFeeIndex = s.accFeeIndex;
     }
 
     function createLoan() public virtual returns(uint256 tokenId) {
-        tokenId = GammaPoolStorage.createLoan();
+        uint256 id = s.nextId++;
+        tokenId = uint256(keccak256(abi.encode(msg.sender, address(this), id)));
+
+        s.loans[tokenId] = Loan({
+            id: id,
+            poolId: address(this),
+            tokensHeld: new uint[](s.tokens.length),
+            heldLiquidity: 0,
+            initLiquidity: 0,
+            liquidity: 0,
+            lpTokens: 0,
+            rateIndex: s.accFeeIndex
+        });
         emit LoanCreated(msg.sender, tokenId);
     }
 
     function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint256[] memory tokensHeld, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
-        GammaPoolStorage.Loan storage _loan = GammaPoolStorage.store().loans[tokenId];
+        Loan storage _loan = s.loans[tokenId];
         id = _loan.id;
         poolId = _loan.poolId;
         tokensHeld = _loan.tokensHeld;
@@ -154,46 +175,44 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function setLoanLiquidity(uint256 tokenId, uint256 liquidity) public virtual {
-        GammaPoolStorage.Loan storage _loan = GammaPoolStorage.store().loans[tokenId];
+        Loan storage _loan = s.loans[tokenId];
         _loan.liquidity = liquidity;
     }
 
     function testUpdateLoanLiquidity(uint256 tokenId, uint256 accFeeIndex) public virtual {
-        GammaPoolStorage.Loan storage _loan = GammaPoolStorage.store().loans[tokenId];
+        Loan storage _loan = s.loans[tokenId];
         updateLoanLiquidity(_loan, accFeeIndex);
     }
 
     function testUpdateLoan(uint256 tokenId) public virtual {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        GammaPoolStorage.Loan storage _loan = store.loans[tokenId];
-        updateLoan(store, _loan);
+        Loan storage _loan = s.loans[tokenId];
+        updateLoan(_loan);
     }
 
     function getLastFeeIndex() public virtual view returns(uint256){
-        return GammaPoolStorage.store().lastFeeIndex;
+        return s.lastFeeIndex;
     }
 
     function getCFMMData() public virtual view returns(uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
-        GammaPoolStorage.Store storage store = GammaPoolStorage.store();
-        lastCFMMFeeIndex = store.lastCFMMFeeIndex;
-        lastCFMMInvariant = store.lastCFMMInvariant;
-        lastCFMMTotalSupply = store.lastCFMMTotalSupply;
+        lastCFMMFeeIndex = s.lastCFMMFeeIndex;
+        lastCFMMInvariant = s.lastCFMMInvariant;
+        lastCFMMTotalSupply = s.lastCFMMTotalSupply;
     }
 
     function testMint(address account, uint256 amount) public virtual {
-        _mint(GammaPoolStorage.store(), account, amount);
+        _mint(account, amount);
     }
 
     function testBurn(address account, uint256 amount) public virtual {
-        _burn(GammaPoolStorage.store(), account, amount);
+        _burn(account, amount);
     }
 
     function totalSupply() public virtual view returns(uint256) {
-        return GammaPoolStorage.store().totalSupply;
+        return s.totalSupply;
     }
 
     function balanceOf(address account) public virtual view returns(uint256) {
-        return GammaPoolStorage.store().balanceOf[account];
+        return s.balanceOf[account];
     }
 
     function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {
@@ -201,15 +220,15 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function getReserves() public virtual view returns(uint256[] memory) {
-        return GammaPoolStorage.store().CFMM_RESERVES;
+        return s.CFMM_RESERVES;
     }
 
     function testUpdateReserves() public virtual {
-        updateReserves(GammaPoolStorage.store());
+        updateReserves();
     }
 
-    function updateReserves(GammaPoolStorage.Store storage store) internal virtual override {
-        (store.CFMM_RESERVES[0], store.CFMM_RESERVES[1],) = ICPMM(store.cfmm).getReserves();
+    function updateReserves() internal virtual override {
+        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(s.cfmm).getReserves();
     }
 
     function setInvariant(uint256 _invariant) public virtual {

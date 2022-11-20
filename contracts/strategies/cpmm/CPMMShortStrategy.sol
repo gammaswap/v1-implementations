@@ -14,15 +14,15 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
         CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
     }
 
-    function calcDepositAmounts(GammaPoolStorage.Store storage store, uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
+    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override view returns (uint256[] memory amounts, address payee) {
         if(amountsDesired[0] == 0 || amountsDesired[1] == 0) {
             revert ZeroDeposits();
         }
 
-        (uint256 reserve0, uint256 reserve1,) = ICPMM(store.cfmm).getReserves();
+        (uint256 reserve0, uint256 reserve1,) = ICPMM(s.cfmm).getReserves();
 
-        payee = store.cfmm;
+        payee = s.cfmm;
         if (reserve0 == 0 && reserve1 == 0) {
             return(amountsDesired, payee);
         }
