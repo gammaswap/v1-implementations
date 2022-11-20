@@ -71,7 +71,7 @@ describe("LongStrategy", function () {
     expect(await tokenB.balanceOf(strategy.address)).to.equal(tok2Bal);
   }
 
-  function checkEventData(
+  async function checkEventData(
     event: any,
     tokenId: BigNumber,
     tokenHeld1: any,
@@ -86,13 +86,17 @@ describe("LongStrategy", function () {
     expect(event.args.tokensHeld.length).to.equal(2);
     expect(event.args.tokensHeld[0]).to.equal(tokenHeld1);
     expect(event.args.tokensHeld[1]).to.equal(tokenHeld2);
-    expect(event.args.heldLiquidity).to.equal(heldLiquidity);
+    const expectedHeldLiquidity = await strategy.squareRoot(
+      tokenHeld1.mul(tokenHeld2).div(BigNumber.from(10).pow(18))
+    );
+    // expect(event.args.heldLiquidity).to.equal(heldLiquidity);
+    expect(expectedHeldLiquidity).to.equal(heldLiquidity);
     expect(event.args.liquidity).to.equal(liquidity);
     expect(event.args.lpTokens).to.equal(lpTokens);
     expect(event.args.rateIndex).to.equal(rateIndex);
   }
 
-  function checkEventData2(
+  async function checkEventData2(
     event: any,
     tokenId: BigNumber,
     tokenHeld1: any,
@@ -107,7 +111,11 @@ describe("LongStrategy", function () {
     expect(event.args.tokensHeld.length).to.equal(2);
     expect(event.args.tokensHeld[0]).to.equal(tokenHeld1);
     expect(event.args.tokensHeld[1]).to.equal(tokenHeld2);
-    expect(event.args.heldLiquidity).to.equal(heldLiquidity);
+    const expectedHeldLiquidity = await strategy.squareRoot(
+      tokenHeld1.mul(tokenHeld2).div(BigNumber.from(10).pow(18))
+    );
+    // expect(event.args.heldLiquidity).to.equal(heldLiquidity);
+    expect(expectedHeldLiquidity).to.equal(heldLiquidity);
     expect(event.args.liquidity).to.equal(liquidity);
     expect(event.args.lpTokens).to.equal(lpTokens);
     expect(event.args.rateIndex).to.gt(rateIndex);
@@ -181,7 +189,7 @@ describe("LongStrategy", function () {
       const tokenId = res.events[0].args.tokenId;
       const ONE = BigNumber.from(10).pow(18);
       await (await strategy.setLiquidity(tokenId, ONE)).wait();
-      await (await strategy.setHeldLiquidity(tokenId, ONE)).wait();
+      await (await strategy.setHeldAmounts(tokenId, [ONE, ONE])).wait();
       expect(await strategy.checkMargin(tokenId, 1000)).to.equal(true);
       await expect(strategy.checkMargin(tokenId, 999)).to.be.revertedWith(
         "Margin"

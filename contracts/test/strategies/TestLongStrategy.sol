@@ -67,7 +67,7 @@ contract TestLongStrategy is LongStrategy {
         id = _loan.id;
         poolId = _loan.poolId;
         tokensHeld = _loan.tokensHeld;
-        heldLiquidity = _loan.heldLiquidity;
+        heldLiquidity = calcInvariant(s.cfmm, _loan.tokensHeld);
         initLiquidity = _loan.initLiquidity;
         liquidity = _loan.liquidity;
         lpTokens = _loan.lpTokens;
@@ -79,9 +79,9 @@ contract TestLongStrategy is LongStrategy {
         _loan.liquidity = liquidity;
     }
 
-    function setHeldLiquidity(uint256 tokenId, uint256 heldLiquidity) public virtual {
+    function setHeldAmounts(uint256 tokenId, uint256[] calldata heldAmounts) public virtual {
         Loan storage _loan = _getLoan(tokenId);
-        _loan.heldLiquidity = heldLiquidity;
+        _loan.tokensHeld = heldAmounts;
     }
 
     function checkMargin(uint256 tokenId, uint24 limit) public virtual view returns(bool) {

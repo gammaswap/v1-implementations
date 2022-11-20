@@ -33,8 +33,8 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         }
     }
 
-    function checkMargin(Loan storage _loan, uint24 limit) internal virtual view {
-        if(_loan.heldLiquidity * limit / 1000 < _loan.liquidity) {
+    function checkMargin(Loan storage _loan, uint256 limit) internal virtual view {
+        if(calcInvariant(s.cfmm, _loan.tokensHeld) * limit / 1000 < _loan.liquidity) {
             revert Margin();
         }
     }
@@ -85,13 +85,12 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
                 }
             }
         }
-        _loan.heldLiquidity = calcInvariant(s.cfmm, _loan.tokensHeld);
     }
 
     function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint256[] memory) {
         Loan storage _loan = _getLoan(tokenId);
         updateCollateral(_loan);
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
         return _loan.tokensHeld;
     }
 
@@ -101,7 +100,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
         updateCollateral(_loan);
         updateLoan(_loan);
         checkMargin(_loan, 800);
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -124,7 +123,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         checkMargin(_loan, 800);
 
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -146,7 +145,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         payLoan(_loan, liquidityPaid);
 
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -165,7 +164,7 @@ abstract contract LongStrategy is ILongStrategy, BaseStrategy {
 
         checkMargin(_loan, 850);
 
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);

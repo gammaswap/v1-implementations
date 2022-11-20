@@ -63,10 +63,9 @@ abstract contract LiquidationStrategy is LongStrategy {
             refund[i] = tokensHeld;
             GammaSwapLibrary.safeTransfer(IERC20(s.tokens[i]), msg.sender, tokensHeld);
         }
-        _loan.heldLiquidity = 0;
         payLoan(_loan, _loan.liquidity);
 
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.heldLiquidity, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -74,8 +73,8 @@ abstract contract LiquidationStrategy is LongStrategy {
         return refund;
     }
 
-    function canLiquidate(Loan storage _loan, uint24 limit) internal virtual {
-        if(_loan.heldLiquidity * limit / 1000 >= _loan.liquidity) {
+    function canLiquidate(Loan storage _loan, uint256 limit) internal virtual {
+        if(calcInvariant(s.cfmm, _loan.tokensHeld) * limit / 1000 >= _loan.liquidity) {
             revert HasMargin();
         }
     }
