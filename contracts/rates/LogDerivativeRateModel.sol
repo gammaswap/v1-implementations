@@ -7,11 +7,11 @@ import "../libraries/Math.sol";
 
 abstract contract LogDerivativeRateModel is AbstractRateModel, ILogDerivativeRateModel {
 
-    uint256 immutable public override baseRate;
-    uint256 immutable public override factor;
-    uint256 immutable public override maxApy;
+    uint64 immutable public override baseRate;
+    uint80 immutable public override factor;
+    uint80 immutable public override maxApy;
 
-    constructor(uint256 _baseRate, uint256 _factor, uint256 _maxApy) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy) {
         baseRate = _baseRate;
         factor = _factor;
         maxApy = _maxApy;

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "./LongStrategy.sol";
+import "@gammaswap/v1-core/contracts/interfaces/strategies/base/ILiquidationStrategy.sol";
+import "./BaseLongStrategy.sol";
 
-abstract contract LiquidationStrategy is LongStrategy {
+abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy {
 
     error NotFullLiquidation();
     error HasMargin();
 
     function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
-        Loan storage _loan = _getLoan(tokenId);
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
 
         updateLoan(_loan);
         canLiquidate(_loan, 900);
@@ -33,7 +34,7 @@ abstract contract LiquidationStrategy is LongStrategy {
     }
 
     function _liquidateWithLP(uint256 tokenId) external override lock virtual returns(uint256[] memory refund) {
-        Loan storage _loan = s.loans[tokenId];
+        LibStorage.Loan storage _loan = s.loans[tokenId];
 
         uint256 lpDeposit = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
 
@@ -54,10 +55,10 @@ abstract contract LiquidationStrategy is LongStrategy {
         return payLoanAndRefundLiquidator(tokenId, _loan);
     }
 
-    function payLoanAndRefundLiquidator(uint256 tokenId, Loan storage _loan) internal virtual returns(uint256[] memory refund) {
+    function payLoanAndRefundLiquidator(uint256 tokenId, LibStorage.Loan storage _loan) internal virtual returns(uint256[] memory refund) {
         refund = new uint256[](s.tokens.length);
         for (uint256 i = 0; i < s.tokens.length; i++) {
-            uint256 tokensHeld = _loan.tokensHeld[i];
+            uint128 tokensHeld = _loan.tokensHeld[i];
             s.TOKEN_BALANCE[i] = s.TOKEN_BALANCE[i] - tokensHeld;
             _loan.tokensHeld[i] = 0;
             refund[i] = tokensHeld;
@@ -65,7 +66,7 @@ abstract contract LiquidationStrategy is LongStrategy {
         }
         payLoan(_loan, _loan.liquidity);
 
-        emit LoanUpdated(tokenId, _loan.tokensHeld, 0, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -73,7 +74,7 @@ abstract contract LiquidationStrategy is LongStrategy {
         return refund;
     }
 
-    function canLiquidate(Loan storage _loan, uint256 limit) internal virtual {
+    function canLiquidate(LibStorage.Loan storage _loan, uint256 limit) internal virtual {
         if(calcInvariant(s.cfmm, _loan.tokensHeld) * limit / 1000 >= _loan.liquidity) {
             revert HasMargin();
         }

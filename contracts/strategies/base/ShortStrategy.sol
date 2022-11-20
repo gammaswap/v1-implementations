@@ -18,7 +18,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     //ShortGamma
     function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual view returns (uint256[] memory reserves, address payee);
 
-    function getReserves(address cfmm) internal virtual view returns(uint256[] memory);
+    function getReserves(address cfmm) internal virtual view returns(uint128[] memory);
 
     function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
         uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
