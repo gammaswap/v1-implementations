@@ -3,12 +3,12 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/GammaPoolFactory.sol";
-import "@gammaswap/v1-core/contracts/libraries/storage/GammaPoolStorage.sol";
+import "@gammaswap/v1-core/contracts/storage/AppStorage.sol";
 
 import "../../libraries/GammaSwapLibrary.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 
-abstract contract BaseStrategy is AbstractRateModel {
+abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     error ZeroAmount();
     error ZeroAddress();
     error ExcessiveBurn();
@@ -17,13 +17,7 @@ abstract contract BaseStrategy is AbstractRateModel {
         uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    modifier lock() {
-        GammaPoolStorage.lockit();
-        _;
-        GammaPoolStorage.unlockit();
-    }
-
-    function updateReserves(GammaPoolStorage.Store storage store) internal virtual;
+    function updateReserves() internal virtual;
 
     function calcInvariant(address cfmm, uint256[] memory amounts) internal virtual view returns(uint256);
 
@@ -31,24 +25,24 @@ abstract contract BaseStrategy is AbstractRateModel {
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
 
-    function updateTWAP(GammaPoolStorage.Store storage store) internal virtual {
+    function updateTWAP() internal virtual {
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
-        uint32 timeElapsed = blockTimestamp - store.lastBlockTimestamp;
+        uint32 timeElapsed = blockTimestamp - s.lastBlockTimestamp;
         uint32 secondsInADay = 86400;
         if (timeElapsed > 0) {
             if (timeElapsed >= secondsInADay) { // reset
-                store.cumulativeTime = 0;
-                store.cumulativeYield = 0;
+                s.cumulativeTime = 0;
+                s.cumulativeYield = 0;
             }
-            if (store.cumulativeTime < secondsInADay) {
-                store.cumulativeTime += timeElapsed;
-                store.cumulativeYield += timeElapsed * store.lastFeeIndex;
-                store.yieldTWAP = store.cumulativeYield / store.cumulativeTime;
+            if (s.cumulativeTime < secondsInADay) {
+                s.cumulativeTime += timeElapsed;
+                s.cumulativeYield += timeElapsed * s.lastFeeIndex;
+                s.yieldTWAP = s.cumulativeYield / s.cumulativeTime;
             } else {
-                store.yieldTWAP = (store.yieldTWAP * (secondsInADay - timeElapsed) + store.lastFeeIndex * timeElapsed) / secondsInADay;
+                s.yieldTWAP = (s.yieldTWAP * (secondsInADay - timeElapsed) + s.lastFeeIndex * timeElapsed) / secondsInADay;
             }
         }
-        store.lastBlockTimestamp = blockTimestamp;
+        s.lastBlockTimestamp = blockTimestamp;
     }
 
     function calcCFMMFeeIndex(uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
@@ -67,19 +61,19 @@ abstract contract BaseStrategy is AbstractRateModel {
         return lastCFMMFeeIndex + adjBorrowRate;
     }
 
-    function updateCFMMIndex(GammaPoolStorage.Store storage store) internal virtual {
-        updateReserves(store);
-        uint256 lastCFMMInvariant = calcInvariant(store.cfmm, store.CFMM_RESERVES);
-        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(store.cfmm));
-        uint256 lastCFMMFeeIndex = calcCFMMFeeIndex(store.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
-        store.lastCFMMFeeIndex = lastCFMMFeeIndex;
-        store.lastCFMMInvariant = lastCFMMInvariant;
-        store.lastCFMMTotalSupply = lastCFMMTotalSupply;
+    function updateCFMMIndex() internal virtual {
+        updateReserves();
+        uint256 lastCFMMInvariant = calcInvariant(s.cfmm, s.CFMM_RESERVES);
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(s.cfmm));
+        uint256 lastCFMMFeeIndex = calcCFMMFeeIndex(s.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
+        s.lastCFMMFeeIndex = lastCFMMFeeIndex;
+        s.lastCFMMInvariant = lastCFMMInvariant;
+        s.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
 
-    function updateFeeIndex(GammaPoolStorage.Store storage store) internal virtual {
-        store.borrowRate = calcBorrowRate(store.LP_INVARIANT, store.BORROWED_INVARIANT);
-        store.lastFeeIndex = calcFeeIndex(store.lastCFMMFeeIndex, store.borrowRate, store.LAST_BLOCK_NUMBER);
+    function updateFeeIndex() internal virtual {
+        s.borrowRate = calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT);
+        s.lastFeeIndex = calcFeeIndex(s.lastCFMMFeeIndex, s.borrowRate, s.LAST_BLOCK_NUMBER);
     }
 
     function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual pure returns(uint256) {
@@ -94,79 +88,77 @@ abstract contract BaseStrategy is AbstractRateModel {
         return lastCFMMTotalSupply == 0 ? 0 : (lpTokenBalance * lastCFMMInvariant) / lastCFMMTotalSupply;
     }
 
-    function updateStore(GammaPoolStorage.Store storage store) internal virtual {
-        store.BORROWED_INVARIANT = accrueBorrowedInvariant(store.BORROWED_INVARIANT, store.lastFeeIndex);
+    function updateStore() internal virtual {
+        s.BORROWED_INVARIANT = accrueBorrowedInvariant(s.BORROWED_INVARIANT, s.lastFeeIndex);
 
-        store.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(store.BORROWED_INVARIANT, store.lastCFMMTotalSupply, store.lastCFMMInvariant);
-        store.LP_INVARIANT = calcLPInvariant(store.LP_TOKEN_BALANCE, store.lastCFMMInvariant, store.lastCFMMTotalSupply);
-        //store.LP_TOKEN_TOTAL = store.LP_TOKEN_BALANCE + store.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        //store.TOTAL_INVARIANT = store.LP_INVARIANT + store.BORROWED_INVARIANT;
+        s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
+        s.LP_INVARIANT = calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
+        //s.LP_TOKEN_TOTAL = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        //s.TOTAL_INVARIANT = s.LP_INVARIANT + s.BORROWED_INVARIANT;
 
-        store.accFeeIndex = (store.accFeeIndex * store.lastFeeIndex) / store.ONE;
-        store.LAST_BLOCK_NUMBER = block.number;
+        s.accFeeIndex = (s.accFeeIndex * s.lastFeeIndex) / s.ONE;
+        s.LAST_BLOCK_NUMBER = block.number;
     }
 
-    function updateIndex(GammaPoolStorage.Store storage store) internal virtual {
+    function updateIndex() internal virtual {
 
-        updateCFMMIndex(store);
-        updateFeeIndex(store);
-        // updateTWAP(store);
-        updateStore(store);
+        updateCFMMIndex();
+        updateFeeIndex();
+        // updateTWAP();
+        updateStore();
 
-        if(store.BORROWED_INVARIANT >= 0) {
-            // mintToDevs(store);
+        if(s.BORROWED_INVARIANT >= 0) {
+            // mintToDevs();
         }
     }
 
-    function mintToDevs(GammaPoolStorage.Store storage store) internal {
-        /*(address feeTo, uint256 devFee) = IGammaPoolFactory(store.factory).feeInfo();
+    function mintToDevs() internal {
+        (address feeTo, uint256 devFee) = IGammaPoolFactory(s.factory).feeInfo();
         if(feeTo != address(0) && devFee > 0) {
             //Formula:
             //        accumulatedGrowth: (1 - [borrowedInvariant/(borrowedInvariant*index)])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
             //        accumulatedGrowth: (1 - [1/index])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
             //        sharesToIssue: totalGammaTokenSupply*accGrowth/(1-accGrowth)
-            uint256 totalInvariantInCFMM = ((store.LP_TOKEN_BALANCE * store.lastCFMMInvariant) / store.lastCFMMTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
-            //uint256 factor = ((store.lastFeeIndex - (10**18)) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
-            uint256 factor = ((store.lastFeeIndex - store.ONE) * devFee) / store.lastFeeIndex;//Percentage of the current growth that we will give to devs
-            uint256 accGrowth = (factor * store.BORROWED_INVARIANT) / (store.BORROWED_INVARIANT + totalInvariantInCFMM);
-            //_mint(store, feeTo, (store.totalSupply * accGrowth) / ((10**18) - accGrowth));
-            _mint(store, feeTo, (store.totalSupply * accGrowth) / (store.ONE - accGrowth));
-        }/**/
+            uint256 totalInvariantInCFMM = ((s.LP_TOKEN_BALANCE * s.lastCFMMInvariant) / s.lastCFMMTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
+            //uint256 factor = ((s.lastFeeIndex - (10**18)) * devFee) / s.lastFeeIndex;//Percentage of the current growth that we will give to devs
+            uint256 factor = ((s.lastFeeIndex - s.ONE) * devFee) / s.lastFeeIndex;//Percentage of the current growth that we will give to devs
+            uint256 accGrowth = (factor * s.BORROWED_INVARIANT) / (s.BORROWED_INVARIANT + totalInvariantInCFMM);
+            //_mint(feeTo, (s.totalSupply * accGrowth) / ((10**18) - accGrowth));
+            _mint(feeTo, (s.totalSupply * accGrowth) / (s.ONE - accGrowth));
+        }
     }
 
-    function updateLoan(GammaPoolStorage.Store storage store, GammaPoolStorage.Loan storage _loan) internal virtual {
-        updateIndex(store);
-        updateLoanLiquidity(_loan, store.accFeeIndex);
+    function updateLoan(Loan storage _loan) internal virtual {
+        updateIndex();
+        updateLoanLiquidity(_loan, s.accFeeIndex);
     }
 
-    function updateLoanLiquidity(GammaPoolStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual {
+    function updateLoanLiquidity(Loan storage _loan, uint256 accFeeIndex) internal virtual {
         _loan.liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
         _loan.rateIndex = accFeeIndex;
     }
 
     function _mint(address account, uint256 amount) internal virtual {
-        GammaPoolStorage.ERC20 storage store = GammaPoolStorage.erc20();
         if(amount == 0) {
             revert ZeroAmount();
         }
-        store.totalSupply += amount;
-        store.balanceOf[account] += amount;
+        s.totalSupply += amount;
+        s.balanceOf[account] += amount;
         emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal virtual {
-        GammaPoolStorage.ERC20 storage store = GammaPoolStorage.erc20();
         if(account == address(0)) {
             revert ZeroAddress();
         }
-        uint256 accountBalance = store.balanceOf[account];
+        uint256 accountBalance = s.balanceOf[account];
         if(amount > accountBalance) {
             revert ExcessiveBurn();
         }
         unchecked {
-            store.balanceOf[account] = accountBalance - amount;
+            s.balanceOf[account] = accountBalance - amount;
         }
-        store.totalSupply -= amount;
+        s.totalSupply -= amount;
         emit Transfer(account, address(0), amount);
     }
 }

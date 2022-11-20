@@ -12,19 +12,31 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens) external virtual {
-        GammaPoolStorage.init(cfmm, tokens);
+        s.cfmm = cfmm;
+        s.tokens = tokens;
+        s.factory = msg.sender;
+        s.TOKEN_BALANCE = new uint256[](tokens.length);
+        s.CFMM_RESERVES = new uint256[](tokens.length);
+
+        s.accFeeIndex = 10**18;
+        s.lastFeeIndex = 10**18;
+        s.lastCFMMFeeIndex = 10**18;
+        s.LAST_BLOCK_NUMBER = block.number;
+        s.nextId = 1;
+        s.unlocked = 1;
+        s.ONE = 10**18;
     }
 
     function getCFMM() public virtual view returns(address) {
-        return GammaPoolStorage.store().cfmm;
+        return s.cfmm;
     }
 
     function getCFMMReserves() public virtual view returns(uint256[] memory) {
-        return GammaPoolStorage.store().CFMM_RESERVES;
+        return s.CFMM_RESERVES;
     }
 
     function testUpdateReserves() public virtual {
-        updateReserves(GammaPoolStorage.store());
+        updateReserves();
     }
 
     function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {
