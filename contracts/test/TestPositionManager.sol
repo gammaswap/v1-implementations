@@ -19,12 +19,12 @@ contract TestPositionManager is ISendTokensCallback {
 
     address public immutable pool;
     address public immutable cfmm;
-    uint24 public immutable protocol;
+    uint16 public immutable protocolId;
 
-    constructor(address _pool, address _cfmm, uint24 _protocol) {
+    constructor(address _pool, address _cfmm, uint16 _protocolId) {
         pool = _pool;
         cfmm = _cfmm;
-        protocol = _protocol;
+        protocolId = _protocolId;
     }
 
     function sendTokensCallback(address[] calldata tokens, uint256[] calldata amounts, address payee, bytes calldata data) external virtual override {
@@ -42,7 +42,7 @@ contract TestPositionManager is ISendTokensCallback {
 
     function depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin) external virtual returns(uint256[] memory reserves, uint256 shares) {
         (reserves, shares) = TestShortStrategy(pool)._depositReserves(to, amountsDesired, amountsMin,
-            abi.encode(SendTokensCallbackData({cfmm: cfmm, protocol: protocol, payer: msg.sender})));
+            abi.encode(SendTokensCallbackData({cfmm: cfmm, protocolId: protocolId, payer: msg.sender})));
         emit DepositReserve(pool, reserves.length, reserves, shares);
     }
 

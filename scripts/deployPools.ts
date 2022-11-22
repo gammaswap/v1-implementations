@@ -1,5 +1,5 @@
 import { ethers } from "hardhat"
-import { Contract } from "ethers"
+import {BigNumber, Contract} from "ethers"
 import {
   getGammaPoolDetails,
   createPair,
@@ -14,7 +14,7 @@ import {
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json")
 const GammaPoolFactoryJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPoolFactory.sol/GammaPoolFactory.json")
 const PositionManagerJSON = require("@gammaswap/v1-periphery/artifacts/contracts/PositionManager.sol/PositionManager.json")
-const GammaPoolJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPool.sol/GammaPool.json")
+const CPMMGammaPoolJSON = require("@gammaswap/v1-core/artifacts/contracts/pools/CPMMGammaPool.sol/CPMMGammaPool.json")
 const ERC20JSON = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json")
 
 const PROTOCOL_ID = 1
@@ -28,19 +28,34 @@ export async function main() {
   const PositionManager = new ethers.ContractFactory(PositionManagerJSON.abi, PositionManagerJSON.bytecode, owner)
   const TestERC20Contract = await ethers.getContractFactory("TestERC20")
   const ERC20Contract = new ethers.ContractFactory(ERC20JSON.abi, ERC20JSON.bytecode, owner)
-  const GammaPool = new ethers.ContractFactory(GammaPoolJSON.abi, GammaPoolJSON.bytecode, owner)
+  const CPMMGammaPool = new ethers.ContractFactory(CPMMGammaPoolJSON.abi, CPMMGammaPoolJSON.bytecode, owner)
   const CPMMLongStrategy = await ethers.getContractFactory("CPMMLongStrategy")
   const CPMMShortStrategy = await ethers.getContractFactory("CPMMShortStrategy")
-  const CPMMProtocol = await ethers.getContractFactory("CPMMProtocol")
-  
-  const abi = ethers.utils.defaultAbiCoder
-  const COMPUTED_INIT_CODE_HASH = ethers.utils.keccak256(GammaPool.bytecode)
-  console.log('COMPUTED_INIT_CODE_HASH: ', COMPUTED_INIT_CODE_HASH);
+  const CPMMLiquidationStrategy = await ethers.getContractFactory("CPMMLiquidationStrategy")
 
   const uniFactory = await UniswapV2Factory.deploy(owner.address)
   const gsFactory = await GammaPoolFactory.deploy(owner.address)
-  const longStrategy = await CPMMLongStrategy.deploy()
-  const shortStrategy = await CPMMShortStrategy.deploy()
+
+  const originationFee = 50
+  const baseRate = BigNumber.from(75).mul(BigNumber.from(10).pow(15))
+  const tradingFee1 = 997
+  const tradingFee2 = 1000
+  const factor = BigNumber.from(675).mul(BigNumber.from(10).pow(15))
+  const maxApy = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
+
+  const longStrategy = await CPMMLongStrategy.deploy(originationFee, tradingFee1, tradingFee2, baseRate, factor, maxApy)
+  const shortStrategy = await CPMMShortStrategy.deploy(baseRate, factor, maxApy)
+  const liquidationStrategy = await CPMMLiquidationStrategy.deploy(tradingFee1, tradingFee2, baseRate, factor, maxApy)
+
+  const gsFactoryAddress = gsFactory.address
+  console.log('gsFactoryAddress: ', gsFactoryAddress);
+
+  const cfmmFactoryAddress = uniFactory.address
+  const cfmmHash =
+      "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f"// uniPair init_code_hash
+
+  const implementation = await CPMMGammaPool.deploy(PROTOCOL_ID, gsFactory.address, longStrategy.address, shortStrategy.address, liquidationStrategy.address, cfmmFactoryAddress, cfmmHash)
+
   const tokenA = await TestERC20Contract.deploy("Token A", "TOKA")
   const tokenB = await TestERC20Contract.deploy("Token B", "TOKB")
   const tokenC = await TestERC20Contract.deploy("Token C", "TOKC")
@@ -50,57 +65,21 @@ export async function main() {
   await uniFactory.deployed()
   await gsFactory.deployed()
   await longStrategy.deployed()
-
   await shortStrategy.deployed()
+  await liquidationStrategy.deployed()
   await tokenA.deployed()
   await tokenB.deployed()
   await tokenC.deployed()
   await tokenD.deployed()
   await WETH.deployed()
-  
-  const gsFactoryAddress = gsFactory.address
-  console.log('gsFactoryAddress: ', gsFactoryAddress);
-  
-  const cfmmFactoryAddress = uniFactory.address
-  const cfmmHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // uniFactory init_code_hash
+  await implementation.deployed()
+
+  await gsFactory.addProtocol(implementation.address)
+
 
   const positionManager = await PositionManager.deploy(gsFactoryAddress, WETH.address)
   positionManager.deployed()
   console.log('positionManager: ', positionManager.address)
-  
-  const protocolParams = abi.encode(
-    [
-      "address",
-      "bytes32",
-      "uint16",
-      "uint16",
-      "uint256",
-      "uint256",
-      "uint256",
-      "uint256"
-    ],
-    [
-      cfmmFactoryAddress,
-      cfmmHash,
-      1000,
-      997,
-      ethers.utils.parseUnits("1.0", 16),
-      ethers.utils.parseUnits("8.0", 17),
-      ethers.utils.parseUnits("4.0", 16),
-      ethers.utils.parseUnits("75.0", 16)
-    ]
-    )
-  const protocol = await CPMMProtocol.deploy(
-    gsFactoryAddress,
-    PROTOCOL_ID,
-    protocolParams,
-    longStrategy.address,
-    shortStrategy.address,
-  )
-  await protocol.deployed()
-  const CPMMProtocolAddress = protocol.address
-
-  await gsFactory.addProtocol(CPMMProtocolAddress)
   
   // token pair addresses
   console.log("\nCREATING PAIR ADDRESSES")
@@ -130,11 +109,11 @@ export async function main() {
   const AD_GammaPool_Addr = await createPool(gsFactory, token_A_D_Pair_Addr as string, tokenA.address, tokenD.address)
   const AWETH_GammaPool_Addr = await createPool(gsFactory, token_A_WETH_Pair_Addr as string, tokenA.address, WETH.address)
 
-  const AB_GammaPool = await getGammaPoolDetails(GammaPool, AB_GammaPool_Addr)
-  const AC_GammaPool = await getGammaPoolDetails(GammaPool, AC_GammaPool_Addr)
-  const BC_GammaPool = await getGammaPoolDetails(GammaPool, BC_GammaPool_Addr)
-  const AD_GammaPool = await getGammaPoolDetails(GammaPool, AD_GammaPool_Addr)
-  const AWETH_GammaPool = await getGammaPoolDetails(GammaPool, AWETH_GammaPool_Addr)
+  const AB_GammaPool = await getGammaPoolDetails(CPMMGammaPool, AB_GammaPool_Addr)
+  const AC_GammaPool = await getGammaPoolDetails(CPMMGammaPool, AC_GammaPool_Addr)
+  const BC_GammaPool = await getGammaPoolDetails(CPMMGammaPool, BC_GammaPool_Addr)
+  const AD_GammaPool = await getGammaPoolDetails(CPMMGammaPool, AD_GammaPool_Addr)
+  const AWETH_GammaPool = await getGammaPoolDetails(CPMMGammaPool, AWETH_GammaPool_Addr)
   console.log("\n=========================\n")
 
   console.log("AB GAMMAPOOL TRANSACTIONS")
