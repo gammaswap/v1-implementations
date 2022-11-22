@@ -2,10 +2,10 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/external/ICPMM.sol";
-import "../../strategies/base/ShortStrategy.sol";
-import "../TestCFMM.sol";
-import "../TestERC20.sol";
+import "../../../interfaces/external/ICPMM.sol";
+import "../../../strategies/base/ShortStrategy.sol";
+import "../../TestCFMM.sol";
+import "../../TestERC20.sol";
 
 abstract contract TestBaseShortStrategy is ShortStrategy {
 

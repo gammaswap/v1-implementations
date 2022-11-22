@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
 import "@gammaswap/v1-periphery/contracts/libraries/TransferHelper.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
-import "./strategies/TestShortStrategy.sol";
+import "./strategies/base/TestShortStrategy.sol";
 
 contract TestPositionManager is ISendTokensCallback {
     event Transfer(address indexed from, address indexed to, uint256 value);
