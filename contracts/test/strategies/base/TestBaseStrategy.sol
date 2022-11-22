@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../../interfaces/external/ICPMM.sol";
-import "../../libraries/Math.sol";
-import "../../strategies/base/BaseStrategy.sol";
+import "../../../interfaces/external/ICPMM.sol";
+import "../../../libraries/Math.sol";
+import "../../../strategies/base/BaseStrategy.sol";
 
 contract TestBaseStrategy is BaseStrategy {
 
