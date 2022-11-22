@@ -13,19 +13,15 @@ describe("LiquidationStrategy", function () {
   let cfmm: any;
   let liquidationStrategy: any;
   let owner: any;
-  let addr1: any;
-  let addr2: any;
-  let protocol: any;
   const ONE = BigNumber.from(10).pow(18);
   const TWO = BigNumber.from(10).pow(18).mul(2);
-  const FOUR = BigNumber.from(10).pow(18).mul(4);
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner] = await ethers.getSigners();
 
     TestLiquidationStrategy = await ethers.getContractFactory(
       "TestLiquidationStrategy"
@@ -89,17 +85,20 @@ describe("LiquidationStrategy", function () {
     });
 
     it("does not have enough margin so it liquidates", async function () {
-      await depositToStrategy(FOUR);
+      const initialLPdeposit = ONE.mul(400);
+      await depositToStrategy(initialLPdeposit);
       const res = await (await liquidationStrategy.createLoan()).wait();
       const tokenId = res.events[0].args.tokenId;
       await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
       await borrowMostOfIt(TWO); // spike up interest
       const startLiquidity = ONE.mul(800);
-      const startLpTokens = ONE.mul(400);
-      const loanLiquidity = ONE.mul(20);
+      const startLpTokens = initialLPdeposit;
+      const loanLiquidity = ONE.mul(20000);
       const loanLPTokens = ONE.mul(10);
       const lastCFMMInvariant = startLiquidity.mul(2);
       const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (await tokenA.mint(liquidationStrategy.address, 200000)).wait();
+      await (await tokenB.mint(liquidationStrategy.address, 400000)).wait();
       await (
         await liquidationStrategy.setLPTokenLoanBalance(
           tokenId,
@@ -112,8 +111,10 @@ describe("LiquidationStrategy", function () {
         )
       ).wait();
       await (
-        await liquidationStrategy.setHeldAmounts(tokenId, [19999, 19999])
+        await liquidationStrategy.setHeldAmounts(tokenId, [20000, 20000])
       ).wait();
+      await (await liquidationStrategy.setReservesBalance(40000, 40000)).wait();
+
       await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
 
       const res1b = await liquidationStrategy.getLoan(tokenId);

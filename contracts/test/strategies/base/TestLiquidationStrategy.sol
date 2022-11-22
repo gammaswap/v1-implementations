@@ -201,4 +201,9 @@ contract TestLiquidationStrategy is LiquidationStrategy { //TestLongStrategy,
     function originationFee() internal override virtual view returns(uint16) {
         return origFee;
     }
+    
+    function setReservesBalance(uint256 token1Amt, uint256 token2Amt) public virtual {
+        s.TOKEN_BALANCE[0] = uint128(token1Amt);
+        s.TOKEN_BALANCE[1] = uint128(token2Amt);
+    }
 }
