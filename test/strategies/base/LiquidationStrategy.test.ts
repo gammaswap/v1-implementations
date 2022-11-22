@@ -111,7 +111,18 @@ describe("LiquidationStrategy", function () {
           lastCFMMTotalSupply
         )
       ).wait();
+      await (
+        await liquidationStrategy.setHeldAmounts(tokenId, [19999, 19999])
+      ).wait();
       await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
+
+      const res1b = await liquidationStrategy.getLoan(tokenId);
+      expect(res1b.poolId).to.equal(liquidationStrategy.address);
+      expect(res1b.tokensHeld[0]).to.equal(0);
+      expect(res1b.tokensHeld[1]).to.equal(0);
+      expect(res1b.heldLiquidity).to.equal(0);
+      expect(res1b.liquidity).to.equal(0);
+      expect(res1b.lpTokens).to.equal(0);
     });
   });
 
@@ -149,6 +160,14 @@ describe("LiquidationStrategy", function () {
       ).wait();
       await (await cfmm.mint(ONE.mul(200), owner.address)).wait();
       await liquidationStrategy._liquidateWithLP(tokenId);
+
+      const res1b = await liquidationStrategy.getLoan(tokenId);
+      expect(res1b.poolId).to.equal(liquidationStrategy.address);
+      expect(res1b.tokensHeld[0]).to.equal(0);
+      expect(res1b.tokensHeld[1]).to.equal(0);
+      expect(res1b.heldLiquidity).to.equal(0);
+      expect(res1b.liquidity).to.equal(0);
+      expect(res1b.lpTokens).to.equal(0);
     });
   });
 });
