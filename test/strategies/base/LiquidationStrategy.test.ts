@@ -52,23 +52,6 @@ describe("LiquidationStrategy", function () {
     ).wait();
   });
 
-  const depositToStrategy = async (startLpTokens: BigNumber) => {
-    const ONE = BigNumber.from(10).pow(18);
-    const startLiquidity = ONE.mul(800);
-    const lastCFMMInvariant = startLiquidity.mul(2);
-    const lastCFMMTotalSupply = startLpTokens.mul(2);
-    await (
-      await liquidationStrategy.setLPTokenBalance(
-        startLiquidity,
-        startLpTokens,
-        lastCFMMInvariant,
-        lastCFMMTotalSupply
-      )
-    ).wait();
-
-    await (await cfmm.mint(startLpTokens, liquidationStrategy.address)).wait();
-  };
-
   const borrowMostOfIt = async (amount: BigNumber) => {
     const res = await (await liquidationStrategy.createLoan()).wait();
     const tokenId = res.events[0].args.tokenId;
@@ -151,13 +134,13 @@ describe("LiquidationStrategy", function () {
       await borrowMostOfIt(ONE.mul(30)); // spike up interest, (this doesn't change the result)
       await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
 
-      const res1b = await liquidationStrategy.getLoan(tokenId);
-      expect(res1b.poolId).to.equal(liquidationStrategy.address);
-      expect(res1b.tokensHeld[0]).to.equal(0);
-      expect(res1b.tokensHeld[1]).to.equal(0);
-      expect(res1b.heldLiquidity).to.equal(0);
-      expect(res1b.liquidity).to.equal(0);
-      expect(res1b.lpTokens).to.equal(0);
+      const res2 = await liquidationStrategy.getLoan(tokenId);
+      expect(res2.poolId).to.equal(liquidationStrategy.address);
+      expect(res2.tokensHeld[0]).to.equal(0);
+      expect(res2.tokensHeld[1]).to.equal(0);
+      expect(res2.heldLiquidity).to.equal(0);
+      expect(res2.liquidity).to.equal(0);
+      expect(res2.lpTokens).to.equal(0);
     });
 
     it("liquidate with rebalance", async function () {
@@ -197,40 +180,28 @@ describe("LiquidationStrategy", function () {
       await borrowMostOfIt(ONE.mul(30)); // spike up interest
       await liquidationStrategy._liquidate(tokenId, true, [1000, -1000]);
 
-      const res1b = await liquidationStrategy.getLoan(tokenId);
-      expect(res1b.poolId).to.equal(liquidationStrategy.address);
-      expect(res1b.tokensHeld[0]).to.equal(0);
-      expect(res1b.tokensHeld[1]).to.equal(0);
-      expect(res1b.heldLiquidity).to.equal(0);
-      expect(res1b.liquidity).to.equal(0);
-      expect(res1b.lpTokens).to.equal(0);
+      const res2 = await liquidationStrategy.getLoan(tokenId);
+      expect(res2.poolId).to.equal(liquidationStrategy.address);
+      expect(res2.tokensHeld[0]).to.equal(0);
+      expect(res2.tokensHeld[1]).to.equal(0);
+      expect(res2.heldLiquidity).to.equal(0);
+      expect(res2.liquidity).to.equal(0);
+      expect(res2.lpTokens).to.equal(0);
     });
   });
 
   describe("Test _liquidateWithLP", function () {
     it("returns error HasMargin", async function () {
-      const res = await (await liquidationStrategy.createLoan()).wait();
-      const tokenId = res.events[0].args.tokenId;
-      await expect(
-        liquidationStrategy._liquidateWithLP(tokenId)
-      ).to.be.revertedWith("HasMargin");
-    });
-
-    it("does not have enough margin so it liquidates", async function () {
-      await depositToStrategy(ONE.mul(500));
-      const res = await (await liquidationStrategy.createLoan()).wait();
-      const tokenId = res.events[0].args.tokenId;
-      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
-      await borrowMostOfIt(TWO); // spike up interest
-      const startLiquidity = ONE.mul(800);
-      const startLpTokens = ONE.mul(100);
-      const loanLiquidity = ONE.mul(20000);
-      const loanLPTokens = ONE.mul(10);
+      const startLiquidity = ONE.mul(10);
+      const startLpTokens = ONE.mul(10);
       const lastCFMMInvariant = startLiquidity.mul(2);
       const lastCFMMTotalSupply = startLpTokens.mul(2);
+      const loanLiquidity = ONE.mul(20000);
+      const loanLPTokens = ONE.mul(10);
+      const loanTokenAamt = ONE;
+      const loanTokenBamt = ONE;
       await (
-        await liquidationStrategy.setLPTokenLoanBalance(
-          tokenId,
+        await liquidationStrategy.setPoolBalances(
           startLiquidity,
           startLpTokens,
           loanLiquidity,
@@ -239,16 +210,70 @@ describe("LiquidationStrategy", function () {
           lastCFMMTotalSupply
         )
       ).wait();
-      await (await cfmm.mint(ONE.mul(200), owner.address)).wait();
+      const res = await (await liquidationStrategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
+      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
+      await (
+        await liquidationStrategy.setLoanBalances(
+          tokenId,
+          loanLiquidity,
+          loanLPTokens,
+          loanTokenAamt,
+          loanTokenBamt
+        )
+      ).wait();
+
+      await expect(
+        liquidationStrategy._liquidateWithLP(tokenId)
+      ).to.be.revertedWith("HasMargin");
+    });
+
+    it("does not have enough margin so it liquidates", async function () {
+      const startLiquidity = ONE.mul(40);
+      const startLpTokens = ONE.mul(20);
+      const loanLiquidity = ONE.mul(20000);
+      const loanLPTokens = ONE.mul(10);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (
+        await liquidationStrategy.setPoolBalances(
+          startLiquidity,
+          startLpTokens,
+          loanLiquidity,
+          loanLPTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
+      await (await tokenA.mint(liquidationStrategy.address, 50000)).wait();
+      await (await tokenB.mint(liquidationStrategy.address, 100000)).wait(); // error if reduced
+      await (await cfmm.mint(ONE.mul(20), liquidationStrategy.address)).wait();
+      await (await liquidationStrategy.setReservesBalance(40000, 40000)).wait();
+      const res = await (await liquidationStrategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
+      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
+      const loanTokenAamt = 20000;
+      const loanTokenBamt = 20000;
+      await (
+        await liquidationStrategy.setLoanBalances(
+          tokenId,
+          loanLiquidity,
+          loanLPTokens,
+          loanTokenAamt,
+          loanTokenBamt
+        )
+      ).wait();
+      await borrowMostOfIt(ONE.mul(30)); // spike up interest
+      await (await cfmm.mint(ONE, liquidationStrategy.address)).wait(); // this is required to resolve not full 
       await liquidationStrategy._liquidateWithLP(tokenId);
 
-      const res1b = await liquidationStrategy.getLoan(tokenId);
-      expect(res1b.poolId).to.equal(liquidationStrategy.address);
-      expect(res1b.tokensHeld[0]).to.equal(0);
-      expect(res1b.tokensHeld[1]).to.equal(0);
-      expect(res1b.heldLiquidity).to.equal(0);
-      expect(res1b.liquidity).to.equal(0);
-      expect(res1b.lpTokens).to.equal(0);
+      const res2 = await liquidationStrategy.getLoan(tokenId);
+      expect(res2.poolId).to.equal(liquidationStrategy.address);
+      expect(res2.tokensHeld[0]).to.equal(0);
+      expect(res2.tokensHeld[1]).to.equal(0);
+      expect(res2.heldLiquidity).to.equal(0);
+      expect(res2.liquidity).to.equal(0);
+      expect(res2.lpTokens).to.equal(0);
     });
   });
 });
