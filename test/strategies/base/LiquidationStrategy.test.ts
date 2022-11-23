@@ -114,20 +114,14 @@ describe("LiquidationStrategy", function () {
     });
 
     it("does not have enough margin so it liquidates", async function () {
-      const initialLPdeposit = ONE.mul(400);
-      const res = await (await liquidationStrategy.createLoan()).wait();
-      const tokenId = res.events[0].args.tokenId;
-      const startLiquidity = ONE.mul(800);
-      const startLpTokens = initialLPdeposit;
+      const startLiquidity = ONE.mul(40);
+      const startLpTokens = ONE.mul(20);
       const loanLiquidity = ONE.mul(20000);
       const loanLPTokens = ONE.mul(10);
       const lastCFMMInvariant = startLiquidity.mul(2);
       const lastCFMMTotalSupply = startLpTokens.mul(2);
-      await (await tokenA.mint(liquidationStrategy.address, 200000)).wait();
-      await (await tokenB.mint(liquidationStrategy.address, 400000)).wait();
       await (
-        await liquidationStrategy.setLPTokenLoanBalance(
-          tokenId,
+        await liquidationStrategy.setPoolBalances(
           startLiquidity,
           startLpTokens,
           loanLiquidity,
@@ -136,14 +130,72 @@ describe("LiquidationStrategy", function () {
           lastCFMMTotalSupply
         )
       ).wait();
-      await (
-        await liquidationStrategy.setHeldAmounts(tokenId, [20000, 20000])
-      ).wait();
+      await (await tokenA.mint(liquidationStrategy.address, 50000)).wait();
+      await (await tokenB.mint(liquidationStrategy.address, 100000)).wait(); // error if reduced
       await (await liquidationStrategy.setReservesBalance(40000, 40000)).wait();
-
+      const res = await (await liquidationStrategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
       await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
-      await borrowMostOfIt(TWO); // spike up interest
+      const loanTokenAamt = 20000;
+      const loanTokenBamt = 20000;
+      await (
+        await liquidationStrategy.setLoanBalances(
+          tokenId,
+          loanLiquidity,
+          loanLPTokens,
+          loanTokenAamt,
+          loanTokenBamt
+        )
+      ).wait();
+
+      await borrowMostOfIt(ONE.mul(30)); // spike up interest, (this doesn't change the result)
       await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
+
+      const res1b = await liquidationStrategy.getLoan(tokenId);
+      expect(res1b.poolId).to.equal(liquidationStrategy.address);
+      expect(res1b.tokensHeld[0]).to.equal(0);
+      expect(res1b.tokensHeld[1]).to.equal(0);
+      expect(res1b.heldLiquidity).to.equal(0);
+      expect(res1b.liquidity).to.equal(0);
+      expect(res1b.lpTokens).to.equal(0);
+    });
+
+    it("liquidate with rebalance", async function () {
+      const startLiquidity = ONE.mul(40);
+      const startLpTokens = ONE.mul(20);
+      const loanLiquidity = ONE.mul(20000);
+      const loanLPTokens = ONE.mul(10);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (
+        await liquidationStrategy.setPoolBalances(
+          startLiquidity,
+          startLpTokens,
+          loanLiquidity,
+          loanLPTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
+      await (await tokenA.mint(liquidationStrategy.address, 50000)).wait();
+      await (await tokenB.mint(liquidationStrategy.address, 100000)).wait(); // error if reduced
+      await (await liquidationStrategy.setReservesBalance(40000, 40000)).wait();
+      const res = await (await liquidationStrategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
+      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
+      const loanTokenAamt = 20000;
+      const loanTokenBamt = 20000;
+      await (
+        await liquidationStrategy.setLoanBalances(
+          tokenId,
+          loanLiquidity,
+          loanLPTokens,
+          loanTokenAamt,
+          loanTokenBamt
+        )
+      ).wait();
+      await borrowMostOfIt(ONE.mul(30)); // spike up interest
+      await liquidationStrategy._liquidate(tokenId, true, [1000, -1000]);
 
       const res1b = await liquidationStrategy.getLoan(tokenId);
       expect(res1b.poolId).to.equal(liquidationStrategy.address);
