@@ -77,8 +77,37 @@ describe("LiquidationStrategy", function () {
 
   describe("Test _liquidate", function () {
     it("returns error HasMargin", async function () {
+      const startLiquidity = ONE.mul(10);
+      const startLpTokens = ONE.mul(10);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      const loanLiquidity = ONE.mul(20000);
+      const loanLPTokens = ONE.mul(10);
+      const loanTokenAamt = ONE;
+      const loanTokenBamt = ONE;
+      await (
+        await liquidationStrategy.setPoolBalances(
+          startLiquidity,
+          startLpTokens,
+          loanLiquidity,
+          loanLPTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
       const res = await (await liquidationStrategy.createLoan()).wait();
       const tokenId = res.events[0].args.tokenId;
+      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
+      await (
+        await liquidationStrategy.setLoanBalances(
+          tokenId,
+          loanLiquidity,
+          loanLPTokens,
+          loanTokenAamt,
+          loanTokenBamt
+        )
+      ).wait();
+
       await expect(
         liquidationStrategy._liquidate(tokenId, false, [0, 0])
       ).to.be.revertedWith("HasMargin");
@@ -86,11 +115,8 @@ describe("LiquidationStrategy", function () {
 
     it("does not have enough margin so it liquidates", async function () {
       const initialLPdeposit = ONE.mul(400);
-      await depositToStrategy(initialLPdeposit);
       const res = await (await liquidationStrategy.createLoan()).wait();
       const tokenId = res.events[0].args.tokenId;
-      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
-      await borrowMostOfIt(TWO); // spike up interest
       const startLiquidity = ONE.mul(800);
       const startLpTokens = initialLPdeposit;
       const loanLiquidity = ONE.mul(20000);
@@ -115,6 +141,8 @@ describe("LiquidationStrategy", function () {
       ).wait();
       await (await liquidationStrategy.setReservesBalance(40000, 40000)).wait();
 
+      await (await liquidationStrategy.testOpenLoan(tokenId, ONE)).wait();
+      await borrowMostOfIt(TWO); // spike up interest
       await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
 
       const res1b = await liquidationStrategy.getLoan(tokenId);

@@ -43,20 +43,9 @@ contract TestLiquidationStrategy is LiquidationStrategy { //TestLongStrategy,
         rateIndex = _loan.rateIndex;
     }
 
-    function setLiquidity(uint256 tokenId, uint128 liquidity) public virtual {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-        _loan.liquidity = liquidity;
-    }
-
     function setHeldAmounts(uint256 tokenId, uint128[] calldata heldAmounts) public virtual {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
         _loan.tokensHeld = heldAmounts;
-    }
-
-    function checkMargin(uint256 tokenId, uint256 limit) public virtual view returns(bool) {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-        checkMargin(_loan, limit);
-        return true;
     }
 
     function setBorrowRate(uint80 _borrowRate) public virtual {
@@ -82,10 +71,6 @@ contract TestLiquidationStrategy is LiquidationStrategy { //TestLongStrategy,
         amounts = new uint256[](2);
         amounts[0] = liquidity;
         amounts[1] = liquidity * 2;
-    }
-
-    function squareRoot(uint256 num) public virtual pure returns(uint256) {
-        return Math.sqrt(num * (10**18));
     }
 
     function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
@@ -122,18 +107,10 @@ contract TestLiquidationStrategy is LiquidationStrategy { //TestLongStrategy,
     }
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
-        amounts = new uint256[](2);
-        amounts[0] = amount * 2;
-        amounts[1] = amount * 4;
     }
 
     function testOpenLoan(uint256 tokenId, uint256 lpTokens) public virtual {
         openLoan(_getLoan(tokenId), lpTokens);
-    }
-
-    function testPayLoan(uint256 tokenId, uint256 liquidity) public virtual {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-        payLoan(_loan, liquidity);
     }
 
     function updateLoan(LibStorage.Loan storage _loan) internal override {
@@ -141,67 +118,48 @@ contract TestLiquidationStrategy is LiquidationStrategy { //TestLongStrategy,
         updateLoanLiquidity(_loan, rateIndex);
     }
 
-    function setLPTokenLoanBalance(uint256 tokenId, uint256 lpInvariant, uint256 lpTokenBalance, uint256 liquidity, uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-
+    function setPoolBalances(uint256 lpInvariant, uint256 lpTokenBalance, uint256 liquidity, uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {    
         s.LP_INVARIANT = uint128(lpInvariant);
         s.LP_TOKEN_BALANCE = lpTokenBalance;
-
         s.BORROWED_INVARIANT = uint128(liquidity);
         s.LP_TOKEN_BORROWED = lpTokens;
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokens;
-
-        //s.TOTAL_INVARIANT = s.LP_INVARIANT + s.BORROWED_INVARIANT;
-        //s.LP_TOKEN_TOTAL = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
+    }
 
+    function setLoanBalances(uint256 tokenId, uint256 liquidity, uint256 lpTokens, uint256 tokAamt, uint256 tokBamt) public virtual {    
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+        _loan.liquidity = uint128(liquidity);
+        _loan.lpTokens = lpTokens;
+        _loan.tokensHeld[0] = uint128(tokAamt);
+        _loan.tokensHeld[1] = uint128(tokBamt);
+    }
+    
+    function setLPTokenLoanBalance(uint256 tokenId, uint256 lpInvariant, uint256 lpTokenBalance, uint256 liquidity, uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+        s.LP_INVARIANT = uint128(lpInvariant);
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
+        s.BORROWED_INVARIANT = uint128(liquidity);
+        s.LP_TOKEN_BORROWED = lpTokens;
+        s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokens;
+        s.lastCFMMInvariant = uint128(lastCFMMInvariant);
+        s.lastCFMMTotalSupply = lastCFMMTotalSupply;
         _loan.liquidity = uint128(liquidity);
         _loan.lpTokens = lpTokens;
     }
 
     function setLPTokenBalance(uint256 lpInvariant, uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {
         s.LP_TOKEN_BALANCE = lpTokenBalance;
-        //s.LP_TOKEN_TOTAL = lpTokenBalance;
         s.LP_INVARIANT = uint128(lpInvariant);
-        //s.TOTAL_INVARIANT = lpInvariant;
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
-    }
-
-    function chargeLPTokenInterest(uint256 tokenId, uint256 lpTokenInterest) public virtual {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-
-        uint128 invariantInterest = uint128(lpTokenInterest * s.LP_INVARIANT / s.LP_TOKEN_BALANCE);
-        _loan.liquidity = _loan.liquidity + invariantInterest;
-        s.BORROWED_INVARIANT = s.BORROWED_INVARIANT + invariantInterest;
-        //s.TOTAL_INVARIANT = s.TOTAL_INVARIANT + invariantInterest;
-
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = s.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokenInterest;
-        //s.LP_TOKEN_TOTAL = s.LP_TOKEN_TOTAL + lpTokenInterest;
-    }
-
-    function getLoanChangeData(uint256 tokenId) public virtual view returns(uint256 loanLiquidity, uint256 loanLpTokens,
-        uint256 borrowedInvariant, uint256 lpInvariant, uint256 totalInvariant,
-        uint256 lpTokenBorrowed, uint256 lpTokenBalance, uint256 lpTokenBorrowedPlusInterest,
-        uint256 lpTokenTotal, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-
-        return(_loan.liquidity, _loan.lpTokens,
-            s.BORROWED_INVARIANT, s.LP_INVARIANT, (s.BORROWED_INVARIANT + s.LP_INVARIANT),
-            s.LP_TOKEN_BORROWED, s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED_PLUS_INTEREST,
-            (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
-    }
-
-    function setOriginationFee(uint16 _origFee) external virtual {
-        origFee = _origFee;
     }
 
     function originationFee() internal override virtual view returns(uint16) {
         return origFee;
     }
-    
+
     function setReservesBalance(uint256 token1Amt, uint256 token2Amt) public virtual {
         s.TOKEN_BALANCE[0] = uint128(token1Amt);
         s.TOKEN_BALANCE[1] = uint128(token2Amt);
