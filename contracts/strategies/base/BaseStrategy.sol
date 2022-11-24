@@ -28,26 +28,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
 
-    function updateTWAP() internal virtual {
-        uint32 blockTimestamp = uint32(block.timestamp % 2**32);
-        uint32 timeElapsed = blockTimestamp - s.lastBlockTimestamp;
-        uint32 secondsInADay = 86400;
-        if (timeElapsed > 0) {
-            if (timeElapsed >= secondsInADay) { // reset
-                s.cumulativeTime = 0;
-                s.cumulativeYield = 0;
-            }
-            if (s.cumulativeTime < secondsInADay) {
-                s.cumulativeTime += timeElapsed;
-                s.cumulativeYield += timeElapsed * s.lastFeeIndex;
-                s.yieldTWAP = s.cumulativeYield / s.cumulativeTime;
-            } else {
-                s.yieldTWAP = (s.yieldTWAP * (secondsInADay - timeElapsed) + s.lastFeeIndex * timeElapsed) / secondsInADay;
-            }
-        }
-        s.lastBlockTimestamp = blockTimestamp;
-    }
-
     function calcCFMMFeeIndex(uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
         if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
             uint256 prevInvariant = borrowedInvariant > prevCFMMInvariant ? borrowedInvariant : prevCFMMInvariant; // deleverage CFMM Yield
@@ -96,8 +76,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.LP_INVARIANT = uint128(calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
-        //s.LP_TOKEN_TOTAL = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        //s.TOTAL_INVARIANT = s.LP_INVARIANT + s.BORROWED_INVARIANT;
 
         s.accFeeIndex = uint96((s.accFeeIndex * lastFeeIndex) / 10**18);
         s.LAST_BLOCK_NUMBER = uint48(block.number);
@@ -107,7 +85,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
         updateCFMMIndex();
         updateFeeIndex();
-        // updateTWAP();
         uint256 lastFeeIndex = updateStore();
 
         if(s.BORROWED_INVARIANT >= 0) {
