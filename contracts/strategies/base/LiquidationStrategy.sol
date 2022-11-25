@@ -84,15 +84,14 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         _loan.tokensHeld = tokensHeld;
 
         uint256 liquidity = _loan.liquidity;
-        payLoan(_loan, liquidity);
-
         if(payLiquidity < liquidity) {
             uint256 writeDownAmt = 0;
             unchecked {
                 writeDownAmt = liquidity - payLiquidity;
             }
-            writeDown(writeDownAmt);
+            _loan.liquidity = uint128(writeDown(liquidity, writeDownAmt));
         }
+        payLoan(_loan, liquidity);
 
         emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
 
@@ -108,11 +107,12 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         }
     }
 
-    function writeDown(uint256 payLiquidity) internal virtual {
+    function writeDown(uint256 liquidity, uint256 writeDownAmt) internal virtual returns(uint256 newLiquidity){
         uint128 borrowedInvariant = s.BORROWED_INVARIANT;
-        borrowedInvariant = borrowedInvariant - uint128(payLiquidity); // won'toverflow because borrowedInvariant is going down to at least the invariant in collateral units
+        borrowedInvariant = borrowedInvariant - uint128(writeDownAmt); // won'toverflow because borrowedInvariant is going down to at least the invariant in collateral units
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(borrowedInvariant, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.BORROWED_INVARIANT = borrowedInvariant;
+        newLiquidity = liquidity - writeDownAmt;
     }
 
 }
