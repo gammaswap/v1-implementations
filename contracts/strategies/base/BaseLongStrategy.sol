@@ -67,25 +67,28 @@ abstract contract BaseLongStrategy is BaseStrategy {
         _loan.lpTokens = _loan.lpTokens + lpTokens;
     }
 
-    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity) internal virtual {
-        uint256 newLPBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
+    function getLpTokenBalance() internal virtual returns(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) {
+        newLPBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
         uint256 lpTokenBalance = s.LP_TOKEN_BALANCE;
         if(newLPBalance <= lpTokenBalance) {// the change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
             revert NotEnoughLPDeposit();
         }
         uint256 lpTokenChange = newLPBalance - lpTokenBalance;
-        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
+        lastCFMMInvariant = s.lastCFMMInvariant;
+        lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
+    }
+
+    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity) internal virtual {
+        (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) = getLpTokenBalance();
         liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
 
         uint256 borrowedInvariant = s.BORROWED_INVARIANT;
         uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
         uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// TODO: What about when it's very very small amounts in denominator?
-        uint256 lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.lpTokens, _loan.liquidity);
-        uint256 liquidityPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, _loan.initLiquidity, _loan.liquidity);
 
-        s.LP_TOKEN_BORROWED = s.LP_TOKEN_BORROWED - lpTokenPrincipal;
+        (uint256 lpTokenPrincipal, uint256 liquidityPrincipal) = getPaidPrincipal(liquidity, _loan.lpTokens, _loan.initLiquidity, _loan.liquidity);
+
         borrowedInvariant = borrowedInvariant - liquidity; // won't overflow
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
 
@@ -95,11 +98,18 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
         //s.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
-        //s.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
+        //s.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;/**/
 
+        s.LP_TOKEN_BORROWED = s.LP_TOKEN_BORROWED - lpTokenPrincipal;
         _loan.liquidity = _loan.liquidity - uint128(liquidity);
         _loan.initLiquidity = _loan.initLiquidity - uint128(liquidityPrincipal);
         _loan.lpTokens = _loan.lpTokens - lpTokenPrincipal;
+    }
+
+    function getPaidPrincipal(uint256 liquidity, uint256 loanLpTokens, uint256 loanInitLiquidity, uint256 loanLiquidity) internal virtual
+        returns(uint256 lpTokenPrincipal, uint256 liquidityPrincipal) {
+        lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, loanLpTokens, loanLiquidity);
+        liquidityPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, loanInitLiquidity, loanLiquidity);
     }
 
     function sendToken(IERC20 token, address to, uint256 amount, uint256 balance, uint256 collateral) internal {
