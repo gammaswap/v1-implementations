@@ -114,7 +114,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         }
         payBatchLoans(liquidityTotal, lpTokensPrincipalTotal);
         return tokensHeldTotal;
-    }/**/
+    }
 
     function payBatchLoans(uint256 liquidity, uint256 lpTokenPrincipal) internal virtual {
         (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) = getLpTokenBalance();
@@ -172,7 +172,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         return refund;
     }
 
-    function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual {
+    function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
         if(collateral * limit / 1000 >= liquidity) {
             revert HasMargin();
         }

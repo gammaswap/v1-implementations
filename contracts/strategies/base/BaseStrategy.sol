@@ -69,7 +69,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         return lastCFMMTotalSupply == 0 ? 0 : (lpTokenBalance * lastCFMMInvariant) / lastCFMMTotalSupply;
     }
 
-    function updateStore() internal virtual returns(uint256 lastFeeIndex) {
+    function updateStore() internal virtual returns(uint256 lastFeeIndex, uint256 accFeeIndex) {
         lastFeeIndex = s.lastFeeIndex;
         //lastFeeIndex = uint80(calcFeeIndex(s.lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
         s.BORROWED_INVARIANT = uint128(accrueBorrowedInvariant(s.BORROWED_INVARIANT, lastFeeIndex));
@@ -77,15 +77,17 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.LP_INVARIANT = uint128(calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
 
-        s.accFeeIndex = uint96((s.accFeeIndex * lastFeeIndex) / 10**18);
+        accFeeIndex = (s.accFeeIndex * lastFeeIndex) / 10**18;
+        s.accFeeIndex = uint96(accFeeIndex);
         s.LAST_BLOCK_NUMBER = uint48(block.number);
     }
 
-    function updateIndex() internal virtual {
+    function updateIndex() internal virtual returns(uint256 accFeeIndex) {
 
         updateCFMMIndex();
         updateFeeIndex();
-        uint256 lastFeeIndex = updateStore();
+        uint256 lastFeeIndex;
+        (lastFeeIndex, accFeeIndex) = updateStore();
 
         if(s.BORROWED_INVARIANT >= 0) {
             // mintToDevs(lastFeeIndex);
@@ -108,13 +110,14 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         }
     }
 
-    function updateLoan(LibStorage.Loan storage _loan) internal virtual {
-        updateIndex();
-        updateLoanLiquidity(_loan, s.accFeeIndex);
+    function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256){
+        uint256 accFeeIndex = updateIndex();
+        return updateLoanLiquidity(_loan, accFeeIndex);
     }
 
-    function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual {
-        _loan.liquidity = uint128((_loan.liquidity * accFeeIndex) / _loan.rateIndex);
+    function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity){
+        liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
+        _loan.liquidity = uint128(liquidity);
         _loan.rateIndex = uint96(accFeeIndex);
     }
 
