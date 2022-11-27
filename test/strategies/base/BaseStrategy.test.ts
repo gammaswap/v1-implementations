@@ -1287,7 +1287,7 @@ describe("BaseStrategy", function () {
       await (
         await strategy.setUpdateStoreFields(
           ONE.mul(10),
-          ONE.mul(200),
+          ONE.mul(20),
           ONE.mul(30),
           ONE.mul(40),
           ONE.mul(50),
@@ -1333,6 +1333,7 @@ describe("BaseStrategy", function () {
 
       const bal1 = await strategy.balanceOf(addr1.address);
       const feeToPoolBal0 = bal1.sub(bal0);
+      expect(feeToPoolBal0.toNumber()).to.greaterThan(0);
       // console.log(feeToPoolBal0);
       expect(feeToPoolBal0).to.equal(expNewDevShares);
     });
