@@ -1296,6 +1296,10 @@ describe("BaseStrategy", function () {
       ).wait();
       await (await strategy.testMint(owner.address, ONE.mul(2))).wait();
 
+      // beginning balance of addr1
+      await (await strategy.testMint(addr1.address, "123456")).wait();
+      const bal0 = await strategy.balanceOf(addr1.address);
+
       // set the address before minting
       factory.setFeeTo(addr1.address);
 
@@ -1326,7 +1330,9 @@ describe("BaseStrategy", function () {
       const expNewDevShares = totalPoolSharesSupply // get the pre mint value
         .mul(acctGrowth)
         .div(ONE.sub(acctGrowth));
-      const feeToPoolBal0 = await strategy.balanceOf(addr1.address);
+
+      const bal1 = await strategy.balanceOf(addr1.address);
+      const feeToPoolBal0 = bal1 - bal0;
       // console.log(feeToPoolBal0);
       expect(feeToPoolBal0).to.equal(expNewDevShares);
     });
