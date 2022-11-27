@@ -1332,7 +1332,7 @@ describe("BaseStrategy", function () {
         .div(ONE.sub(acctGrowth));
 
       const bal1 = await strategy.balanceOf(addr1.address);
-      const feeToPoolBal0 = bal1 - bal0;
+      const feeToPoolBal0 = bal1.sub(bal0);
       // console.log(feeToPoolBal0);
       expect(feeToPoolBal0).to.equal(expNewDevShares);
     });
