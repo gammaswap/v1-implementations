@@ -97,8 +97,7 @@ contract TestBaseStrategy is BaseStrategy {
         updateIndex();
     }
 
-    function testUpdateIndexWithMintToDev() public virtual {
-        updateIndex();
+    function testMintToDev() public virtual {
         if(s.BORROWED_INVARIANT >= 0) {
             mintToDevs(s.lastFeeIndex);
         }

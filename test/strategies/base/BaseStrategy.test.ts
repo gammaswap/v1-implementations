@@ -1309,8 +1309,17 @@ describe("BaseStrategy", function () {
       const uniInvariant = sqrt(reserves[0].mul(reserves[1]));
       await strategy.setInvariant(uniInvariant);
 
-      await (await strategy.testUpdateIndexWithMintToDev()).wait(); // <- mint happens here
+      const fields0 = await strategy.getUpdateIndexFields();
+      await (await strategy.testUpdateIndex()).wait();
 
+      // compare borrowedInvariant and no new shares issued
+      const fields1 = await strategy.getUpdateIndexFields();
+      expect(fields1.borrowedInvariant.gt(fields0.borrowedInvariant)).to.equal(true);
+      const totalPoolSharesSupply1 = await strategy.totalSupply();
+      expect(totalPoolSharesSupply1).to.equal(totalPoolSharesSupply);
+
+      await (await strategy.testMintToDev()).wait(); // <- mint happens here
+      
       const fields = await strategy.getUpdateIndexFields();
       const lastFeeIndex = fields.lastFeeIndex;
       const borrowedInvariant = fields.borrowedInvariant;
