@@ -97,6 +97,12 @@ contract TestBaseStrategy is BaseStrategy {
         updateIndex();
     }
 
+    function testMintToDev() public virtual {
+        if(s.BORROWED_INVARIANT >= 0) {
+            mintToDevs(s.lastFeeIndex);
+        }
+    }
+
     function getUpdateIndexFields() public virtual view returns(uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant, uint256 lastCFMMFeeIndex,
         uint256 lastFeeIndex, uint256 accFeeIndex, uint256 borrowedInvariant, uint256 lpInvariant, uint256 totalInvariant,
         uint256 lpTokenBorrowedPlusInterest, uint256 lpTokenBal, uint256 lpTokenTotal, uint256 lastBlockNumber) {
