@@ -71,6 +71,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
     function updateStore() internal virtual returns(uint256 lastFeeIndex, uint256 accFeeIndex) {
         lastFeeIndex = s.lastFeeIndex;
+
         //lastFeeIndex = uint80(calcFeeIndex(s.lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
         s.BORROWED_INVARIANT = uint128(accrueBorrowedInvariant(s.BORROWED_INVARIANT, lastFeeIndex));
 
@@ -83,7 +84,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     function updateIndex() internal virtual returns(uint256 accFeeIndex) {
-
         updateCFMMIndex();
         updateFeeIndex();
         uint256 lastFeeIndex;

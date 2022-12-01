@@ -2,6 +2,8 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
+const GammaPoolFactoryJSON = require("@gammaswap/v1-core/artifacts/contracts/GammaPoolFactory.sol/GammaPoolFactory.json");
+
 const PROTOCOL_ID = 1;
 
 describe("BaseStrategy", function () {
@@ -14,6 +16,8 @@ describe("BaseStrategy", function () {
   let strategy: any;
   let owner: any;
   let addr1: any;
+  let GammaPoolFactory: any;
+  let factory: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -34,7 +38,14 @@ describe("BaseStrategy", function () {
       "TCFMM"
     );
 
-    strategy = await TestStrategy.deploy(owner.address, PROTOCOL_ID);
+    GammaPoolFactory = new ethers.ContractFactory(
+      GammaPoolFactoryJSON.abi,
+      GammaPoolFactoryJSON.bytecode,
+      owner
+    );
+
+    factory = await GammaPoolFactory.deploy(owner.address);
+    strategy = await TestStrategy.deploy(factory.address, PROTOCOL_ID);
     await (
       await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
     ).wait();
@@ -257,7 +268,7 @@ describe("BaseStrategy", function () {
   describe("Deployment", function () {
     it("Should set right init params", async function () {
       const params = await strategy.getParameters();
-      expect(params.factory).to.equal(owner.address);
+      expect(params.factory).to.equal(factory.address);
       expect(params.cfmm).to.equal(cfmm.address);
       expect(params.tokens[0]).to.equal(tokenA.address);
       expect(params.tokens[1]).to.equal(tokenB.address);
@@ -1248,6 +1259,92 @@ describe("BaseStrategy", function () {
 
       const loan1 = await strategy.getLoan(tokenId);
       expect(loan1.liquidity).to.gt(liquidity);
+    });
+  });
+
+  describe("mintToDevs", function () {
+    const sqrt = (y: BigNumber) => {
+      let z;
+      if (y.gt(3)) {
+        z = y;
+        let x = y.div(2).add(1);
+        while (x.lt(z)) {
+          z = x;
+          x = y.div(x).add(x).div(2);
+        }
+      } else if (!y.isZero()) {
+        z = BigNumber.from(1);
+      }
+      return z;
+    };
+
+    it("Mints to Dev Address", async () => {
+      // setup
+      const ONE = BigNumber.from(10).pow(18);
+      await (await tokenA.transfer(cfmm.address, ONE.mul(500))).wait();
+      await (await tokenB.transfer(cfmm.address, ONE.mul(1000))).wait();
+      await (await cfmm.mint(ONE.mul(4), strategy.address)).wait();
+      await (
+        await strategy.setUpdateStoreFields(
+          ONE.mul(10),
+          ONE.mul(20),
+          ONE.mul(30),
+          ONE.mul(40),
+          ONE.mul(50),
+          ONE.mul(60)
+        )
+      ).wait();
+      await (await strategy.testMint(owner.address, ONE.mul(2))).wait();
+
+      // beginning balance of addr1
+      await (await strategy.testMint(addr1.address, "123456")).wait();
+      const bal0 = await strategy.balanceOf(addr1.address);
+
+      // set the address before minting
+      factory.setFeeTo(addr1.address);
+
+      // need premint values to calculate minted amount
+      const totalPoolSharesSupply = await strategy.totalSupply();
+      const reserves = await cfmm.getReserves();
+      const uniInvariant = sqrt(reserves[0].mul(reserves[1]));
+      await strategy.setInvariant(uniInvariant);
+
+      const fields0 = await strategy.getUpdateIndexFields();
+      await (await strategy.testUpdateIndex()).wait();
+
+      // compare borrowedInvariant and no new shares issued
+      const fields1 = await strategy.getUpdateIndexFields();
+      expect(fields1.borrowedInvariant.gt(fields0.borrowedInvariant)).to.equal(true);
+      const totalPoolSharesSupply1 = await strategy.totalSupply();
+      expect(totalPoolSharesSupply1).to.equal(totalPoolSharesSupply);
+
+      await (await strategy.testMintToDev()).wait(); // <- mint happens here
+
+      const fields = await strategy.getUpdateIndexFields();
+      const lastFeeIndex = fields.lastFeeIndex;
+      const borrowedInvariant = fields.borrowedInvariant;
+      const poolLPbalance = fields.lpTokenBal;
+      const devFee = await factory.fee();
+      const totalUniSupply = await cfmm.totalSupply();
+      const uniShareInvariant = poolLPbalance // <- it was using cfmm.balanceOf(strategy.address); before
+        .mul(uniInvariant)
+        .div(totalUniSupply);
+      const factor = lastFeeIndex
+        .sub(ONE)
+        .mul(BigNumber.from(devFee.toString()))
+        .div(lastFeeIndex);
+      const acctGrowth = factor
+        .mul(borrowedInvariant)
+        .div(borrowedInvariant.add(uniShareInvariant));
+      const expNewDevShares = totalPoolSharesSupply // get the pre mint value
+        .mul(acctGrowth)
+        .div(ONE.sub(acctGrowth));
+
+      const bal1 = await strategy.balanceOf(addr1.address);
+      const feeToPoolBal0 = bal1.sub(bal0);
+      expect(feeToPoolBal0.toNumber()).to.greaterThan(0);
+      // console.log(feeToPoolBal0);
+      expect(feeToPoolBal0).to.equal(expNewDevShares);
     });
   });
 });

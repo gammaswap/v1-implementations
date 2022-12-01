@@ -145,7 +145,7 @@ contract TestLongStrategy is LongStrategy {
 
     function testPayLoan(uint256 tokenId, uint256 liquidity) public virtual {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
-        payLoan(_loan, liquidity);
+        payLoan(_loan, liquidity, _loan.liquidity);
     }
 
     function updateLoan(LibStorage.Loan storage _loan) internal override returns(uint256){

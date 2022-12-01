@@ -22,12 +22,12 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
         sendTokens(_loan, to, amounts);
         tokensHeld = updateCollateral(_loan);
-        uint256 liquidity = updateLoan(_loan);
+        uint256 loanLiquidity = updateLoan(_loan);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, liquidity, 800);
+        checkMargin(collateral, loanLiquidity, 800);
 
-        emit LoanUpdated(tokenId, tokensHeld, liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -40,18 +40,18 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         }
 
         LibStorage.Loan storage _loan = _getLoan(tokenId);
-        uint256 liquidity = updateLoan(_loan);
+        uint256 loanLiquidity = updateLoan(_loan);
 
         amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
 
         uint128[] memory tokensHeld = updateCollateral(_loan);
 
-        liquidity = openLoan(_loan, lpTokens);
+        loanLiquidity = openLoan(_loan, lpTokens);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, liquidity, 800);
+        checkMargin(collateral, loanLiquidity, 800);
 
-        emit LoanUpdated(tokenId, tokensHeld, liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -60,9 +60,9 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
     function _repayLiquidity(uint256 tokenId, uint256 payLiquidity) external virtual override lock returns(uint256 liquidityPaid, uint256[] memory amounts) {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
 
-        uint256 _liquidity = updateLoan(_loan);
+        uint256 loanLiquidity = updateLoan(_loan);
 
-        liquidityPaid = payLiquidity > _liquidity ? _liquidity : payLiquidity;
+        liquidityPaid = payLiquidity > loanLiquidity ? loanLiquidity : payLiquidity;
 
         amounts = calcTokensToRepay(liquidityPaid);// Now this amounts will always be correct. The other way, the user might have sometimes paid more than he wanted to just to pay off the loan.
 
@@ -71,9 +71,9 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         // then update collateral
         uint128[] memory tokensHeld = updateCollateral(_loan);
 
-        payLoan(_loan, liquidityPaid);
+        loanLiquidity = payLoan(_loan, liquidityPaid, loanLiquidity);
 
-        emit LoanUpdated(tokenId, tokensHeld, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
@@ -82,7 +82,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
     function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint128[] memory tokensHeld) {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
 
-        uint256 liquidity = updateLoan(_loan);
+        uint256 loanLiquidity = updateLoan(_loan);
 
         (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(_loan, deltas);
 
@@ -91,9 +91,9 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         tokensHeld = updateCollateral(_loan);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, liquidity, 850);
+        checkMargin(collateral, loanLiquidity, 850);
 
-        emit LoanUpdated(tokenId, tokensHeld, liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
             s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);

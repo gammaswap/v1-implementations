@@ -32,9 +32,10 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     function sendTokens(LibStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
-        for (uint256 i = 0; i < s.tokens.length; i++) {
+        address[] memory tokens = s.tokens;
+        for (uint256 i = 0; i < tokens.length; i++) {
             if(amounts[i] > 0) {
-                sendToken(IERC20(s.tokens[i]), to, amounts[i], s.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
+                sendToken(IERC20(tokens[i]), to, amounts[i], s.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
             }
         }
     }
@@ -80,16 +81,20 @@ abstract contract BaseLongStrategy is BaseStrategy {
         paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
     }
 
-    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity) internal virtual returns(uint256 remainingLiquidity) {
+    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
         (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) = getLpTokenBalance();
         liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
 
+        uint256 lpTokenPrincipal;
+        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, _loan);
+
+        payPoolDebt(liquidity, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance);
+    }
+
+    function payPoolDebt(uint256 liquidity, uint256 lpTokenPrincipal, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 newLPBalance) internal virtual {
         uint256 borrowedInvariant = s.BORROWED_INVARIANT;
         uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
         uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// TODO: What about when it's very very small amounts in denominator?
-
-        uint256 lpTokenPrincipal;
-        (lpTokenPrincipal, remainingLiquidity) = getPaidPrincipal(liquidity, _loan);
 
         borrowedInvariant = borrowedInvariant - liquidity; // won't overflow
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
@@ -105,16 +110,18 @@ abstract contract BaseLongStrategy is BaseStrategy {
         s.LP_TOKEN_BORROWED = s.LP_TOKEN_BORROWED - lpTokenPrincipal;
     }
 
-    function getPaidPrincipal(uint256 liquidity, LibStorage.Loan storage _loan) internal virtual
+    function payLoanLiquidity(uint256 liquidity, uint256 loanLiquidity, LibStorage.Loan storage _loan) internal virtual
         returns(uint256 lpTokenPrincipal, uint256 remainingLiquidity) {
         uint256 loanLpTokens = _loan.lpTokens;
-        uint256 loanLiquidity = _loan.liquidity;
         uint256 loanInitLiquidity = _loan.initLiquidity;
         lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, loanLpTokens, loanLiquidity);
         _loan.initLiquidity = uint128(loanInitLiquidity - calcLPTokenBorrowedPlusInterest(liquidity, loanInitLiquidity, loanLiquidity));
-        _loan.lpTokens = uint128(loanLpTokens - lpTokenPrincipal);
+        _loan.lpTokens = loanLpTokens - lpTokenPrincipal;
         remainingLiquidity = loanLiquidity - liquidity;
         _loan.liquidity = uint128(remainingLiquidity);
+        if(remainingLiquidity == 0) {
+            _loan.rateIndex = 0;
+        }
     }
 
     function sendToken(IERC20 token, address to, uint256 amount, uint256 balance, uint256 collateral) internal {

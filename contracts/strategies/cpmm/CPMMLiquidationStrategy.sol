@@ -9,7 +9,4 @@ contract CPMMLiquidationStrategy is CPMMBaseLongStrategy, LiquidationStrategy {
     constructor(uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         CPMMBaseLongStrategy(0, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
-
-    function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual override returns(uint256){
-    }
 }
