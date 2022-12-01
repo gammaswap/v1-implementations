@@ -1319,7 +1319,7 @@ describe("BaseStrategy", function () {
       expect(totalPoolSharesSupply1).to.equal(totalPoolSharesSupply);
 
       await (await strategy.testMintToDev()).wait(); // <- mint happens here
-      
+
       const fields = await strategy.getUpdateIndexFields();
       const lastFeeIndex = fields.lastFeeIndex;
       const borrowedInvariant = fields.borrowedInvariant;

@@ -64,7 +64,10 @@ contract TestLongStrategy is LongStrategy {
 
     function checkMargin(uint256 tokenId, uint256 limit) public virtual view returns(bool) {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
-        checkMargin(_loan, limit);
+
+        uint256 collateral = calcInvariant(s.cfmm, _loan.tokensHeld);
+        checkMargin(collateral, _loan.liquidity, limit);
+
         return true;
     }
 
@@ -142,12 +145,12 @@ contract TestLongStrategy is LongStrategy {
 
     function testPayLoan(uint256 tokenId, uint256 liquidity) public virtual {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
-        payLoan(_loan, liquidity);
+        payLoan(_loan, liquidity, _loan.liquidity);
     }
 
-    function updateLoan(LibStorage.Loan storage _loan) internal override {
+    function updateLoan(LibStorage.Loan storage _loan) internal override returns(uint256){
         uint96 rateIndex = borrowRate;
-        updateLoanLiquidity(_loan, rateIndex);
+        return updateLoanLiquidity(_loan, rateIndex);
     }
 
     function setLPTokenLoanBalance(uint256 tokenId, uint256 lpInvariant, uint256 lpTokenBalance, uint256 liquidity, uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual {

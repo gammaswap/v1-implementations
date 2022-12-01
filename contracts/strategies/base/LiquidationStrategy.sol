@@ -4,202 +4,168 @@ pragma solidity 0.8.4;
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/ILiquidationStrategy.sol";
 import "./BaseLongStrategy.sol";
 import "../../libraries/Math.sol";
+import "hardhat/console.sol";
 
 abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy {
 
+    error NoLiquidityProvided();
     error NotFullLiquidation();
     error HasMargin();
 
+    event WriteDown(uint256 writeDownAmt);
+    event BatchLiquidity(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] tokensHeldTotal, uint16 count);
+
     function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
+        (LibStorage.Loan storage _loan, uint256 loanLiquidity, ) = getLoanLiquidityAndCollateral(tokenId);
 
-        updateLoan(_loan);
+        uint128[] memory tokensHeld = rebalanceAndDepositCollateral(_loan, loanLiquidity, deltas);
 
-        uint256 collateral = calcInvariant(s.cfmm, _loan.tokensHeld);
-        uint256 liquidity = _loan.liquidity;
+        (tokensHeld, refund, loanLiquidity) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, true);
+        _loan.tokensHeld = tokensHeld;
 
-        canLiquidate(collateral, liquidity, 950);
-
-        uint256 payLiquidity = Math.min(collateral * 975 / 1000, liquidity);
-
-        if(isRebalance) {
-            (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(_loan, deltas);
-
-            swapTokens(_loan, outAmts, inAmts);
-        }
-
-        updateCollateral(_loan);
-
-        uint256[] memory amounts = calcTokensToRepay(payLiquidity);// Now this amounts will always be correct. The other way, the user might have sometimes paid more than he wanted to just to pay off the loan.
-
-        repayTokens(_loan, amounts);//SO real lptokens can be greater than we expected in repaying. Because real can go up untracked but can't go down untracked. So we might have repaid more than we expected even though we sent a smaller amount.
-
-        // then update collateral
-        updateCollateral(_loan);// TODO: check that you got the min amount you expected. You might send less amounts than you expected. Which is good for you. It's only bad if sent out more, that's where slippage protection comes in.
-
-        return payLoanAndRefundLiquidator(tokenId, _loan, payLiquidity);
+        emit LoanUpdated(tokenId, tokensHeld, 0, 0, 0);
     }
 
     function _liquidateWithLP(uint256 tokenId) external override lock virtual returns(uint256[] memory refund) {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
+        (LibStorage.Loan storage _loan, uint256 loanLiquidity, uint128[] memory tokensHeld) = getLoanLiquidityAndCollateral(tokenId);
 
-        uint256 lpDeposit = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
-
-        updateLoan(_loan);
-
-        uint256 collateral = calcInvariant(s.cfmm, _loan.tokensHeld);
-        uint256 liquidity = _loan.liquidity;
-
-        canLiquidate(collateral, liquidity, 950);
-
-        uint256 payLiquidity = Math.min(collateral * 975 / 1000, liquidity);
-
-        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 invDeposit = lpDeposit * lastCFMMInvariant / lastCFMMTotalSupply;
-        if(invDeposit < payLiquidity) {
-            revert NotFullLiquidation();
-        }
-
-        uint256 invReturn = invDeposit - payLiquidity;
-        if(invReturn > 0) {
-            uint256 lpReturn = invReturn * lastCFMMTotalSupply / lastCFMMInvariant;
-            GammaSwapLibrary.safeTransfer(IERC20(s.cfmm), msg.sender, lpReturn);
-        }
-
-        return payLoanAndRefundLiquidator(tokenId, _loan, payLiquidity);
-    }
-
-    function batchLiquidations(uint256[] calldata tokenIds) external virtual returns(uint128[] memory) {
-        LibStorage.Loan storage _loan;
-        updateIndex();
-        address cfmm = s.cfmm;
-        address[] memory tokens = s.tokens;
-
-        (uint256 liquidityTotal, uint256 payLiquidityTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) = sumLiquidity(tokenIds);
-
-        uint256 lpDeposit = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this)) - s.LP_TOKEN_BALANCE;
-
-        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 invDeposit = lpDeposit * lastCFMMInvariant / lastCFMMTotalSupply;
-        if(invDeposit < payLiquidityTotal) {
-            revert NotFullLiquidation();
-        }
-
-        uint256 invReturn = invDeposit - payLiquidityTotal;
-        if(invReturn > 0) {
-            uint256 lpReturn = invReturn * lastCFMMTotalSupply / lastCFMMInvariant;
-            GammaSwapLibrary.safeTransfer(IERC20(cfmm), msg.sender, lpReturn);
-        }
-
-        return payBatchLoansAndRefundLiquidator(tokens, tokensHeldTotal, payLiquidityTotal, liquidityTotal, lpTokensPrincipalTotal);
-    }
-
-    function payBatchLoansAndRefundLiquidator(address[] memory tokens, uint128[] memory tokensHeldTotal,
-        uint256 payLiquidityTotal, uint256 liquidityTotal, uint256 lpTokensPrincipalTotal) internal virtual returns(uint128[] memory){
-        uint128[] memory tokenBalance = s.TOKEN_BALANCE;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenBalance[i] = tokenBalance[i] - tokensHeldTotal[i];
-            GammaSwapLibrary.safeTransfer(IERC20(tokens[i]), msg.sender, tokensHeldTotal[i]);
-        }
-        s.TOKEN_BALANCE = tokenBalance;
-
-        if(payLiquidityTotal < liquidityTotal) {
-            uint256 writeDownAmt = 0;
-            unchecked {
-                writeDownAmt = liquidityTotal - payLiquidityTotal;
-            }
-            liquidityTotal = writeDown(liquidityTotal, writeDownAmt);
-        }
-        payBatchLoans(liquidityTotal, lpTokensPrincipalTotal);
-        return tokensHeldTotal;
-    }/**/
-
-    function payBatchLoans(uint256 liquidity, uint256 lpTokenPrincipal) internal virtual {
-        (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) = getLpTokenBalance();
-        liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
-
-        uint256 borrowedInvariant = s.BORROWED_INVARIANT;
-        uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// TODO: What about when it's very very small amounts in denominator?
-
-        borrowedInvariant = borrowedInvariant - liquidity; // won't overflow
-        s.BORROWED_INVARIANT = uint128(borrowedInvariant);
-
-        s.LP_TOKEN_BALANCE = newLPBalance;// this can be greater than expected (accrues to LPs), or less if there's a token transfer fee
-        uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
-        s.LP_INVARIANT = uint128(lpInvariant);
-
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
-        //s.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
-        //s.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;/**/
-
-        s.LP_TOKEN_BORROWED = s.LP_TOKEN_BORROWED - lpTokenPrincipal;
-    }
-
-    function payLoanAndRefundLiquidator(uint256 tokenId, LibStorage.Loan storage _loan, uint256 payLiquidity) internal virtual returns(uint256[] memory refund) {
-        address[] memory tokens = s.tokens;
-        uint128[] memory tokensHeld = _loan.tokensHeld;
-        uint128[] memory tokenBalance = s.TOKEN_BALANCE;
-        refund = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenBalance[i] = tokenBalance[i] - tokensHeld[i];
-            refund[i] = uint256(tokensHeld[i]);
-            tokensHeld[i] = 0;
-            GammaSwapLibrary.safeTransfer(IERC20(tokens[i]), msg.sender, refund[i]);
-        }
-
-        s.TOKEN_BALANCE = tokenBalance;
+        (tokensHeld, refund, loanLiquidity) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, false);
         _loan.tokensHeld = tokensHeld;
 
-        uint256 liquidity = _loan.liquidity;
-        if(payLiquidity < liquidity) {
-            uint256 writeDownAmt = 0;
-            unchecked {
-                writeDownAmt = liquidity - payLiquidity;
-            }
-            liquidity = writeDown(liquidity, writeDownAmt);
-            _loan.liquidity = uint128(liquidity);
-        }
-        payLoan(_loan, liquidity);
-
-        emit LoanUpdated(tokenId, _loan.tokensHeld, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
-
-        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
-
-        return refund;
+        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
     }
 
-    function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual {
+    function batchLiquidations(uint256[] calldata tokenIds) external virtual lock returns(uint256[] memory refund) {
+        (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
+
+        loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
+
+        (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPaid, true);
+    }
+
+    function getLoanLiquidityAndCollateral(uint256 tokenId) internal virtual returns(LibStorage.Loan storage _loan, uint256 loanLiquidity, uint128[] memory tokensHeld) {
+        _loan = s.loans[tokenId];
+
+        loanLiquidity = updateLoan(_loan);
+
+        tokensHeld = _loan.tokensHeld;
+
+        uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
+
+        canLiquidate(collateral, loanLiquidity, 950);
+
+        loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
+    }
+
+    function payLoanAndRefundLiquidator(uint256 tokenId, uint128[] memory tokensHeld, uint256 loanLiquidity, uint256 lpTokenPaid, bool isFullPayment)
+        internal virtual returns(uint128[] memory, uint256[] memory, uint256) {
+
+        uint256 payLiquidity;
+        uint256 currLpBalance = s.LP_TOKEN_BALANCE;
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
+
+        {
+            uint256 lpDeposit = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - currLpBalance;
+
+            if(lpDeposit == 0) {
+                revert NoLiquidityProvided();
+            }
+
+            (payLiquidity, lpDeposit) = refundOverPayment(loanLiquidity, lpDeposit, lastCFMMTotalSupply, lastCFMMInvariant); // full payment, TODO: Trick is here, this has to return another variable to multiply with the collateral
+
+            currLpBalance = currLpBalance + lpDeposit;
+        }
+
+        if(isFullPayment && payLiquidity < loanLiquidity) {//only allow full liquidation, otherwise rebalancing of tokens can be done to worsen the LTV ratio, this check also works as slippage protection
+            revert NotFullLiquidation();
+        }
+
+        uint256[] memory refund;
+        (tokensHeld, refund) = refundLiquidator(payLiquidity, loanLiquidity, tokensHeld);
+
+        {
+            if(tokenId > 0) {
+                LibStorage.Loan storage _loan = s.loans[tokenId];
+                (lpTokenPaid, loanLiquidity) = payLoanLiquidity(payLiquidity, loanLiquidity, _loan);
+            }
+
+            payPoolDebt(payLiquidity, lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance);
+        }
+
+        emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
+            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+
+        return(tokensHeld, refund, loanLiquidity);
+    }
+
+    function refundLiquidator(uint256 payLiquidity, uint256 loanLiquidity, uint128[] memory tokensHeld) internal virtual returns(uint128[] memory, uint256[] memory) {
+        address[] memory tokens = s.tokens;
+        uint256[] memory refund = new uint256[](tokens.length);
+        uint128 payAmt = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            payAmt = uint128(payLiquidity * tokensHeld[i] / loanLiquidity);
+            s.TOKEN_BALANCE[i] = s.TOKEN_BALANCE[i] - payAmt;
+            refund[i] = payAmt;
+            tokensHeld[i] = tokensHeld[i] - payAmt;
+            GammaSwapLibrary.safeTransfer(IERC20(tokens[i]), msg.sender, refund[i]);
+        }
+        return(tokensHeld, refund);
+    }
+
+    function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
         if(collateral * limit / 1000 >= liquidity) {
             revert HasMargin();
         }
     }
 
-    function writeDown(uint256 liquidity, uint256 writeDownAmt) internal virtual returns(uint256 newLiquidity){
+    function refundOverPayment(uint256 loanLiquidity, uint256 lpDeposit, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) internal virtual returns(uint256, uint256) {
+        uint256 payLiquidity = lpDeposit * lastCFMMInvariant / lastCFMMTotalSupply;
+        if(payLiquidity <= loanLiquidity) {
+            return(payLiquidity, lpDeposit);
+        }
+        // full payment
+        uint256 invReturn;
+        unchecked {
+            invReturn = payLiquidity - loanLiquidity;
+        }
+        uint256 lpReturn = invReturn * lastCFMMTotalSupply / lastCFMMInvariant;
+        GammaSwapLibrary.safeTransfer(IERC20(s.cfmm), msg.sender, lpReturn);
+
+        return(loanLiquidity, lpDeposit - lpReturn);
+    }
+
+    function writeDown(uint256 payableLiquidity, uint256 loanLiquidity) internal virtual returns(uint256) {
+        if(payableLiquidity >= loanLiquidity) {
+            return loanLiquidity;
+        }
+        uint256 writeDownAmt;
+        unchecked{
+            writeDownAmt = loanLiquidity - payableLiquidity;
+        }
+        // write down pool here
         uint128 borrowedInvariant = s.BORROWED_INVARIANT;
         borrowedInvariant = borrowedInvariant - uint128(writeDownAmt); // won'toverflow because borrowedInvariant is going down to at least the invariant in collateral units
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(borrowedInvariant, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.BORROWED_INVARIANT = borrowedInvariant;
-        newLiquidity = liquidity - writeDownAmt;
+
+        emit WriteDown(writeDownAmt);
+
+        return payableLiquidity;
     }
 
-    function sumLiquidity(uint256[] calldata tokenIds) internal virtual
-        returns(uint256 liquidityTotal, uint256 payLiquidityTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) {
+    function sumLiquidity(uint256[] calldata tokenIds) internal virtual returns(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) {
         address[] memory tokens = s.tokens;
         uint128[] memory tokensHeld;
         uint256 accFeeIndex = s.accFeeIndex;
-        uint256 collateralTotal = 0;
         address cfmm = s.cfmm;
         tokensHeldTotal = new uint128[](tokens.length);
+        updateIndex();
         for(uint256 i = 0; i < tokenIds.length; i++) {
             LibStorage.Loan storage _loan = s.loans[tokenIds[i]];
             uint256 liquidity = uint128((_loan.liquidity * accFeeIndex) / _loan.rateIndex);
             tokensHeld = _loan.tokensHeld;
             lpTokensPrincipalTotal = lpTokensPrincipalTotal + _loan.lpTokens;
-            _loan.poolId = address(0);
             _loan.liquidity = 0;
             _loan.initLiquidity = 0;
             _loan.rateIndex = 0;
@@ -209,13 +175,22 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             collateralTotal = collateralTotal + collateral;
             liquidityTotal = liquidityTotal + liquidity;
             for(uint256 j = 0; j < tokens.length; j++) {
-                tokensHeldTotal[i] = tokensHeldTotal[i] + tokensHeld[i];
-                tokensHeld[i] = 0;
-                _loan.tokensHeld[i] = 0;
+                tokensHeldTotal[j] = tokensHeldTotal[j] + tokensHeld[j];
+                _loan.tokensHeld[j] = 0;
             }
         }
 
-        payLiquidityTotal = Math.min(collateralTotal * 975 / 1000, liquidityTotal);
+        emit BatchLiquidity(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, uint16(tokenIds.length));
     }
 
+    function rebalanceAndDepositCollateral(LibStorage.Loan storage _loan, uint256 loanLiquidity, int256[] calldata deltas) internal virtual returns(uint128[] memory tokensHeld){
+        if(deltas.length > 0) {
+            (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(_loan, deltas);
+
+            swapTokens(_loan, outAmts, inAmts);
+        }
+        updateCollateral(_loan);
+        repayTokens(_loan, calcTokensToRepay(loanLiquidity));//SO real lptokens can be greater than we expected in repaying. Because real can go up untracked but can't go down untracked. So we might have repaid more than we expected even though we sent a smaller amount.
+        tokensHeld = updateCollateral(_loan);// then update collateral
+    }
 }
