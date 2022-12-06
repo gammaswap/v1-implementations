@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-strategies",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "Strategies contracts for the v1-core",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
