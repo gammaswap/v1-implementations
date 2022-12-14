@@ -48,6 +48,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
     function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual returns(uint256 liquidity){
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 liquidityBorrowedExFee = calcLPInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
         uint256 lpTokensPlusOrigFee = lpTokens + lpTokens * originationFee() / 10000;
         uint256 liquidityBorrowed = calcLPInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);// The liquidity it represented at that time
         uint256 borrowedInvariant = s.BORROWED_INVARIANT + liquidityBorrowed;
@@ -56,12 +57,13 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
         uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));// this can be greater than expected (accrues to LPs), but can't be less (it's withdrawal of LP_TOKENS)
         s.LP_TOKEN_BALANCE = lpTokenBalance;
+        lastCFMMInvariant = lastCFMMInvariant - liquidityBorrowedExFee;
+        lastCFMMTotalSupply = lastCFMMTotalSupply - lpTokens;
         uint256 lpInvariant = calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         s.LP_INVARIANT = uint128(lpInvariant);
-
+        s.lastCFMMInvariant = uint128(lastCFMMInvariant);
+        s.lastCFMMTotalSupply = lastCFMMTotalSupply;
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = s.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokensPlusOrigFee;
-        //s.LP_TOKEN_TOTAL = lpTokenBalance + lpTokenBorrowedPlusInterest;
-        //s.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;
 
         liquidity = _loan.liquidity + liquidityBorrowed;
         _loan.initLiquidity = _loan.initLiquidity + uint128(liquidityBorrowed);
@@ -69,32 +71,34 @@ abstract contract BaseLongStrategy is BaseStrategy {
         _loan.liquidity = uint128(liquidity);
     }
 
-    function getLpTokenBalance() internal virtual returns(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) {
+    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
+        (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) = getLpTokenBalance();
+        liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
+        // if more liquidity than stated was actually paid, that goes to liquidity providers
+        uint256 lpTokenPrincipal;
+        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, _loan);
+
+        payPoolDebt(liquidity, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance, lpTokenChange);
+    }
+
+    function getLpTokenBalance() internal view virtual returns(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) {
         newLPBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));// so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
         uint256 lpTokenBalance = s.LP_TOKEN_BALANCE;
         if(newLPBalance <= lpTokenBalance) {// the change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
             revert NotEnoughLPDeposit();
         }
-        uint256 lpTokenChange = newLPBalance - lpTokenBalance;
+        lpTokenChange = newLPBalance - lpTokenBalance;
         lastCFMMInvariant = s.lastCFMMInvariant;
         lastCFMMTotalSupply = s.lastCFMMTotalSupply;
         paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
     }
 
-    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
-        (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance) = getLpTokenBalance();
-        liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee
-
-        uint256 lpTokenPrincipal;
-        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, _loan);
-
-        payPoolDebt(liquidity, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance);
-    }
-
-    function payPoolDebt(uint256 liquidity, uint256 lpTokenPrincipal, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 newLPBalance) internal virtual {
+    function payPoolDebt(uint256 liquidity, uint256 lpTokenPrincipal, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 newLPBalance, uint256 lpTokenPaid) internal virtual {
         uint256 borrowedInvariant = s.BORROWED_INVARIANT;
         uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        uint256 lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// TODO: What about when it's very very small amounts in denominator?
+        uint256 _lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);// what borrower actually paid
+        lastCFMMInvariant = lastCFMMInvariant + calcLPTokenBorrowedPlusInterest(lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply);// what was actually received in LP tokens
+        lastCFMMTotalSupply = lastCFMMTotalSupply + lpTokenPaid;//how much total supply went up by
 
         borrowedInvariant = borrowedInvariant - liquidity; // won't overflow
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
@@ -102,10 +106,9 @@ abstract contract BaseLongStrategy is BaseStrategy {
         s.LP_TOKEN_BALANCE = newLPBalance;// this can be greater than expected (accrues to LPs), or less if there's a token transfer fee
         uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         s.LP_INVARIANT = uint128(lpInvariant);
-
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest - lpTokenPaid; // won't overflow
-        //s.LP_TOKEN_TOTAL = newLPBalance + lpTokenBorrowedPlusInterest;
-        //s.TOTAL_INVARIANT = lpInvariant + borrowedInvariant;/**/
+        s.lastCFMMInvariant = uint128(lastCFMMInvariant);
+        s.lastCFMMTotalSupply = lastCFMMTotalSupply;
+        s.LP_TOKEN_BORROWED_PLUS_INTEREST = lpTokenBorrowedPlusInterest - _lpTokenPaid; // won't overflow
 
         s.LP_TOKEN_BORROWED = s.LP_TOKEN_BORROWED - lpTokenPrincipal;
     }
