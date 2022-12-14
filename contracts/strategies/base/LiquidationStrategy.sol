@@ -36,11 +36,11 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     }
 
     function batchLiquidations(uint256[] calldata tokenIds) external virtual lock returns(uint256[] memory refund) {
-        (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
+        (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPrincipalPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
 
         loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
 
-        (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPaid, true);
+        (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPrincipalPaid, true);
     }
 
     function getLoanLiquidityAndCollateral(uint256 tokenId) internal virtual returns(LibStorage.Loan storage _loan, uint256 loanLiquidity, uint128[] memory tokensHeld) {
@@ -57,7 +57,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
     }
 
-    function payLoanAndRefundLiquidator(uint256 tokenId, uint128[] memory tokensHeld, uint256 loanLiquidity, uint256 lpTokenPaid, bool isFullPayment)
+    function payLoanAndRefundLiquidator(uint256 tokenId, uint128[] memory tokensHeld, uint256 loanLiquidity, uint256 lpTokenPrincipalPaid, bool isFullPayment)
         internal virtual returns(uint128[] memory, uint256[] memory, uint256) {
 
         uint256 payLiquidity;
@@ -87,10 +87,10 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         {
             if(tokenId > 0) {
                 LibStorage.Loan storage _loan = s.loans[tokenId];
-                (lpTokenPaid, loanLiquidity) = payLoanLiquidity(payLiquidity, loanLiquidity, _loan);
+                (lpTokenPrincipalPaid, loanLiquidity) = payLoanLiquidity(payLiquidity, loanLiquidity, _loan);
             }
 
-            payPoolDebt(payLiquidity, lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance);
+            payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, currLpBalance - s.LP_TOKEN_BALANCE);
         }
 
         emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,

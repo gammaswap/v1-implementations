@@ -706,8 +706,10 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens);
       expect(res2.lpTokenTotal).to.equal(startLpTokens);
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant.sub(liquidity));
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
 
       const lpTokens1 = ONE.mul(300);
       const liquidity1 = ONE.mul(600);
@@ -729,8 +731,12 @@ describe("LongStrategy", function () {
         lpTokens.add(lpTokens1)
       );
       expect(res3.lpTokenTotal).to.equal(startLpTokens);
-      expect(res3.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res3.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res3.lastCFMMInvariant).to.equal(
+        lastCFMMInvariant.sub(liquidity.add(liquidity1))
+      );
+      expect(res3.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens.add(lpTokens1))
+      );
     });
 
     it("Open Loan with Origination Fee", async function () {
@@ -772,8 +778,10 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens.add(feeLP));
       expect(res2.lpTokenTotal).to.equal(startLpTokens.add(feeLP));
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant.sub(liquidity));
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
 
       const lpTokens1 = ONE.mul(300);
       const liquidity1 = ONE.mul(600);
@@ -801,8 +809,12 @@ describe("LongStrategy", function () {
         lpTokens.add(lpTokens1).add(feeLP1)
       );
       expect(res3.lpTokenTotal).to.equal(startLpTokens.add(feeLP1));
-      expect(res3.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res3.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res3.lastCFMMInvariant).to.equal(
+        lastCFMMInvariant.sub(liquidity.add(liquidity1))
+      );
+      expect(res3.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens.add(lpTokens1))
+      );
     });
 
     it("Opened More Loan", async function () {
@@ -839,8 +851,10 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens);
       expect(res2.lpTokenTotal).to.equal(startLpTokens);
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant.sub(liquidity));
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
 
       const lpTokens1 = ONE.mul(300);
       const liquidity1 = ONE.mul(600);
@@ -864,8 +878,12 @@ describe("LongStrategy", function () {
         lpTokens.add(lpTokens1)
       );
       expect(res3.lpTokenTotal).to.equal(startLpTokens.add(lpTokens1.div(2)));
-      expect(res3.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res3.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res3.lastCFMMInvariant).to.equal(
+        lastCFMMInvariant.sub(liquidity.add(liquidity1))
+      );
+      expect(res3.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens.add(lpTokens1))
+      );
     });
 
     it("Pay Loan", async function () {
@@ -902,8 +920,10 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens);
       expect(res2.lpTokenTotal).to.equal(startLpTokens);
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant.sub(liquidity));
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
 
       await (await cfmm.mint(lpTokens.div(2), strategy.address)).wait();
 
@@ -918,8 +938,12 @@ describe("LongStrategy", function () {
       expect(res4.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens.div(2)));
       expect(res4.lpTokenBorrowedPlusInterest).to.equal(lpTokens.div(2));
       expect(res4.lpTokenTotal).to.equal(startLpTokens);
-      expect(res4.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res4.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res4.lastCFMMInvariant).to.equal(
+        lastCFMMInvariant.sub(liquidity.div(2))
+      );
+      expect(res4.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens.div(2))
+      );
 
       await (await cfmm.mint(lpTokens.div(2), strategy.address)).wait();
 
@@ -972,8 +996,10 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens);
       expect(res2.lpTokenTotal).to.equal(startLpTokens);
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant.sub(liquidity));
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
 
       await (await cfmm.mint(lpTokens, strategy.address)).wait();
 
@@ -1142,8 +1168,12 @@ describe("LongStrategy", function () {
       expect(res2.lpTokenBalance).to.equal(startLpTokens.sub(lpTokens));
       expect(res2.lpTokenBorrowedPlusInterest).to.equal(lpTokens);
       expect(res2.lpTokenTotal).to.equal(startLpTokens);
-      expect(res2.lastCFMMInvariant).to.equal(lastCFMMInvariant);
-      expect(res2.lastCFMMTotalSupply).to.equal(lastCFMMTotalSupply);
+      expect(res2.lastCFMMInvariant).to.equal(
+        lastCFMMInvariant.sub(ONE.mul(2))
+      );
+      expect(res2.lastCFMMTotalSupply).to.equal(
+        lastCFMMTotalSupply.sub(lpTokens)
+      );
     });
   });
 
