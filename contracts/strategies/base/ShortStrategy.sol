@@ -105,11 +105,13 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         uint256 shares
     ) internal virtual {
         _mint(receiver, shares);
-        s.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
-
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        uint128 lpInvariant = uint128(calcLPInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
+        s.LP_INVARIANT = lpInvariant;
         emit Deposit(caller, receiver, assets, shares);
-        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
+            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
 
         afterDeposit(assets, shares);
     }
@@ -129,16 +131,29 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
+
+        address cfmm = s.cfmm;
+        uint256 lpTokenBalance;
+        uint128 lpInvariant;
         if(askForReserves) {
-            reserves = withdrawFromCFMM(s.cfmm, receiver, assets);
+            reserves = withdrawFromCFMM(cfmm, receiver, assets); //update supply and invariant (less assets, less invariant (reserves)
+            lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
+            uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
+            uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
+            lpInvariant = uint128(calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply));
+            s.lastCFMMInvariant = uint128(lastCFMMInvariant);
+            s.lastCFMMTotalSupply = lastCFMMTotalSupply;
         } else {
-            GammaSwapLibrary.safeTransfer(IERC20(s.cfmm), receiver, assets);
+            GammaSwapLibrary.safeTransfer(IERC20(cfmm), receiver, assets); // assuming this doesn't affect lastCFMMInvariant or lastCFMMTotalSupply
+            lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
+            lpInvariant = uint128(calcLPInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         }
-        s.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        s.LP_INVARIANT = lpInvariant;
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
 
         emit Withdraw(caller, receiver, owner, assets, shares);
-        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
+            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
     }
 
     function _spendAllowance(
