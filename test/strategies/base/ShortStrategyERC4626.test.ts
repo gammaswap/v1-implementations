@@ -463,10 +463,14 @@ describe("ShortStrategyERC4626", function () {
         expect(poolUpdatedEvent.args.lastBlockNumber).to.equal(
           (await ethers.provider.getBlock("latest")).number
         );
+        const cfmmBalance = await cfmm.balanceOf(strategy.address);
+        const cfmmTotalSupply = await cfmm.totalSupply();
+        const cfmmInvariant = await cfmm.invariant();
+        const lpInvariant = cfmmBalance.mul(cfmmInvariant).div(cfmmTotalSupply);
         expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
-        expect(poolUpdatedEvent.args.lpInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.lpInvariant).to.equal(lpInvariant);
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
 
         expect(await strategy.totalSupply()).to.equal(expectedGSShares);
@@ -631,10 +635,14 @@ describe("ShortStrategyERC4626", function () {
         expect(poolUpdatedEvent.args.lastBlockNumber).to.equal(
           (await ethers.provider.getBlock("latest")).number
         );
+        const cfmmBalance = await cfmm.balanceOf(strategy.address);
+        const cfmmTotalSupply = await cfmm.totalSupply();
+        const cfmmInvariant = await cfmm.invariant();
+        const lpInvariant = cfmmBalance.mul(cfmmInvariant).div(cfmmTotalSupply);
         expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
-        expect(poolUpdatedEvent.args.lpInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.lpInvariant).to.equal(lpInvariant);
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
 
         expect(await strategy.totalSupply()).to.equal(shares);
