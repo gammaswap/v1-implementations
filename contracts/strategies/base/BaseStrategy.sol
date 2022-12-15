@@ -116,7 +116,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity){
-        liquidity = (_loan.liquidity * accFeeIndex) / _loan.rateIndex;
+        uint128 _rateIndex = _loan.rateIndex;
+        liquidity = _rateIndex == 0 ? 0 : (_loan.liquidity * accFeeIndex) / _rateIndex;
         _loan.liquidity = uint128(liquidity);
         _loan.rateIndex = uint96(accFeeIndex);
     }
