@@ -111,7 +111,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         s.LP_INVARIANT = lpInvariant;
         emit Deposit(caller, receiver, assets, shares);
         emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
 
         afterDeposit(assets, shares);
     }
@@ -153,7 +153,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         emit Withdraw(caller, receiver, owner, assets, shares);
         emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
     }
 
     function _spendAllowance(

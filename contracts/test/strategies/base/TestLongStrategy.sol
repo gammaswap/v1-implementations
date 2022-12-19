@@ -126,7 +126,7 @@ contract TestLongStrategy is LongStrategy {
     }
 
     //BaseStrategy
-    function updateReserves() internal override virtual {
+    function updateReserves(address cfmm) internal override virtual {
     }
 
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {

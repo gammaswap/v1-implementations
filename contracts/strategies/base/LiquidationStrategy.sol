@@ -35,7 +35,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
     }
 
-    function batchLiquidations(uint256[] calldata tokenIds) external virtual lock returns(uint256[] memory refund) {
+    function _batchLiquidations(uint256[] calldata tokenIds) external override lock virtual returns(uint256[] memory refund) {
         (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPrincipalPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
 
         loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
@@ -93,8 +93,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, currLpBalance - s.LP_TOKEN_BALANCE);
         }
 
-        emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+        emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
 
         return(tokensHeld, refund, loanLiquidity);
     }

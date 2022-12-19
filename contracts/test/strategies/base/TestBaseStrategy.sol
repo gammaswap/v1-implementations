@@ -15,6 +15,8 @@ contract TestBaseStrategy is BaseStrategy {
     uint256 public borrowRate = 10**18;
     uint256 public invariant;
     address public _factory;
+    uint80 public _lastFeeIndex;
+    uint80 public _lastCFMMFeeIndex;
 
     constructor(address factory, uint16 protocolId) {
         _factory = factory;
@@ -34,7 +36,7 @@ contract TestBaseStrategy is BaseStrategy {
 
     function setUpdateStoreFields(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) public virtual {
         s.accFeeIndex = uint96(accFeeIndex);
-        s.lastFeeIndex = uint80(lastFeeIndex);
+        _lastFeeIndex = uint80(lastFeeIndex);
         s.LP_TOKEN_BALANCE = lpTokenBalance;
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
@@ -44,7 +46,7 @@ contract TestBaseStrategy is BaseStrategy {
     function getUpdateStoreFields() public virtual view returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lpTokenBalance, uint256 borrowedInvariant, uint256 lastCFMMTotalSupply,
         uint256 lastCFMMInvariant, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 lpTokenTotal, uint256 totalInvariant, uint256 lastBlockNumber) {
         accFeeIndex = s.accFeeIndex;
-        lastFeeIndex = s.lastFeeIndex;
+        lastFeeIndex = _lastFeeIndex;
         lpTokenBalance = s.LP_TOKEN_BALANCE;
         borrowedInvariant = s.BORROWED_INVARIANT;
         lastCFMMTotalSupply = s.lastCFMMTotalSupply;
@@ -86,11 +88,11 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function setCFMMIndex(uint80 cfmmIndex) public virtual {
-        s.lastCFMMFeeIndex = cfmmIndex;
+        _lastCFMMFeeIndex = cfmmIndex;
     }
 
     function getCFMMIndex() public virtual view returns(uint256){
-        return s.lastCFMMFeeIndex;
+        return _lastCFMMFeeIndex;
     }
 
     function testUpdateIndex() public virtual {
@@ -99,7 +101,7 @@ contract TestBaseStrategy is BaseStrategy {
 
     function testMintToDev() public virtual {
         if(s.BORROWED_INVARIANT >= 0) {
-            mintToDevs(s.lastFeeIndex);
+            mintToDevs(_lastCFMMFeeIndex);
         }
     }
 
@@ -108,8 +110,8 @@ contract TestBaseStrategy is BaseStrategy {
         uint256 lpTokenBorrowedPlusInterest, uint256 lpTokenBal, uint256 lpTokenTotal, uint256 lastBlockNumber) {
         lastCFMMTotalSupply = s.lastCFMMTotalSupply;
         lastCFMMInvariant = s.lastCFMMInvariant;
-        lastCFMMFeeIndex = s.lastCFMMFeeIndex;
-        lastFeeIndex = s.lastFeeIndex;
+        lastCFMMFeeIndex = _lastCFMMFeeIndex;
+        lastFeeIndex = _lastFeeIndex;
         accFeeIndex = s.accFeeIndex;
         borrowedInvariant = s.BORROWED_INVARIANT;
         lpInvariant = s.LP_INVARIANT;
@@ -127,7 +129,7 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateFeeIndex() public virtual {
-        updateFeeIndex();
+        updateFeeIndex(_lastCFMMFeeIndex);
     }
 
     function testUpdateStore() public virtual {
@@ -174,11 +176,11 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function getLastFeeIndex() public virtual view returns(uint256){
-        return s.lastFeeIndex;
+        return _lastFeeIndex;
     }
 
     function getCFMMData() public virtual view returns(uint256 lastCFMMFeeIndex, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) {
-        lastCFMMFeeIndex = s.lastCFMMFeeIndex;
+        lastCFMMFeeIndex = _lastCFMMFeeIndex;
         lastCFMMInvariant = s.lastCFMMInvariant;
         lastCFMMTotalSupply = s.lastCFMMTotalSupply;
     }
@@ -208,11 +210,11 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateReserves() public virtual {
-        updateReserves();
+        updateReserves(s.cfmm);
     }
 
-    function updateReserves() internal virtual override {
-        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(s.cfmm).getReserves();
+    function updateReserves(address cfmm) internal virtual override {
+        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(cfmm).getReserves();
     }
 
     function setInvariant(uint256 _invariant) public virtual {

@@ -17,10 +17,10 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     error NotEnoughCollateral();
 
     event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
-        uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
+        uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    function updateReserves() internal virtual;
+    function updateReserves(address cfmm) internal virtual;
 
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual view returns(uint256);
 
@@ -43,18 +43,18 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         return lastCFMMFeeIndex + adjBorrowRate;
     }
 
-    function updateCFMMIndex() internal virtual {
-        updateReserves();
-        uint256 lastCFMMInvariant = calcInvariant(s.cfmm, s.CFMM_RESERVES);
-        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(s.cfmm));
-        uint256 lastCFMMFeeIndex = calcCFMMFeeIndex(s.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
-        s.lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
+    function updateCFMMIndex() internal virtual returns(uint256 lastCFMMFeeIndex) {
+        address cfmm = s.cfmm;
+        updateReserves(cfmm);
+        uint256 lastCFMMInvariant = calcInvariant(cfmm, s.CFMM_RESERVES);
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
+        lastCFMMFeeIndex = calcCFMMFeeIndex(s.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
 
-    function updateFeeIndex() internal virtual {
-        s.lastFeeIndex = uint80(calcFeeIndex(s.lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
+    function updateFeeIndex(uint256 lastCFMMFeeIndex) internal virtual returns(uint256 lastFeeIndex) {
+        lastFeeIndex = uint80(calcFeeIndex(lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
     }
 
     function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual pure returns(uint256) {
@@ -70,9 +70,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     function updateStore() internal virtual returns(uint256 lastFeeIndex, uint256 accFeeIndex) {
-        lastFeeIndex = s.lastFeeIndex;
-
-        //lastFeeIndex = uint80(calcFeeIndex(s.lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
+        uint256 lastCFMMFeeIndex = updateCFMMIndex();
+        lastFeeIndex = updateFeeIndex(lastCFMMFeeIndex);
         s.BORROWED_INVARIANT = uint128(accrueBorrowedInvariant(s.BORROWED_INVARIANT, lastFeeIndex));
 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
@@ -84,8 +83,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     function updateIndex() internal virtual returns(uint256 accFeeIndex) {
-        updateCFMMIndex();
-        updateFeeIndex();
+        //updateCFMMIndex();
+        //updateFeeIndex();
         uint256 lastFeeIndex;
         (lastFeeIndex, accFeeIndex) = updateStore();
 
