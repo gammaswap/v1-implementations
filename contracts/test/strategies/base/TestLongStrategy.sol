@@ -20,9 +20,9 @@ contract TestLongStrategy is LongStrategy {
     constructor() {
     }
 
-    function initialize(address cfmm, uint16 _protocolId, address[] calldata tokens) external virtual {
+    function initialize(address cfmm, uint16 _protocolId, address[] calldata tokens, uint8[] calldata decimals) external virtual {
         protocolId = _protocolId;
-        s.initialize(msg.sender, cfmm, tokens);
+        s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
     function tokens() public virtual view returns(address[] memory) {
@@ -206,7 +206,7 @@ contract TestLongStrategy is LongStrategy {
             (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
     }
 
-    function _getCFMMPrice(address cfmm, uint256 factor) external override view returns(uint256) {
+    function _getCFMMPrice(address cfmm) external override view returns(uint256) {
         return 1;
     }
 

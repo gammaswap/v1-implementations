@@ -14,8 +14,8 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     constructor() {
     }
 
-    function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.initialize(msg.sender, cfmm, tokens);
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
     function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal override virtual {

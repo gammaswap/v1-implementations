@@ -60,7 +60,11 @@ describe("CPMMBaseStrategy", function () {
 
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
     await (
-      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
+      await strategy.initialize(
+        cfmm.address,
+        [tokenA.address, tokenB.address],
+        [18, 18]
+      )
     ).wait();
   });
 

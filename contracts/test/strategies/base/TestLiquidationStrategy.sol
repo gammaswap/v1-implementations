@@ -28,8 +28,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         uint256 lastCFMMTotalSupply;
     }
 
-    function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.initialize(msg.sender, cfmm, tokens);
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
     function getStaticParams() external virtual view returns(address factory, address cfmm, address[] memory tokens, uint128[] memory tokenBalances) {

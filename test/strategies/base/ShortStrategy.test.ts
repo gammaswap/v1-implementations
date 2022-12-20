@@ -42,7 +42,11 @@ describe("ShortStrategy", function () {
 
     strategy = await TestStrategy.deploy();
     await (
-      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
+      await strategy.initialize(
+        cfmm.address,
+        [tokenA.address, tokenB.address],
+        [18, 18]
+      )
     ).wait();
 
     posManager = await TestPositionManager.deploy(

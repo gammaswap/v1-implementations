@@ -23,8 +23,8 @@ contract TestBaseStrategy is BaseStrategy {
         _protocolId = protocolId;
     }
 
-    function initialize(address cfmm, address[] calldata tokens) external virtual {
-        s.initialize(_factory, cfmm, tokens);
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        s.initialize(_factory, cfmm, tokens, decimals);
     }
 
     function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint16 protocolId) {
