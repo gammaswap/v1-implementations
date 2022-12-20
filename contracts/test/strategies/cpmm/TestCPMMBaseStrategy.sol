@@ -27,7 +27,7 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     }
 
     function testUpdateReserves() public virtual {
-        updateReserves();
+        updateReserves(s.cfmm);
     }
 
     function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {

@@ -123,7 +123,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return updateLoanLiquidity(_loan, s.accFeeIndex);
     }
 
-    function updateIndex() internal override virtual returns(uint256 accFeeIndex) {
+    function updateIndex() internal override virtual returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMIndex) {
+        accFeeIndex = s.accFeeIndex;
     }
 
     function incBorrowedInvariant(uint256 invariant) external virtual {
@@ -161,11 +162,11 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return 0;
     }
 
-    function updateCFMMIndex() internal override virtual {
+    function updateCFMMIndex() internal override virtual returns(uint256){
     }
 
     //BaseStrategy abstract functions
-    function updateReserves() internal virtual override {
+    function updateReserves(address cfmm) internal virtual override {
     }
 
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {

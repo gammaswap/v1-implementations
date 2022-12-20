@@ -13,8 +13,8 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
     }
 
-    function updateReserves() internal virtual override {
-        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(s.cfmm).getReserves();
+    function updateReserves(address cfmm) internal virtual override {
+        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(cfmm).getReserves();
     }
 
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {

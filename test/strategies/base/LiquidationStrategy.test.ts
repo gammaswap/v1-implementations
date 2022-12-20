@@ -1796,7 +1796,7 @@ describe("LiquidationStrategy", function () {
       );
 
       const res = await (
-        await liquidationStrategy.batchLiquidations(tokenIds)
+        await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
       for (let i = 0; i < res.events.length; i++) {
@@ -1920,7 +1920,7 @@ describe("LiquidationStrategy", function () {
       );
 
       const res = await (
-        await liquidationStrategy.batchLiquidations(tokenIds)
+        await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
       expect(res.events[0].event).to.equal("BatchLiquidity");
@@ -2052,7 +2052,7 @@ describe("LiquidationStrategy", function () {
       const lpTokenRefund = payLiquidity.sub(loanLiquidityTotal).div(2);
 
       const res = await (
-        await liquidationStrategy.batchLiquidations(tokenIds)
+        await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
       for (let i = 0; i < res.events.length; i++) {
@@ -2182,7 +2182,7 @@ describe("LiquidationStrategy", function () {
       );
 
       const res = await (
-        await liquidationStrategy.batchLiquidations(tokenIds)
+        await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
       expect(res.events[0].event).to.equal("BatchLiquidity");

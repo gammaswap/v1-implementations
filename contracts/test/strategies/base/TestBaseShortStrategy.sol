@@ -18,6 +18,9 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.initialize(msg.sender, cfmm, tokens);
     }
 
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal override virtual {
+    }
+
     function setTotalSupply(uint256 _totalSupply) public virtual {
         s.totalSupply = _totalSupply;
     }
@@ -142,8 +145,8 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
     }
 
-    function updateReserves() internal virtual override {
-        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(s.cfmm).getReserves();
+    function updateReserves(address cfmm) internal virtual override {
+        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(cfmm).getReserves();
     }
 
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {

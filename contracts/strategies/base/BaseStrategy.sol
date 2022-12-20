@@ -6,6 +6,7 @@ import "@gammaswap/v1-core/contracts/GammaPoolFactory.sol";
 import "@gammaswap/v1-core/contracts/storage/AppStorage.sol";
 
 import "../../libraries/GammaSwapLibrary.sol";
+import "../../libraries/Math.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 
 abstract contract BaseStrategy is AppStorage, AbstractRateModel {
@@ -17,10 +18,10 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     error NotEnoughCollateral();
 
     event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
-        uint256 lastFeeIndex, uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
+        uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    function updateReserves() internal virtual;
+    function updateReserves(address cfmm) internal virtual;
 
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual view returns(uint256);
 
@@ -40,21 +41,23 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 lastBlockNum) internal virtual view returns(uint256) {
         uint256 blockDiff = block.number - lastBlockNum;
         uint256 adjBorrowRate = (blockDiff * borrowRate) / 2252571;//2252571 year block count
-        return lastCFMMFeeIndex + adjBorrowRate;
+        uint256 ONE = 10**18;
+        uint256 apy1k = ONE + (blockDiff * 10 * ONE) / 2252571;
+        return Math.min(apy1k, lastCFMMFeeIndex + adjBorrowRate);
     }
 
-    function updateCFMMIndex() internal virtual {
-        updateReserves();
-        uint256 lastCFMMInvariant = calcInvariant(s.cfmm, s.CFMM_RESERVES);
-        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(s.cfmm));
-        uint256 lastCFMMFeeIndex = calcCFMMFeeIndex(s.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
-        s.lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
+    function updateCFMMIndex() internal virtual returns(uint256 lastCFMMFeeIndex) {
+        address cfmm = s.cfmm;
+        updateReserves(cfmm);
+        uint256 lastCFMMInvariant = calcInvariant(cfmm, s.CFMM_RESERVES);
+        uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
+        lastCFMMFeeIndex = calcCFMMFeeIndex(s.BORROWED_INVARIANT, lastCFMMInvariant, lastCFMMTotalSupply, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
     }
 
-    function updateFeeIndex() internal virtual {
-        s.lastFeeIndex = uint80(calcFeeIndex(s.lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
+    function updateFeeIndex(uint256 lastCFMMFeeIndex) internal virtual returns(uint256 lastFeeIndex) {
+        lastFeeIndex = uint80(calcFeeIndex(lastCFMMFeeIndex, calcBorrowRate(s.LP_INVARIANT, s.BORROWED_INVARIANT), s.LAST_BLOCK_NUMBER));
     }
 
     function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual pure returns(uint256) {
@@ -69,9 +72,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         return lastCFMMTotalSupply == 0 ? 0 : (lpTokenBalance * lastCFMMInvariant) / lastCFMMTotalSupply;
     }
 
-    function updateStore() internal virtual returns(uint256 lastFeeIndex, uint256 accFeeIndex) {
-        lastFeeIndex = s.lastFeeIndex;
-
+    function updateStore(uint256 lastFeeIndex) internal virtual returns(uint256 accFeeIndex) {
         s.BORROWED_INVARIANT = uint128(accrueBorrowedInvariant(s.BORROWED_INVARIANT, lastFeeIndex));
 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
@@ -82,33 +83,30 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         s.LAST_BLOCK_NUMBER = uint48(block.number);
     }
 
-    function updateIndex() internal virtual returns(uint256 accFeeIndex) {
-        updateCFMMIndex();
-        updateFeeIndex();
-        uint256 lastFeeIndex;
-        (lastFeeIndex, accFeeIndex) = updateStore();
-
+    function updateIndex() internal virtual returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMFeeIndex) {
+        lastCFMMFeeIndex = updateCFMMIndex();
+        lastFeeIndex = updateFeeIndex(lastCFMMFeeIndex);
+        accFeeIndex = updateStore(lastFeeIndex);
         if(s.BORROWED_INVARIANT >= 0) {
-            // mintToDevs(lastFeeIndex);
+            mintToDevs(lastFeeIndex, lastCFMMFeeIndex);
         }
     }
 
-    function mintToDevs(uint256 lastFeeIndex) internal {
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal virtual {
         (address feeTo, uint256 devFee) = IGammaPoolFactory(s.factory).feeInfo();
         if(feeTo != address(0) && devFee > 0) {
-            //Formula:
-            //        accumulatedGrowth: (1 - [borrowedInvariant/(borrowedInvariant*index)])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
-            //        accumulatedGrowth: (1 - [1/index])*devFee*(borrowedInvariant*index/(borrowedInvariant*index + uniInvariaint))
-            //        sharesToIssue: totalGammaTokenSupply*accGrowth/(1-accGrowth)
-            uint256 totalInvariantInCFMM = ((s.LP_TOKEN_BALANCE * s.lastCFMMInvariant) / s.lastCFMMTotalSupply);//How much Invariant does this contract have from LP_TOKEN_BALANCE
-            uint256 factor = ((lastFeeIndex - (10**18)) * devFee) / lastFeeIndex;//Percentage of the current growth that we will give to devs
-            uint256 accGrowth = (factor * s.BORROWED_INVARIANT) / (s.BORROWED_INVARIANT + totalInvariantInCFMM);
-            _mint(feeTo, (s.totalSupply * accGrowth) / ((10**18) - accGrowth));
+            uint256 gsFeeIndex = lastFeeIndex > lastCFMMIndex ? lastFeeIndex - lastCFMMIndex : 0;
+            uint256 denominator =  lastFeeIndex - gsFeeIndex * devFee / 100000; // devFee is 10000 by default (10%)
+            uint256 pctToPrint = lastFeeIndex * (10 ** 18) / denominator - (10 ** 18);
+            if(pctToPrint > 0) {
+                uint256 devShares = s.totalSupply * pctToPrint / (10 ** 18);
+                _mint(feeTo, devShares);
+            }
         }
     }
 
     function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256) {
-        uint256 accFeeIndex = updateIndex();
+        (uint256 accFeeIndex,,) = updateIndex();
         return updateLoanLiquidity(_loan, accFeeIndex);
     }
 

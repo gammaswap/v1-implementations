@@ -30,7 +30,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
         return tokensHeld;
     }
 
@@ -54,7 +54,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
     }
 
     function _repayLiquidity(uint256 tokenId, uint256 payLiquidity) external virtual override lock returns(uint256 liquidityPaid, uint256[] memory amounts) {
@@ -76,7 +76,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
     }
 
     function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override lock returns(uint128[] memory tokensHeld) {
@@ -96,6 +96,6 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.lastFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
     }
 }
