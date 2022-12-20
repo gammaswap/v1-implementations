@@ -37,10 +37,12 @@ describe("LongStrategy", function () {
 
     strategy = await TestStrategy.deploy();
     await (
-      await strategy.initialize(cfmm.address, PROTOCOL_ID, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await strategy.initialize(
+        cfmm.address,
+        PROTOCOL_ID,
+        [tokenA.address, tokenB.address],
+        [18, 18]
+      )
     ).wait();
   });
 

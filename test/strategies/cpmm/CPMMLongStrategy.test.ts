@@ -74,7 +74,11 @@ describe("CPMMLongStrategy", function () {
     );
 
     await (
-      await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
+      await strategy.initialize(
+        cfmm.address,
+        [tokenA.address, tokenB.address],
+        [18, 18]
+      )
     ).wait();
   });
 
@@ -129,10 +133,11 @@ describe("CPMMLongStrategy", function () {
     );
 
     await (
-      await strategyFee.initialize(cfmmFee.address, [
-        tokenAFee.address,
-        tokenBFee.address,
-      ])
+      await strategyFee.initialize(
+        cfmmFee.address,
+        [tokenAFee.address, tokenBFee.address],
+        [18, 18]
+      )
     ).wait();
   }
 

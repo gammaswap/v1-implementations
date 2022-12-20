@@ -42,10 +42,11 @@ describe("LiquidationStrategy", function () {
 
     liquidationStrategy = await TestLiquidationStrategy.deploy();
     await (
-      await liquidationStrategy.initialize(cfmm.address, [
-        tokenA.address,
-        tokenB.address,
-      ])
+      await liquidationStrategy.initialize(
+        cfmm.address,
+        [tokenA.address, tokenB.address],
+        [18, 18]
+      )
     ).wait();
 
     const amount0 = ONE.mul(20000);
