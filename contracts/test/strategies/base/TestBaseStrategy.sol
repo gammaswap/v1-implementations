@@ -54,9 +54,7 @@ contract TestBaseStrategy is BaseStrategy {
 
         lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
         lpInvariant = s.LP_INVARIANT;
-        //lpTokenTotal = s.LP_TOKEN_TOTAL;
         lpTokenTotal = lpTokenBalance + lpTokenBorrowedPlusInterest;
-        //totalInvariant = s.TOTAL_INVARIANT;
         totalInvariant = lpInvariant + borrowedInvariant;
         lastBlockNumber = s.LAST_BLOCK_NUMBER;
     }
@@ -96,13 +94,9 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateIndex() public virtual {
-        updateIndex();
-    }
-
-    function testMintToDev() public virtual {
-        if(s.BORROWED_INVARIANT >= 0) {
-            mintToDevs(_lastCFMMFeeIndex);
-        }
+        (uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMFeeIndex) = updateIndex();
+        _lastFeeIndex = uint80(lastFeeIndex);
+        _lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
     }
 
     function getUpdateIndexFields() public virtual view returns(uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant, uint256 lastCFMMFeeIndex,
@@ -115,25 +109,23 @@ contract TestBaseStrategy is BaseStrategy {
         accFeeIndex = s.accFeeIndex;
         borrowedInvariant = s.BORROWED_INVARIANT;
         lpInvariant = s.LP_INVARIANT;
-        //totalInvariant = s.TOTAL_INVARIANT;
         totalInvariant = lpInvariant + borrowedInvariant;
         lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
         lpTokenBal = s.LP_TOKEN_BALANCE;
-        //lpTokenTotal = s.LP_TOKEN_TOTAL;
         lpTokenTotal = lpTokenBal + lpTokenBorrowedPlusInterest;
         lastBlockNumber = s.LAST_BLOCK_NUMBER;
     }
 
     function testUpdateCFMMIndex() public virtual {
-        updateCFMMIndex();
+        _lastCFMMFeeIndex = uint80(updateCFMMIndex());
     }
 
     function testUpdateFeeIndex() public virtual {
-        updateFeeIndex(_lastCFMMFeeIndex);
+        _lastFeeIndex = uint80(updateFeeIndex(_lastCFMMFeeIndex));
     }
 
     function testUpdateStore() public virtual {
-        updateStore();
+        uint256 accFeeIndex = updateStore(_lastFeeIndex);
     }
 
     function setAccFeeIndex(uint96 accFeeIndex) public virtual {

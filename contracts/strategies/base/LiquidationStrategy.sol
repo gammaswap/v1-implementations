@@ -156,10 +156,9 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     function sumLiquidity(uint256[] calldata tokenIds) internal virtual returns(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) {
         address[] memory tokens = s.tokens;
         uint128[] memory tokensHeld;
-        uint256 accFeeIndex = s.accFeeIndex;
         address cfmm = s.cfmm;
         tokensHeldTotal = new uint128[](tokens.length);
-        updateIndex();
+        (uint256 accFeeIndex,,) = updateIndex();
         for(uint256 i = 0; i < tokenIds.length; i++) {
             LibStorage.Loan storage _loan = s.loans[tokenIds[i]];
             uint256 liquidity = uint128((_loan.liquidity * accFeeIndex) / _loan.rateIndex);

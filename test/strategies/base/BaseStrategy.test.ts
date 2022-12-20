@@ -45,6 +45,8 @@ describe("BaseStrategy", function () {
     );
 
     factory = await GammaPoolFactory.deploy(owner.address);
+    await factory.setFee(0);
+
     strategy = await TestStrategy.deploy(factory.address, PROTOCOL_ID);
     await (
       await strategy.initialize(cfmm.address, [tokenA.address, tokenB.address])
@@ -97,7 +99,14 @@ describe("BaseStrategy", function () {
   ): BigNumber {
     const blockDiff = blockNumber.sub(lastBlockNumber);
     const adjBorrowRate = blockDiff.mul(borrowRate).div(2252571);
-    return cfmmFeeIndex.add(adjBorrowRate);
+    const ONE = BigNumber.from(10).pow(18);
+    const adj1kApy = ONE.add(blockDiff.mul(ONE.mul(10)).div(2252571));
+    const poolYield = cfmmFeeIndex.add(adjBorrowRate);
+    if (adj1kApy.lt(poolYield)) {
+      return adj1kApy;
+    } else {
+      return poolYield;
+    }
   }
 
   async function testFeeIndex(cfmmIndex: BigNumber, borrowRate: BigNumber) {
@@ -115,7 +124,6 @@ describe("BaseStrategy", function () {
     );
     expect(lastFeeIndex).to.equal(expFeeIndex);
   }
-
   async function testFeeIndexCases(num: BigNumber) {
     await testFeeIndex(num, num);
     await testFeeIndex(num, num.mul(2));
@@ -276,7 +284,6 @@ describe("BaseStrategy", function () {
 
       const cfmmData = await strategy.getCFMMData();
       const ONE = ethers.BigNumber.from(10).pow(18);
-      expect(cfmmData.lastCFMMFeeIndex).to.equal(ONE);
       expect(cfmmData.lastCFMMInvariant).to.equal(0);
       expect(cfmmData.lastCFMMTotalSupply).to.equal(0);
 
@@ -284,7 +291,7 @@ describe("BaseStrategy", function () {
       await (await strategy.setInvariant(100000)).wait();
       expect(await strategy.invariant()).to.equal(100000);
 
-      expect(await strategy.getCFMMIndex()).to.equal(ONE);
+      expect(await strategy.getCFMMIndex()).to.equal(0);
       await (await strategy.setCFMMIndex(ONE.mul(2))).wait();
       expect(await strategy.getCFMMIndex()).to.equal(ONE.mul(2));
 
@@ -396,7 +403,7 @@ describe("BaseStrategy", function () {
       const cfmmTotalSupply = await cfmm.totalSupply();
       const cfmmInvariant = await strategy.invariant();
 
-      expect(prevCFMMFeeIndex).to.equal(ONE);
+      expect(prevCFMMFeeIndex).to.equal(0);
       expect(prevCFMMTotalSupply).to.equal(0);
       expect(prevCFMMInvariant).to.equal(0);
       expect(cfmmTotalSupply).to.equal(0);
@@ -440,7 +447,7 @@ describe("BaseStrategy", function () {
       const prevCFMMTotalSupply = cfmmData.lastCFMMTotalSupply;
       const prevCFMMFeeIndex = cfmmData.lastCFMMFeeIndex;
 
-      expect(prevCFMMFeeIndex).to.equal(ONE);
+      expect(prevCFMMFeeIndex).to.equal(0);
       expect(prevCFMMTotalSupply).to.equal(0);
       expect(prevCFMMInvariant).to.equal(0);
 
@@ -761,7 +768,6 @@ describe("BaseStrategy", function () {
       await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait();
       await (await strategy.setLastBlockNumber(latestBlock.number + 3)).wait(); // +3 because updates took 2 blocks
       const lastBlockNum = await strategy.getLastBlockNumber();
-
       await (await strategy.testUpdateIndex()).wait();
 
       const fields1 = await strategy.getUpdateIndexFields();
@@ -771,15 +777,17 @@ describe("BaseStrategy", function () {
       expect(fields1.lastBlockNumber).to.equal(expBlockNumber1);
       expect(fields1.lastCFMMInvariant).to.gt(fields0.lastCFMMInvariant);
       expect(fields1.lastCFMMFeeIndex).to.gt(fields0.lastCFMMFeeIndex);
-      expect(fields1.lastFeeIndex).to.gt(fields0.lastFeeIndex);
-      expect(fields1.borrowedInvariant).to.gt(fields0.borrowedInvariant);
+      expect(fields1.lastFeeIndex).to.eq(BigNumber.from(10).pow(18));
+      expect(fields1.borrowedInvariant).to.eq(fields0.borrowedInvariant);
       expect(fields1.lpInvariant).to.gt(fields0.lpInvariant);
-      expect(fields1.accFeeIndex).to.gt(fields0.accFeeIndex);
+      expect(fields1.accFeeIndex).to.eq(fields0.accFeeIndex);
       expect(fields1.totalInvariant).to.gt(fields0.totalInvariant);
       expect(fields1.lpTokenBorrowedPlusInterest).to.equal(
-        fields0.lpTokenBorrowedPlusInterest
+        fields0.lpTokenBorrowedPlusInterest.div(2) // You end up with less LP Tokens than you started with
       );
-      expect(fields1.lpTokenTotal).to.equal(fields0.lpTokenTotal);
+      expect(fields1.lpTokenTotal).to.equal(
+        fields0.lpTokenTotal.sub(fields0.lpTokenBorrowedPlusInterest.div(2))
+      );
       expect(fields1.lpTokenBal).to.equal(fields0.lpTokenBal);
       expect(fields1.lastCFMMTotalSupply).to.equal(fields0.lastCFMMTotalSupply);
     });
@@ -790,7 +798,9 @@ describe("BaseStrategy", function () {
 
       // trades happen
       const cfmmInvariant = await strategy.invariant();
-      await (await strategy.setInvariant(cfmmInvariant.mul(2))).wait();
+      await (
+        await strategy.setInvariant(cfmmInvariant.add(cfmmInvariant.div(1000)))
+      ).wait();
 
       // time passes by
       // mine 256 blocks
@@ -1298,53 +1308,50 @@ describe("BaseStrategy", function () {
 
       // beginning balance of addr1
       await (await strategy.testMint(addr1.address, "123456")).wait();
-      const bal0 = await strategy.balanceOf(addr1.address);
 
       // set the address before minting
-      factory.setFeeTo(addr1.address);
+      await (await factory.setFeeTo(addr1.address)).wait();
+      await (await factory.setFee(10000)).wait();
 
       // need premint values to calculate minted amount
-      const totalPoolSharesSupply = await strategy.totalSupply();
       const reserves = await cfmm.getReserves();
-      const uniInvariant = sqrt(reserves[0].mul(reserves[1]));
+      const uniInvariant = sqrt(reserves[0].div(150).mul(reserves[1].div(150)));
       await strategy.setInvariant(uniInvariant);
-
+      const totalPoolSharesSupply0 = await strategy.totalSupply();
       const fields0 = await strategy.getUpdateIndexFields();
+
+      await ethers.provider.send("hardhat_mine", ["0x10000"]);
+
       await (await strategy.testUpdateIndex()).wait();
 
       // compare borrowedInvariant and no new shares issued
       const fields1 = await strategy.getUpdateIndexFields();
-      expect(fields1.borrowedInvariant.gt(fields0.borrowedInvariant)).to.equal(true);
+      expect(fields1.borrowedInvariant.gt(fields0.borrowedInvariant)).to.equal(
+        true
+      );
+
       const totalPoolSharesSupply1 = await strategy.totalSupply();
-      expect(totalPoolSharesSupply1).to.equal(totalPoolSharesSupply);
+      expect(totalPoolSharesSupply1).to.gt(totalPoolSharesSupply0);
 
-      await (await strategy.testMintToDev()).wait(); // <- mint happens here
-
-      const fields = await strategy.getUpdateIndexFields();
-      const lastFeeIndex = fields.lastFeeIndex;
-      const borrowedInvariant = fields.borrowedInvariant;
-      const poolLPbalance = fields.lpTokenBal;
       const devFee = await factory.fee();
-      const totalUniSupply = await cfmm.totalSupply();
-      const uniShareInvariant = poolLPbalance // <- it was using cfmm.balanceOf(strategy.address); before
-        .mul(uniInvariant)
-        .div(totalUniSupply);
-      const factor = lastFeeIndex
-        .sub(ONE)
-        .mul(BigNumber.from(devFee.toString()))
-        .div(lastFeeIndex);
-      const acctGrowth = factor
-        .mul(borrowedInvariant)
-        .div(borrowedInvariant.add(uniShareInvariant));
-      const expNewDevShares = totalPoolSharesSupply // get the pre mint value
-        .mul(acctGrowth)
-        .div(ONE.sub(acctGrowth));
 
-      const bal1 = await strategy.balanceOf(addr1.address);
-      const feeToPoolBal0 = bal1.sub(bal0);
-      expect(feeToPoolBal0.toNumber()).to.greaterThan(0);
-      // console.log(feeToPoolBal0);
-      expect(feeToPoolBal0).to.equal(expNewDevShares);
+      const gsFeeIndex = fields1.lastFeeIndex.gt(fields1.lastCFMMFeeIndex)
+        ? fields1.lastFeeIndex.sub(fields1.lastCFMMFeeIndex)
+        : ethers.constants.Zero;
+      const denominator = fields1.lastFeeIndex.sub(
+        gsFeeIndex.mul(devFee).div(100000)
+      );
+      const pctToPrint = fields1.lastFeeIndex
+        .mul(ONE)
+        .div(denominator)
+        .sub(ONE);
+      const devShares = pctToPrint.gt(0)
+        ? totalPoolSharesSupply0.mul(pctToPrint).div(ONE)
+        : ethers.constants.Zero;
+      expect(totalPoolSharesSupply1.sub(totalPoolSharesSupply0)).to.eq(
+        devShares
+      );
+      expect(devShares).to.gt(0);
     });
   });
 });

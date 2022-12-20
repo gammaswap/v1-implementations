@@ -606,7 +606,6 @@ describe("ShortStrategy", function () {
         const cfmmInvariant = await cfmm.invariant();
         const lpInvariant = cfmmBalance.mul(cfmmInvariant).div(cfmmTotalSupply);
         expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
-        expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
         expect(poolUpdatedEvent.args.lpInvariant).to.equal(lpInvariant);
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
@@ -863,7 +862,6 @@ describe("ShortStrategy", function () {
           (await ethers.provider.getBlock("latest")).number
         );
         expect(poolUpdatedEvent.args.accFeeIndex).to.equal(ONE);
-        expect(poolUpdatedEvent.args.lastFeeIndex).to.equal(ONE);
         expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
 
         const cfmmBalance = await cfmm.balanceOf(strategy.address);

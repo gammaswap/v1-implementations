@@ -18,6 +18,9 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.initialize(msg.sender, cfmm, tokens);
     }
 
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal override virtual {
+    }
+
     function setTotalSupply(uint256 _totalSupply) public virtual {
         s.totalSupply = _totalSupply;
     }

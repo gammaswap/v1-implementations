@@ -123,7 +123,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return updateLoanLiquidity(_loan, s.accFeeIndex);
     }
 
-    function updateIndex() internal override virtual returns(uint256 accFeeIndex) {
+    function updateIndex() internal override virtual returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMIndex) {
+        accFeeIndex = s.accFeeIndex;
     }
 
     function incBorrowedInvariant(uint256 invariant) external virtual {
