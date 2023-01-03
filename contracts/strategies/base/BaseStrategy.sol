@@ -100,7 +100,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         lastCFMMFeeIndex = updateCFMMIndex();
         lastFeeIndex = updateFeeIndex(lastCFMMFeeIndex);
         accFeeIndex = updateStore(lastFeeIndex);
-        if(s.BORROWED_INVARIANT >= 0) {
+        if(s.BORROWED_INVARIANT > 0) {
             mintToDevs(lastFeeIndex, lastCFMMFeeIndex);
         }
     }
