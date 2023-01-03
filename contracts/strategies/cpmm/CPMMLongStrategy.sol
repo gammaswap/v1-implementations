@@ -10,10 +10,9 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         CPMMBaseLongStrategy(_originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function _getCFMMPrice(address cfmm) public virtual override view returns(uint256 price) {
-        uint256[] memory reserves = new uint256[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
-        price = reserves[1] * (10 ** s.decimals[0]) / reserves[0];
+    function _getLatestCFMMReserves() public virtual override view returns(uint256[] memory reserves) {
+        reserves = new uint256[](2);
+        (reserves[0], reserves[1],) = ICPMM(s.cfmm).getReserves();
     }
 
 }

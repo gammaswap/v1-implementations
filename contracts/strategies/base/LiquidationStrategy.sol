@@ -12,10 +12,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     error NotFullLiquidation();
     error HasMargin();
 
-    event WriteDown(uint256 writeDownAmt);
-    event BatchLiquidity(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] tokensHeldTotal, uint16 count);
-
-    function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
+    function _liquidate(uint256 tokenId, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
         (LibStorage.Loan storage _loan, uint256 loanLiquidity, ) = getLoanLiquidityAndCollateral(tokenId);
 
         uint128[] memory tokensHeld = rebalanceAndDepositCollateral(_loan, loanLiquidity, deltas);
@@ -38,7 +35,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     function _batchLiquidations(uint256[] calldata tokenIds) external override lock virtual returns(uint256[] memory refund) {
         (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPrincipalPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
 
-        loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
+        loanLiquidity = writeDown(0, collateral * 975 / 1000, loanLiquidity);
 
         (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPrincipalPaid, true);
     }
@@ -54,7 +51,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
 
         canLiquidate(collateral, loanLiquidity, 950);
 
-        loanLiquidity = writeDown(collateral * 975 / 1000, loanLiquidity);
+        loanLiquidity = writeDown(tokenId, collateral * 975 / 1000, loanLiquidity);
     }
 
     function payLoanAndRefundLiquidator(uint256 tokenId, uint128[] memory tokensHeld, uint256 loanLiquidity, uint256 lpTokenPrincipalPaid, bool isFullPayment)
@@ -134,7 +131,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         return(loanLiquidity, lpDeposit - lpReturn);
     }
 
-    function writeDown(uint256 payableLiquidity, uint256 loanLiquidity) internal virtual returns(uint256) {
+    function writeDown(uint256 tokenId, uint256 payableLiquidity, uint256 loanLiquidity) internal virtual returns(uint256) {
         if(payableLiquidity >= loanLiquidity) {
             return loanLiquidity;
         }
@@ -148,7 +145,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(borrowedInvariant, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.BORROWED_INVARIANT = borrowedInvariant;
 
-        emit WriteDown(writeDownAmt);
+        emit WriteDown(tokenId, writeDownAmt);
 
         return payableLiquidity;
     }
@@ -178,7 +175,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             }
         }
 
-        emit BatchLiquidity(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, uint16(tokenIds.length));
+        emit BatchLiquidations(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, tokenIds);
     }
 
     function rebalanceAndDepositCollateral(LibStorage.Loan storage _loan, uint256 loanLiquidity, int256[] calldata deltas) internal virtual returns(uint128[] memory tokensHeld){

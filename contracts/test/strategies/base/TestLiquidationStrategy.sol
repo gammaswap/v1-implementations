@@ -140,8 +140,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         emit RefundOverPayment(loanLiquidity, lpDeposit);
     }
 
-    function testWriteDown(uint256 payableLiquidity, uint256 loanLiquidity) external virtual {
-        uint256 _loanLiquidity = writeDown(payableLiquidity, loanLiquidity);
+    function testWriteDown(uint256 tokenId, uint256 payableLiquidity, uint256 loanLiquidity) external virtual {
+        uint256 _loanLiquidity = writeDown(tokenId, payableLiquidity, loanLiquidity);
         emit WriteDown2(_loanLiquidity);
     }
 

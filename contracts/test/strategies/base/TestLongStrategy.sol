@@ -206,8 +206,10 @@ contract TestLongStrategy is LongStrategy {
             (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
     }
 
-    function _getCFMMPrice(address cfmm) external override view returns(uint256) {
-        return 1;
+    function _getLatestCFMMReserves() external override pure returns(uint256[] memory reserves) {
+        reserves = new uint256[](2);
+        reserves[0] = 1;
+        reserves[1] = 2;
     }
 
     function setOriginationFee(uint16 _origFee) external virtual {
