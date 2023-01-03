@@ -33,11 +33,18 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         return 10 ** s.decimals[0];
     }
 
+    /*
+    * CFMM Yield = (cfmmInvariant1 / cfmmInvariant0) * (cfmmTotalSupply0 / cfmmTotalSupply1)
+    *
+    * Deleveraged CFMM Yield = 1 + [(cfmmInvariant1 / cfmmInvariant0) * (cfmmTotalSupply0 / cfmmTotalSupply1) - 1] * (cfmmInvariant0 / borrowedInvariant)
+    *
+    * Deleveraged CFMM Yield = [cfmmInvariant1 * cfmmTotalSupply0 + (borrowedInvariant - cfmmInvariant0) * cfmmTotalSupply1] / (borrowedInvariant * cfmmTotalSupply1)
+    */
     function calcCFMMFeeIndex(uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal virtual view returns(uint256) {
         if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
             uint256 prevInvariant = borrowedInvariant > prevCFMMInvariant ? borrowedInvariant : prevCFMMInvariant; // deleverage CFMM Yield
-            uint256 denominator = (prevInvariant * lastCFMMTotalSupply) / 10**18;
-            return ((lastCFMMInvariant * prevCFMMTotalSupply + lastCFMMTotalSupply * (prevInvariant - prevCFMMInvariant)) / denominator);
+            uint256 denominator = prevInvariant * lastCFMMTotalSupply;
+            return (lastCFMMInvariant * prevCFMMTotalSupply + lastCFMMTotalSupply * (prevInvariant - prevCFMMInvariant)) * (10**18) / denominator;
         }
         return 10**18;
     }
