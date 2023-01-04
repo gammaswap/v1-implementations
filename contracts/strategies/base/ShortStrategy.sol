@@ -55,10 +55,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         for(uint256 i = 0; i < tokens.length; i++) {
             balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data); // TODO: Risky. Should set sender to PosMgr
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
         for(uint256 i = 0; i < tokens.length; i++) {
             if(amounts[i] > 0) {
-                if(balances[i] + amounts[i] != GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
+                if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
                     revert WrongTokenBalance(tokens[i]);
                 }
             }
