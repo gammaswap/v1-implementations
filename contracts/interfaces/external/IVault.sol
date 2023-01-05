@@ -4,13 +4,6 @@ pragma solidity 0.8.4;
 // Interface for the Balancer Vault contract
 // E.g. https://etherscan.io/address/0xBA12222222228d8Ba445958a75a0704d566BF2C8
 
-struct ExitPoolRequest {
-    address[] assets;
-    uint256[] minAmountsOut;
-    bytes userData;
-    bool toInternalBalance
-}
-
 interface IVault {
     /**
      * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
