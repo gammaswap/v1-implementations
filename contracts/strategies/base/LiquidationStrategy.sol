@@ -110,7 +110,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     }
 
     function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
-        if(collateral * limit / 1000 >= liquidity) {
+        if(hasMargin(collateral, liquidity, limit)) {
             revert HasMargin();
         }
     }
@@ -156,17 +156,26 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         address cfmm = s.cfmm;
         tokensHeldTotal = new uint128[](tokens.length);
         (uint256 accFeeIndex,,) = updateIndex();
+        uint256[] memory _tokenIds = new uint256[](tokenIds.length);
         for(uint256 i = 0; i < tokenIds.length; i++) {
             LibStorage.Loan storage _loan = s.loans[tokenIds[i]];
-            uint256 liquidity = uint128((_loan.liquidity * accFeeIndex) / _loan.rateIndex);
+            uint256 liquidity = _loan.liquidity;
+            uint256 rateIndex = _loan.rateIndex;
+            if(liquidity == 0 || rateIndex == 0) {
+                continue;
+            }
+            liquidity = liquidity * accFeeIndex / rateIndex;
             tokensHeld = _loan.tokensHeld;
+            uint256 collateral = calcInvariant(cfmm, tokensHeld);
+            if(hasMargin(collateral, liquidity, 950)) {
+                continue;
+            }
+            _tokenIds[i] = tokenIds[i];
             lpTokensPrincipalTotal = lpTokensPrincipalTotal + _loan.lpTokens;
             _loan.liquidity = 0;
             _loan.initLiquidity = 0;
             _loan.rateIndex = 0;
             _loan.lpTokens = 0;
-            uint256 collateral = calcInvariant(cfmm, tokensHeld);
-            canLiquidate(collateral, liquidity, 950);
             collateralTotal = collateralTotal + collateral;
             liquidityTotal = liquidityTotal + liquidity;
             for(uint256 j = 0; j < tokens.length; j++) {
@@ -175,7 +184,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             }
         }
 
-        emit BatchLiquidations(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, tokenIds);
+        emit BatchLiquidations(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, _tokenIds);
     }
 
     function rebalanceAndDepositCollateral(LibStorage.Loan storage _loan, uint256 loanLiquidity, int256[] calldata deltas) internal virtual returns(uint128[] memory tokensHeld){

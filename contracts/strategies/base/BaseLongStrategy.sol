@@ -26,9 +26,13 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
-        if(collateral * limit / 1000 < liquidity) {
+        if(!hasMargin(collateral, liquidity, limit)) {
             revert Margin();
         }
+    }
+
+    function hasMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure returns(bool) {
+        return collateral * limit / 1000 >= liquidity;
     }
 
     function sendTokens(LibStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {

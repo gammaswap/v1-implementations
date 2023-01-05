@@ -790,7 +790,7 @@ describe("ShortStrategy", function () {
           posManager.depositReserves(owner.address, [0, 0], [0, 0])
         ).to.be.revertedWith("ZeroShares");
 
-        const amtDesired1 = [1, 1];
+        const amtDesired1 = [2, 2];
         const amtMin1 = [0, 0];
         await expect(
           posManager.depositReserves(owner.address, amtDesired1, amtMin1)

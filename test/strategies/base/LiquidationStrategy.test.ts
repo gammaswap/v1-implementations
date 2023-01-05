@@ -846,9 +846,23 @@ describe("LiquidationStrategy", function () {
       expect(res1.tokenBalances[0]).to.equal(amt0.mul(34));
       expect(res1.tokenBalances[1]).to.equal(amt1.mul(34));
 
-      await expect(
-        liquidationStrategy.testSumLiquidity(tokenIds)
-      ).to.be.revertedWith("HasMargin");
+      const tx = await (
+        await liquidationStrategy.testSumLiquidity(tokenIds)
+      ).wait();
+
+      expect(tx.events[0].event).to.eq("BatchLiquidations");
+      expect(tx.events[0].args.liquidityTotal).to.eq(lpTokens.mul(16));
+      expect(tx.events[0].args.collateralTotal).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.lpTokensPrincipalTotal).to.eq(lpTokens.mul(4));
+      expect(tx.events[0].args.tokensHeldTotal.length).to.eq(2);
+      expect(tx.events[0].args.tokensHeldTotal[0]).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.tokensHeldTotal[1]).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.tokenIds.length).to.eq(5);
+      expect(tx.events[0].args.tokenIds[0]).to.eq(tokenIds[0]);
+      expect(tx.events[0].args.tokenIds[1]).to.eq(tokenIds[1]);
+      expect(tx.events[0].args.tokenIds[2]).to.eq(tokenIds[2]);
+      expect(tx.events[0].args.tokenIds[3]).to.eq(tokenIds[3]);
+      expect(tx.events[0].args.tokenIds[4]).to.eq(0);
     });
   });
 
