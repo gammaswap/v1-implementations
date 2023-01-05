@@ -41,7 +41,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     function getTokens(address cfmm) internal virtual override view returns(address[] memory tokens) {
-        tokens = new uint128[](2);
+        tokens = new address[](2);
         (tokens[0], tokens[1], , ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
     }
 
@@ -92,7 +92,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      */
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
         weights = new uint[](2);
-        (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
+        (weights[0], weights[1]) = getWeights(cfmm);
 
         invariant = FixedPoint.ONE;
 

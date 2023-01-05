@@ -21,7 +21,6 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
 
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault)
         BalancerBaseStrategy(_baseRate, _factor, _maxApy, _vault) {
-
     }
 
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
