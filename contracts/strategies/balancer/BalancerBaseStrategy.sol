@@ -53,7 +53,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /**
      * @dev Deposits reserves into the Balancer Vault contract.
      *      Calls joinPool on the Vault contract and mints the BPT token to the GammaPool.
-     * @param cfmm The amount of token removed from the pool during the swap.
+     * @param cfmm The address of the Balancer pool/LP token.
      * @param amounts The amounts of each pool token to deposit.
      * @param to The address to mint the Balancer LP tokens to.
      */
@@ -76,12 +76,30 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     /**
-     * @dev todo
-     * @param cfmm todo
-     * @param to todo
-     * @param amount todo
+     * @dev Withdraws reserves from the Balancer Vault contract.
+     *      Sends the Vault contract the BPT tokens and receives the pool reserve tokens.
+     * @param cfmm The address of the Balancer pool/LP token.
+     * @param to The address to return the pool reserve tokens to.
+     * @param amount The amount of Balancer LP token to burn.
      */    
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
+        // We need to encode userData for the exitPool call
+        bytes memory userDataEncoded = abi.encode(1, amount);
+
+        // When providing your assets, you must ensure that the tokens are sorted numerically by token address. 
+        // It's also important to note that the values in minAmountsOut correspond to the same index value in assets, 
+        // so these arrays must be made in parallel after sorting.
+
+        IVault(vault).exitPool(getPoolId(cfmm), 
+                to, // The GammaPool is sending the Balancer LP tokens
+                to, // The GammaPool is receiving the pool reserve tokens
+                {
+                    assets: getTokens(cfmm),
+                    minAmountsOut: [0, 0], // TODO: Estimate minAmountsOut using queryExit in BalancerHelpers
+                    userData: userDataEncoded,
+                    toInternalBalance: false
+                });
+
         return 1;
     }
 

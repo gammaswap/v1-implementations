@@ -11,9 +11,18 @@ struct JoinPoolRequest {
     bool fromInternalBalance;
 }
 
+struct ExitPoolRequest {
+    address[] assets;
+    uint256[] minAmountsOut;
+    bytes userData;
+    bool toInternalBalance
+}
+
 interface IVault {
     // Fetches the pool assets held in the vault
     function getPoolTokens(bytes32 poolId) external returns (address[] memory tokens, uint[] memory balances);
 
-    function joinPool(bytes32 poolId, address sender, address recipient, JoinPoolRequest memory request)  external payable;
+    function joinPool(bytes32 poolId, address sender, address recipient, JoinPoolRequest memory request) external payable;
+
+    function exitPool(bytes32 poolId, address sender, address recipient, ExitPoolRequest memory request) external payable;
 }
