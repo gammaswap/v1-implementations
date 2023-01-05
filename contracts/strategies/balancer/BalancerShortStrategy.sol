@@ -21,25 +21,13 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
 
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault)
         BalancerBaseStrategy(_baseRate, _factor, _maxApy, _vault) {
+
     }
 
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
         if(amountOptimal < amountMin) {
             revert NotOptimalDeposit();
         }
-    }
-
-    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
-        bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
-        
-        reserves = new uint128[](2);
-        (, , reserves[0], reserves[1]) = IVault(vault).getPoolTokens(poolId);
-    }
-
-    // TODO: Does this need to move to BalancerBaseStrategy?
-    function getWeights(address cfmm) internal virtual override view returns(uint128[] memory weights) {
-        weights = new uint128[](2);
-        (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
     }
 
     function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
@@ -78,7 +66,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
             return(amounts, payee);
         }
-        
+
         // TODO: Is there an overflow risk here?
         uint256 optimalAmount0 = (amountsDesired[1] * reserve0 * weight1).divDown(reserve1 * (FixedPoint.ONE - weight0));
         assert(optimalAmount0 <= amountsDesired[0]);
