@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "../../interfaces/external/IVault.sol";
 import "../../interfaces/external/IWeightedPool2Tokens.sol";
@@ -11,9 +10,6 @@ import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
-    // Use Balancer's fixed point math library for integers
-    using FixedPoint for uint256;
-
     // Add the vault address as immutable to the contract
     address private immutable vault;
 
@@ -21,9 +17,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         vault = _vault;
     }
 
-    function getPoolId(address cfmm) internal virtual override view returns(bytes32 poolId) {
+    function getPoolId(address cfmm) internal virtual view returns(bytes32 poolId) {
         bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
-        return poolId;
     }
 
     /**
@@ -31,22 +26,34 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param cfmm The contract address of the Balancer weighted pool.
      */
     function updateReserves(address cfmm) internal virtual override {
-        poolId = IWeightedPool2Tokens(cfmm).getPoolId();
-        (, , s.CFMM_RESERVES[0], s.CFMM_RESERVES[1]) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+        uint[] memory reserves = new uint[](2);
+        (, reserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+
+        // TODO: Is this casting safe?
+        s.CFMM_RESERVES[0] = uint128(reserves[0]);
+        s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
 
     function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
-        reserves = new uint128[](2);
-        (, , reserves[0], reserves[1]) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+        uint[] memory reserves = new uint[](2);
+        (, reserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+
+        // TODO: Do I need to cast reserves to uint128[]?
     }
 
-    function getTokens(address cfmm) internal virtual override view returns(address[] memory tokens) {
-        tokens = new address[](2);
-        (tokens[0], tokens[1], , ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+    function getTokens(address cfmm) internal virtual view returns(address[] memory tokens) {
+        address[] memory tokens = new address[](2);
+        IERC20[] memory _tokens = new IERC20[](2);
+
+        (_tokens, , ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+
+        // TODO: Improve this handling of casting from IERC20 to address
+        tokens[0] = address(_tokens[0]);
+        tokens[1] = address(_tokens[1]);
     }
 
-    function getWeights(address cfmm) internal virtual override view returns(uint128[] memory weights) {
-        weights = new uint128[](2);
+    function getWeights(address cfmm) internal virtual view returns(uint256[] memory weights) {
+        weights = new uint256[](2);
         (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
     }
 
@@ -65,12 +72,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         IVault(vault).joinPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the tokens
                 to, // The GammaPool is receiving the Balancer LP tokens
-                {
-                    assets: getTokens(cfmm),
-                    maxAmountsIn: amounts,
-                    userData: userDataEncoded,
-                    fromInternalBalance: false
-                });
+                IVault(vault).JoinPoolRequest(getTokens(cfmm), amounts, userDataEncoded, false) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
+                );
 
         return 1;
     }
@@ -93,12 +96,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         IVault(vault).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
                 to, // The GammaPool is receiving the pool reserve tokens
-                {
-                    assets: getTokens(cfmm),
-                    minAmountsOut: [0, 0], // TODO: Estimate minAmountsOut using queryExit in BalancerHelpers
-                    userData: userDataEncoded,
-                    toInternalBalance: false
-                });
+                IVault(cfmm).ExitPoolRequest(getTokens(cfmm), [0, 0], userDataEncoded, false)
+                );
 
         return 1;
     }
@@ -109,15 +108,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amounts The pool reserves to use in the calculation.
      */
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        weights = new uint[](2);
-        (weights[0], weights[1]) = getWeights(cfmm);
-
-        invariant = FixedPoint.ONE;
-
-        for (uint256 i = 0; i < weights.length; i++) {
-            invariant = invariant.mulDown(amounts[i].powDown(weights[i]));
-        }
-
-        return invariant;
+        (uint128 weight0, uint128 weight1) = getWeights(cfmm);
+        uint invariant = Math.power(amounts[0], weight0) * Math.power(amounts[1], weight1);
     }
 }

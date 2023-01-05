@@ -7,14 +7,7 @@ import "../../interfaces/external/IWeightedPool2Tokens.sol";
 import "../base/ShortStrategyERC4626.sol";
 import "./BalancerBaseStrategy.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-
 contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
-    // Use Balancer's fixed point math library for integers
-    using FixedPoint for uint256;
-
     error ZeroDeposits();
     error NotOptimalDeposit();
     error ZeroReserves();
@@ -59,7 +52,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         // Note: This calculate preserves price, which is almost the same as price in a UniV2 pool
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount1 = (amountsDesired[0] * reserve1 * weight0).divDown(reserve0 * (FixedPoint.ONE - weight1));
+        uint256 optimalAmount1 = (amountsDesired[0] * reserve1 * weight0) / (reserve0 * (1e18 - weight1));
         if (optimalAmount1 <= amountsDesired[1]) {
             checkOptimalAmt(optimalAmount1, amountsMin[1]);
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
@@ -67,7 +60,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         }
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount0 = (amountsDesired[1] * reserve0 * weight1).divDown(reserve1 * (FixedPoint.ONE - weight0));
+        uint256 optimalAmount0 = (amountsDesired[1] * reserve0 * weight1) / (reserve1 * (1e18 - weight0));
         assert(optimalAmount0 <= amountsDesired[0]);
         checkOptimalAmt(optimalAmount0, amountsMin[0]);
         (amounts[0], amounts[1]) = (optimalAmount0, amountsDesired[1]);

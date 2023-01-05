@@ -4,6 +4,10 @@ pragma solidity 0.8.4;
 // Interface for the Balancer Vault contract
 // E.g. https://etherscan.io/address/0xBA12222222228d8Ba445958a75a0704d566BF2C8
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IAsset {}
+
 interface IVault {
     /**
      * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
