@@ -34,14 +34,19 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
 
-    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
-        uint[] memory reserves = new uint[](2);
-        (, reserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+    function getReserves(address cfmm) internal virtual view returns(uint128[]) {
+        uint[] memory poolReserves = new uint[](2);
+        (, poolReserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
 
         // TODO: Do I need to cast reserves to uint128[]?
+        uint128[] memory reserves = new uint128[](2);
+        reserves[0] = uint128(poolReserves[0]);
+        reserves[1] = uint128(poolReserves[1]);
+
+        return reserves;
     }
 
-    function getTokens(address cfmm) internal virtual view returns(address[] memory tokens) {
+    function getTokens(address cfmm) internal virtual view returns(address[]) {
         address[] memory tokens = new address[](2);
         IERC20[] memory _tokens = new IERC20[](2);
 
@@ -50,11 +55,14 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // TODO: Improve this handling of casting from IERC20 to address
         tokens[0] = address(_tokens[0]);
         tokens[1] = address(_tokens[1]);
+
+        return tokens
     }
 
-    function getWeights(address cfmm) internal virtual view returns(uint256[] memory weights) {
-        weights = new uint256[](2);
+    function getWeights(address cfmm) internal virtual view returns(uint256[]) {
+        uint256[] memory weights = new uint256[](2);
         (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
+        return weights
     }
 
     /**
@@ -106,10 +114,10 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
                 );
 
         // Must return amounts as an array of withdrawn reserves
-        uint128[] memory amounts = getReserves(cfmm);
+        uint128[] memory finalReserves = getReserves(cfmm);
 
-        amounts[0] -= initialReserves[0];
-        amounts[1] -= initialReserves[1];
+        amounts[0] = uint256(finalReserves[0] - initialReserves[0]);
+        amounts[1] = uint256(finalReserves[1] - initialReserves[1]);
     }
 
     /**
@@ -117,8 +125,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param cfmm The contract address of the Balancer weighted pool.
      * @param amounts The pool reserves to use in the calculation.
      */
-    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        uint[] memory weights = getWeights(cfmm);
-        uint invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
+    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256 invariant) {
+        uint256[] memory weights = getWeights(cfmm);
+        invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
     }
 }
