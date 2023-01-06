@@ -10,7 +10,14 @@ import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    uint256 immutable public BLOCKS_PER_YEAR;//2252571 year block count in ETH mainnet
+
+    constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+        BLOCKS_PER_YEAR = _blocksPerYear;
+    }
+
+    function blocksPerYear() internal virtual override view returns(uint256) {
+        return BLOCKS_PER_YEAR;
     }
 
     function updateReserves(address cfmm) internal virtual override {

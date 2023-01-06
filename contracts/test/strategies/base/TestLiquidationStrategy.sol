@@ -32,6 +32,10 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function blocksPerYear() internal virtual override pure returns(uint256) {
+        return 2252571;
+    }
+
     function getStaticParams() external virtual view returns(address factory, address cfmm, address[] memory tokens, uint128[] memory tokenBalances) {
         factory = s.factory;
         cfmm = s.cfmm;

@@ -27,6 +27,10 @@ contract TestBaseStrategy is BaseStrategy {
         s.initialize(_factory, cfmm, tokens, decimals);
     }
 
+    function blocksPerYear() internal virtual override pure returns(uint256) {
+        return 2252571;
+    }
+
     function getParameters() public virtual view returns(address factory, address cfmm, address[] memory tokens, uint16 protocolId) {
         factory = _factory;
         cfmm = s.cfmm;

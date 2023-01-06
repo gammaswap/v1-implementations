@@ -11,8 +11,8 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
     error NotOptimalDeposit();
     error ZeroReserves();
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
+    constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        CPMMBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
     }
 
     function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)

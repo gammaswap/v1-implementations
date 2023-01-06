@@ -33,6 +33,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         return 10 ** s.decimals[0];
     }
 
+    function blocksPerYear() internal virtual view returns(uint256);
+
     /*
     * CFMM Fee Index = 1 + CFMM Yield = (cfmmInvariant1 / cfmmInvariant0) * (cfmmTotalSupply0 / cfmmTotalSupply1)
     *
@@ -53,9 +55,10 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
     function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 lastBlockNum) internal virtual view returns(uint256) {
         uint256 blockDiff = block.number - lastBlockNum;
-        uint256 adjBorrowRate = (blockDiff * borrowRate) / 2252571;//2252571 year block count
+        uint256 _blocksPerYear = blocksPerYear();
+        uint256 adjBorrowRate = (blockDiff * borrowRate) / _blocksPerYear;
         uint256 ONE = 10**18;
-        uint256 apy1k = ONE + (blockDiff * 10 * ONE) / 2252571;
+        uint256 apy1k = ONE + (blockDiff * 10 * ONE) / _blocksPerYear;
         return Math.min(apy1k, lastCFMMFeeIndex + adjBorrowRate);
     }
 

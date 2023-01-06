@@ -12,8 +12,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     uint16 immutable public tradingFee1;
     uint16 immutable public tradingFee2;
 
-    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseStrategy(_baseRate, _factor, _maxApy) {
+    constructor(uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        CPMMBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
         origFee = _originationFee;
         tradingFee1 = _tradingFee1;
         tradingFee2 = _tradingFee2;

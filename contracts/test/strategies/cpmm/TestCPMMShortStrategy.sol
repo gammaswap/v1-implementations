@@ -8,7 +8,7 @@ contract TestCPMMShortStrategy is CPMMShortStrategy {
     using LibStorage for LibStorage.Storage;
 
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMShortStrategy(_baseRate, _factor, _maxApy) {
+        CPMMShortStrategy(2252571, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {

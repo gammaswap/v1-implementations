@@ -25,6 +25,10 @@ contract TestLongStrategy is LongStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function blocksPerYear() internal virtual override pure returns(uint256) {
+        return 2252571;
+    }
+
     function tokens() public virtual view returns(address[] memory) {
         return s.tokens;
     }

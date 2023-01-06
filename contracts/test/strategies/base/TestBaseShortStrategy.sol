@@ -18,6 +18,10 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function blocksPerYear() internal virtual override pure returns(uint256) {
+        return 2252571;
+    }
+
     function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal override virtual {
     }
 
