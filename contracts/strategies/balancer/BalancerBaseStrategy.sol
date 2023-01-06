@@ -17,8 +17,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         vault = _vault;
     }
 
-    function getPoolId(address cfmm) internal virtual view returns(bytes32 poolId) {
+    function getPoolId(address cfmm) internal virtual view returns(bytes32) {
         bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
+        return poolId;
     }
 
     /**
@@ -34,7 +35,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
 
-    function getReserves(address cfmm) internal virtual view returns(uint128[] memory) {
+    function getPoolReserves(address cfmm) internal virtual view returns(uint128[] memory) {
         uint[] memory poolReserves = new uint[](2);
         (, poolReserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
 
@@ -103,7 +104,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // so these arrays must be made in parallel after sorting.
 
         // Log the initial reserves in the pool
-        uint128[] memory initialReserves = getReserves(cfmm);
+        uint128[] memory initialReserves = getPoolReserves(cfmm);
 
         uint[] memory minAmountsOut = new uint[](2);
 
@@ -114,7 +115,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
                 );
 
         // Must return amounts as an array of withdrawn reserves
-        uint128[] memory finalReserves = getReserves(cfmm);
+        uint128[] memory finalReserves = getPoolReserves(cfmm);
 
         amounts[0] = uint256(finalReserves[0] - initialReserves[0]);
         amounts[1] = uint256(finalReserves[1] - initialReserves[1]);

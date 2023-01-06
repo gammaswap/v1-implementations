@@ -16,6 +16,10 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         BalancerBaseStrategy(_baseRate, _factor, _maxApy, _vault) {
     }
 
+    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory) {
+        return getPoolReserves(cfmm);
+    }
+
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
         if(amountOptimal < amountMin) {
             revert NotOptimalDeposit();
@@ -30,7 +34,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         }
 
         // TODO: Does this contract have access to s.cfmm?
-        uint128[] memory reserves = getReserves(s.cfmm);
+        uint128[] memory reserves = getPoolReserves(s.cfmm);
 
         // Get normalised weights for price calculation
         uint256[] memory weights = getWeights(s.cfmm);
