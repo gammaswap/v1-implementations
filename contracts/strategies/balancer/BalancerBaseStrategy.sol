@@ -34,7 +34,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
 
-    function getReserves(address cfmm) internal virtual view returns(uint128[]) {
+    function getReserves(address cfmm) internal virtual view returns(uint128[] memory) {
         uint[] memory poolReserves = new uint[](2);
         (, poolReserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
 
@@ -46,7 +46,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         return reserves;
     }
 
-    function getTokens(address cfmm) internal virtual view returns(address[]) {
+    function getTokens(address cfmm) internal virtual view returns(address[] memory) {
         address[] memory tokens = new address[](2);
         IERC20[] memory _tokens = new IERC20[](2);
 
@@ -56,13 +56,13 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         tokens[0] = address(_tokens[0]);
         tokens[1] = address(_tokens[1]);
 
-        return tokens
+        return tokens;
     }
 
-    function getWeights(address cfmm) internal virtual view returns(uint256[]) {
+    function getWeights(address cfmm) internal virtual view returns(uint256[] memory) {
         uint256[] memory weights = new uint256[](2);
         (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
-        return weights
+        return weights;
     }
 
     /**
