@@ -72,7 +72,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         IVault(vault).joinPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the tokens
                 to, // The GammaPool is receiving the Balancer LP tokens
-                IVault(vault).JoinPoolRequest(getTokens(cfmm), amounts, userDataEncoded, false) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
+                IVault.JoinPoolRequest({assets: getTokens(cfmm), maxAmountsIn: amounts, userData: userDataEncoded, fromInternalBalance: false}) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
                 );
 
         return 1;
@@ -89,17 +89,27 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // We need to encode userData for the exitPool call
         bytes memory userDataEncoded = abi.encode(1, amount);
 
+        // Notes from Balancer Documentation:
         // When providing your assets, you must ensure that the tokens are sorted numerically by token address. 
         // It's also important to note that the values in minAmountsOut correspond to the same index value in assets, 
         // so these arrays must be made in parallel after sorting.
 
+        // Log the initial reserves in the pool
+        uint128[] memory initialReserves = getReserves(cfmm);
+
+        uint[] memory minAmountsOut = new uint[](2);
+
         IVault(vault).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
                 to, // The GammaPool is receiving the pool reserve tokens
-                IVault(cfmm).ExitPoolRequest(getTokens(cfmm), [0, 0], userDataEncoded, false)
+                IVault.ExitPoolRequest({assets: getTokens(cfmm), minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
                 );
 
-        return 1;
+        // Must return amounts as an array of withdrawn reserves
+        uint128[] memory amounts = getReserves(cfmm);
+
+        amounts[0] -= initialReserves[0];
+        amounts[1] -= initialReserves[1];
     }
 
     /**
@@ -108,7 +118,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amounts The pool reserves to use in the calculation.
      */
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        (uint128 weight0, uint128 weight1) = getWeights(cfmm);
-        uint invariant = Math.power(amounts[0], weight0) * Math.power(amounts[1], weight1);
+        uint[] memory weights = getWeights(cfmm);
+        uint invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
     }
 }

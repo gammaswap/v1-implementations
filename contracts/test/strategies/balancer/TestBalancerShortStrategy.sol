@@ -7,8 +7,8 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
 
     using LibStorage for LibStorage.Storage;
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerShortStrategy(_baseRate, _factor, _maxApy) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault)
+        BalancerShortStrategy(_baseRate, _factor, _maxApy, _vault) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {

@@ -72,7 +72,7 @@ interface IVault {
     ) external payable;
 
     struct JoinPoolRequest {
-        IAsset[] assets;
+        address[] assets;
         uint256[] maxAmountsIn;
         bytes userData;
         bool fromInternalBalance;
@@ -121,7 +121,7 @@ interface IVault {
     ) external;
 
     struct ExitPoolRequest {
-        IAsset[] assets;
+        address[] assets;
         uint256[] minAmountsOut;
         bytes userData;
         bool toInternalBalance;

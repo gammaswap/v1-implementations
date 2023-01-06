@@ -30,19 +30,19 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         }
 
         // TODO: Does this contract have access to s.cfmm?
-        (uint256 reserve0, uint256 reserve1) = getReserves(s.cfmm);
+        uint128[] memory reserves = getReserves(s.cfmm);
 
         // Get normalised weights for price calculation
-        (uint256 weight0, uint256 weight1) = getWeights(s.cfmm);
+        uint256[] memory weights = getWeights(s.cfmm);
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);
 
-        if (reserve0 == 0 && reserve1 == 0) {
+        if (reserves[0] == 0 && reserves[1] == 0) {
             return(amountsDesired, payee);
         }
 
-        if(reserve0 == 0 || reserve1 == 0) {
+        if(reserves[0] == 0 || reserves[1] == 0) {
             revert ZeroReserves();
         }
 
@@ -52,7 +52,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         // Note: This calculate preserves price, which is almost the same as price in a UniV2 pool
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount1 = (amountsDesired[0] * reserve1 * weight0) / (reserve0 * (1e18 - weight1));
+        uint256 optimalAmount1 = (amountsDesired[0] * reserves[1] * weights[0]) / (reserves[0] * (1e18 - weights[1]));
         if (optimalAmount1 <= amountsDesired[1]) {
             checkOptimalAmt(optimalAmount1, amountsMin[1]);
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
@@ -60,7 +60,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         }
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount0 = (amountsDesired[1] * reserve0 * weight1) / (reserve1 * (1e18 - weight0));
+        uint256 optimalAmount0 = (amountsDesired[1] * reserves[0] * weights[1]) / (reserves[1] * (1e18 - weights[0]));
         assert(optimalAmount0 <= amountsDesired[0]);
         checkOptimalAmt(optimalAmount0, amountsMin[0]);
         (amounts[0], amounts[1]) = (optimalAmount0, amountsDesired[1]);
