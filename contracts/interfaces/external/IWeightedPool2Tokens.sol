@@ -19,4 +19,7 @@ interface IWeightedPool2Tokens {
 
     // Fetches the pool ID
     function getPoolId() external view returns (bytes32 poolId);
+
+    // Fetches the vault address corresponding to the pool
+    function getVault() external view returns (address);
 }

@@ -12,8 +12,8 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
     error NotOptimalDeposit();
     error ZeroReserves();
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault)
-        BalancerBaseStrategy(_baseRate, _factor, _maxApy, _vault) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        BalancerBaseStrategy(_baseRate, _factor, _maxApy) {
     }
 
     function getReserves(address cfmm) internal virtual override view returns(uint128[] memory) {

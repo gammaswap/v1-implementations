@@ -10,11 +10,11 @@ import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
-    // Add the vault address as immutable to the contract
-    address private immutable vault;
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    }
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
-        vault = _vault;
+    function getVault(address cfmm) internal virtual view returns(address) {
+        return IWeightedPool2Tokens(cfmm).getVault();
     }
 
     function getPoolId(address cfmm) internal virtual view returns(bytes32) {
@@ -28,7 +28,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      */
     function updateReserves(address cfmm) internal virtual override {
         uint[] memory reserves = new uint[](2);
-        (, reserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+        (, reserves, ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
         // TODO: Is this casting safe?
         s.CFMM_RESERVES[0] = uint128(reserves[0]);
@@ -37,7 +37,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
     function getPoolReserves(address cfmm) internal virtual view returns(uint128[] memory) {
         uint[] memory poolReserves = new uint[](2);
-        (, poolReserves, ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+        (, poolReserves, ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
         // TODO: Do I need to cast reserves to uint128[]?
         uint128[] memory reserves = new uint128[](2);
@@ -51,7 +51,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         address[] memory tokens = new address[](2);
         IERC20[] memory _tokens = new IERC20[](2);
 
-        (_tokens, , ) = IVault(vault).getPoolTokens(getPoolId(cfmm));
+        (_tokens, , ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
         // TODO: Improve this handling of casting from IERC20 to address
         tokens[0] = address(_tokens[0]);
@@ -78,7 +78,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         uint256 minimumBPT = 0; // TODO: Do I need to estimate this?
         bytes memory userDataEncoded = abi.encode(1, amounts, minimumBPT);
 
-        IVault(vault).joinPool(getPoolId(cfmm), 
+        IVault(getVault(cfmm)).joinPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the tokens
                 to, // The GammaPool is receiving the Balancer LP tokens
                 IVault.JoinPoolRequest({assets: getTokens(cfmm), maxAmountsIn: amounts, userData: userDataEncoded, fromInternalBalance: false}) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
@@ -108,7 +108,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         uint[] memory minAmountsOut = new uint[](2);
 
-        IVault(vault).exitPool(getPoolId(cfmm), 
+        IVault(getVault(cfmm)).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
                 payable(to), // The user is receiving the pool reserve tokens
                 IVault.ExitPoolRequest({assets: getTokens(cfmm), minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})

@@ -11,8 +11,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     uint16 immutable public origFee;
     uint16 immutable public tradingFee;
 
-    constructor(uint16 _originationFee, uint16 _tradingFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, address _vault)
-        BalancerBaseStrategy(_baseRate, _factor, _maxApy, _vault) {
+    constructor(uint16 _originationFee, uint16 _tradingFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        BalancerBaseStrategy(_baseRate, _factor, _maxApy) {
         origFee = _originationFee;
         // TODO: Should we get this fee dynamically?
         tradingFee = _tradingFee;
@@ -40,7 +40,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
     // TODO: What is this function doing exactly?
     // Uniswap: Send tokens first before calling Pool.swap
-    // Balancer: 
+    // Balancer: ??
     function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
