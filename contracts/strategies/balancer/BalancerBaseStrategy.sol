@@ -101,7 +101,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         IVault(vault).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
-                to, // The GammaPool is receiving the pool reserve tokens
+                payable(to), // The user is receiving the pool reserve tokens
                 IVault.ExitPoolRequest({assets: getTokens(cfmm), minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
                 );
 
