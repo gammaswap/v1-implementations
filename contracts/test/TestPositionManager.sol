@@ -34,7 +34,7 @@ contract TestPositionManager is ISendTokensCallback {
                 if(amounts[i] % 2 == 0) {
                     send(tokens[i], decoded.payer, payee, amounts[i]);
                 } else {
-                    send(tokens[i], decoded.payer, payee, amounts[i] + 1);
+                    send(tokens[i], decoded.payer, payee, amounts[i] - 1);
                 }
             }
         }

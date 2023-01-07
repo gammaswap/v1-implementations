@@ -13,11 +13,11 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLongStrategy(_originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+        CPMMLongStrategy(800, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
-        s.initialize(msg.sender, cfmm, tokens, decimals);
+    function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
+        s.initialize(msg.sender, _cfmm, _tokens, _decimals);
     }
 
     function cfmm() public view returns(address) {
@@ -81,18 +81,23 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override returns(uint256[] memory amounts) {
+    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256[] memory) {
+        return new uint256[](2);
     }
 
-    function _repayLiquidity(uint256 tokenId, uint256 liquidity) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
+    function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+        return (0, new uint256[](2));
     }
 
-    function _decreaseCollateral(uint256 tokenId, uint256[] calldata amounts, address to) external virtual override returns(uint128[] memory val) {
+    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override returns(uint128[] memory) {
+        return new uint128[](2);
     }
 
-    function _increaseCollateral(uint256 tokenId) external virtual override returns(uint128[] memory tokensHeld) {
+    function _increaseCollateral(uint256) external virtual override returns(uint128[] memory) {
+        return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256 tokenId, int256[] calldata deltas) external virtual override returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override returns(uint128[] memory) {
+        return new uint128[](2);
     }
 }

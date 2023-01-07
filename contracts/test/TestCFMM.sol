@@ -35,7 +35,6 @@ contract TestCFMM is ERC20 {
     }
 
     function mint(uint256 shares, address to) public virtual {
-        uint256 _totalSupply = totalSupply();
         invariant += convertSharesToInvariant(shares);
         _mint(to, shares);
         sync();

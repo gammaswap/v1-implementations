@@ -11,6 +11,12 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
     //LongGamma
 
+    function checkMargin(uint256 collateral, uint256 liquidity) internal virtual override view {
+        if(!hasMargin(collateral, liquidity, ltvThreshold())) {
+            revert Margin();
+        }
+    }
+
     function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint128[] memory tokensHeld) {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
         tokensHeld = updateCollateral(_loan);
@@ -25,7 +31,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         uint256 loanLiquidity = updateLoan(_loan);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, loanLiquidity, 800);
+        checkMargin(collateral, loanLiquidity);
 
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
@@ -49,7 +55,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         loanLiquidity = openLoan(_loan, lpTokens);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, loanLiquidity, 800);
+        checkMargin(collateral, loanLiquidity);
 
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 
@@ -91,7 +97,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         tokensHeld = updateCollateral(_loan);
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, loanLiquidity, 850);
+        checkMargin(collateral, loanLiquidity);
 
         emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
 

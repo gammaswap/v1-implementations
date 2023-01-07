@@ -18,6 +18,8 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     function originationFee() internal virtual view returns(uint16);
 
+    function ltvThreshold() internal virtual view returns(uint16);
+
     function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage _loan) {
         _loan = s.loans[tokenId];
         if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
@@ -25,10 +27,10 @@ abstract contract BaseLongStrategy is BaseStrategy {
         }
     }
 
-    function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
-        if(collateral * limit / 1000 < liquidity) {
-            revert Margin();
-        }
+    function checkMargin(uint256 collateral, uint256 liquidity) internal virtual view;
+
+    function hasMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure returns(bool) {
+        return collateral * limit / 1000 >= liquidity;
     }
 
     function sendTokens(LibStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
@@ -43,6 +45,18 @@ abstract contract BaseLongStrategy is BaseStrategy {
     function repayTokens(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual returns(uint256) {
         beforeRepay(_loan, amounts); // in balancer we do nothing here, in uni we send tokens here, definitely not going over since we check here that we have the collateral to send.
         return depositToCFMM(s.cfmm, amounts, address(this));//in balancer pulls tokens here and mints, in Uni it just mints)
+    }
+
+    function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256) {
+        (uint256 accFeeIndex,,) = updateIndex();
+        return updateLoanLiquidity(_loan, accFeeIndex);
+    }
+
+    function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity) {
+        uint256 _rateIndex = _loan.rateIndex;
+        liquidity = _rateIndex == 0 ? 0 : (_loan.liquidity * accFeeIndex) / _rateIndex;
+        _loan.liquidity = uint128(liquidity);
+        _loan.rateIndex = uint96(accFeeIndex);
     }
 
     function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual returns(uint256 liquidity){

@@ -18,6 +18,10 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function blocksPerYear() internal virtual override pure returns(uint256) {
+        return 2252571;
+    }
+
     function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal override virtual {
     }
 
@@ -136,7 +140,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
     }
 
     //ShortGamma
-    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal override virtual view returns (uint256[] memory reserves, address payee) {
+    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata) internal override virtual view returns (uint256[] memory reserves, address payee) {
         return (amountsDesired, s.cfmm);
     }
 
@@ -149,11 +153,11 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(cfmm).getReserves();
     }
 
-    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
+    function calcInvariant(address cfmm, uint128[] memory) internal virtual override view returns(uint256) {
         return TestCFMM(cfmm).invariant();
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal override virtual returns(uint256 liquidity) {
+    function depositToCFMM(address cfmm, uint256[] memory amounts, address) internal override virtual returns(uint256 liquidity) {
         liquidity = amounts[0] + amounts[1];
         TestCFMM(cfmm).mint(liquidity, address(this));
     }

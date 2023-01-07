@@ -55,10 +55,10 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         for(uint256 i = 0; i < tokens.length; i++) {
             balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
         }
-        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data); // TODO: Risky. Should set sender to PosMgr
+        ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
         for(uint256 i = 0; i < tokens.length; i++) {
             if(amounts[i] > 0) {
-                if(balances[i] + amounts[i] != GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
+                if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
                     revert WrongTokenBalance(tokens[i]);
                 }
             }
@@ -176,13 +176,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     function _convertToShares(uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        uint256 _totalAssets = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;//s.LP_TOKEN_TOTAL;
+        uint256 _totalAssets = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
         return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
     }
 
     function _convertToAssets(uint256 shares) internal view virtual returns (uint256) {
-        uint256 supply = s.totalSupply;
-        //return supply == 0 ? shares : (shares * s.LP_TOKEN_TOTAL) / supply;
+        uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         return supply == 0 ? shares : (shares * (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST)) / supply;
     }
 
