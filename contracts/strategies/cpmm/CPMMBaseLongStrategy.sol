@@ -1,4 +1,5 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.4;
 
 import "../base/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
@@ -34,7 +35,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         sendTokens(_loan, s.cfmm, amounts);
     }
 
-    function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+    function swapTokens(LibStorage.Loan storage, uint256[] memory, uint256[] memory inAmts) internal virtual override {
         ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
     }
 

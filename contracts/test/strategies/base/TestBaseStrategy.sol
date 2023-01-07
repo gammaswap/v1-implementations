@@ -98,7 +98,7 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateIndex() public virtual {
-        (uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMFeeIndex) = updateIndex();
+        (, uint256 lastFeeIndex, uint256 lastCFMMFeeIndex) = updateIndex();
         _lastFeeIndex = uint80(lastFeeIndex);
         _lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
     }
@@ -129,7 +129,7 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateStore() public virtual {
-        uint256 accFeeIndex = updateStore(_lastFeeIndex);
+        updateStore(_lastFeeIndex);
     }
 
     function getLastFeeIndex() public virtual view returns(uint256){

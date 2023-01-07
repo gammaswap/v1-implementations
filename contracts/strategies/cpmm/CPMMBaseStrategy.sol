@@ -24,7 +24,7 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1],) = ICPMM(cfmm).getReserves();
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {
+    function depositToCFMM(address cfmm, uint256[] memory, address to) internal virtual override returns(uint256) {
         return ICPMM(cfmm).mint(to);
     }
 
@@ -34,7 +34,7 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }
 
-    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
+    function calcInvariant(address, uint128[] memory amounts) internal virtual override view returns(uint256) {
         return Math.sqrt(uint256(amounts[0]) * amounts[1]);
     }
 }

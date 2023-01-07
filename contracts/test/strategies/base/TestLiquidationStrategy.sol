@@ -61,6 +61,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         bal.lastCFMMTotalSupply = s.lastCFMMTotalSupply;
         tokenBalances = s.TOKEN_BALANCE;
         accFeeIndex = s.accFeeIndex;
+        return(bal, tokenBalances, accFeeIndex);
     }
 
     function checkMargin2(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure {
@@ -107,7 +108,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
     }
 
     function testPayBatchLoanAndRefundLiquidator(uint256[] calldata tokenIds) external virtual {
-        (uint256 liquidityTotal, uint256 payLiquidityTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) = sumLiquidity(tokenIds);
+        (uint256 liquidityTotal, uint256 payLiquidityTotal,, uint128[] memory tokensHeldTotal) = sumLiquidity(tokenIds);
         (tokensHeldTotal, ) = refundLiquidator(payLiquidityTotal, liquidityTotal, tokensHeldTotal);
         emit Refund(tokensHeldTotal);
     }
@@ -135,6 +136,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
 
     function updateIndex() internal override virtual returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMIndex) {
         accFeeIndex = s.accFeeIndex;
+        lastFeeIndex = 10**18;
+        lastCFMMIndex = 10**18;
     }
 
     function incBorrowedInvariant(uint256 invariant) external virtual {
@@ -155,52 +158,58 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         emit WriteDown2(_loanLiquidity);
     }
 
-    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal override virtual returns(uint256 remainingLiquidity) {
+    function payLoan(LibStorage.Loan storage, uint256, uint256) internal override virtual returns(uint256) {
+        return 0;
     }
 
     //AbstractRateModel abstract functions
-    function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {
+    function calcBorrowRate(uint256, uint256) internal virtual override view returns(uint256) {
         return 0;
     }
 
     //BaseStrategy functions
-    function calcCFMMFeeIndex(uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply) internal override virtual view returns(uint256) {
+    function calcCFMMFeeIndex(uint256, uint256, uint256, uint256, uint256) internal override virtual view returns(uint256) {
         return 0;
     }
 
-    function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 lastBlockNum) internal override virtual view returns(uint256) {
+    function calcFeeIndex(uint256, uint256, uint256) internal override virtual view returns(uint256) {
         return 0;
     }
 
     function updateCFMMIndex() internal override virtual returns(uint256){
+        return 0;
     }
 
     //BaseStrategy abstract functions
-    function updateReserves(address cfmm) internal virtual override {
+    function updateReserves(address) internal virtual override {
     }
 
-    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
+    function calcInvariant(address, uint128[] memory amounts) internal virtual override view returns(uint256) {
         return Math.sqrt(uint256(amounts[0]) * amounts[1]);
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256 liquidity) {
+    function depositToCFMM(address, uint256[] memory, address) internal virtual override returns(uint256) {
+        return 0;
     }
 
-    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
+    function withdrawFromCFMM(address, address, uint256) internal virtual override returns(uint256[] memory) {
+        return new uint256[](2);
     }
 
     //BaseLongStrategy abstract functions
 
-    function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
+    function beforeRepay(LibStorage.Loan storage, uint256[] memory) internal virtual override {
     }
 
-    function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(uint256) internal virtual override view returns(uint256[] memory) {
+        return new uint256[](2);
     }
 
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage, int256[] calldata) internal virtual override returns(uint256[] memory, uint256[] memory) {
+        return (new uint256[](2), new uint256[](2));
     }
 
-    function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+    function swapTokens(LibStorage.Loan storage, uint256[] memory, uint256[] memory) internal virtual override {
     }
 
     function originationFee() internal virtual override view returns(uint16) {
