@@ -121,18 +121,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         }
     }
 
-    function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256) {
-        (uint256 accFeeIndex,,) = updateIndex();
-        return updateLoanLiquidity(_loan, accFeeIndex);
-    }
-
-    function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity) {
-        uint256 _rateIndex = _loan.rateIndex;
-        liquidity = _rateIndex == 0 ? 0 : (_loan.liquidity * accFeeIndex) / _rateIndex;
-        _loan.liquidity = uint128(liquidity);
-        _loan.rateIndex = uint96(accFeeIndex);
-    }
-
     function _mint(address account, uint256 amount) internal virtual {
         if(amount == 0) {
             revert ZeroAmount();

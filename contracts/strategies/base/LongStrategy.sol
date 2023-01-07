@@ -11,6 +11,12 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
     //LongGamma
 
+    function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual override view {
+        if(!hasMargin(collateral, liquidity, limit)) {
+            revert Margin();
+        }
+    }
+
     function _increaseCollateral(uint256 tokenId) external virtual override lock returns(uint128[] memory tokensHeld) {
         LibStorage.Loan storage _loan = _getLoan(tokenId);
         tokensHeld = updateCollateral(_loan);

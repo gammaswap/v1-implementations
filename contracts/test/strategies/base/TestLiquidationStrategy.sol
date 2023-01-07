@@ -63,6 +63,12 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         accFeeIndex = s.accFeeIndex;
     }
 
+    function checkMargin2(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure {
+        if(!hasMargin(collateral, liquidity, limit)) {
+            revert Margin();
+        }
+    }
+
     // **** LONG GAMMA **** //
     function createLoan(uint256 lpTokens) external virtual returns(uint256 tokenId) {
         tokenId = s.createLoan(s.tokens.length);
@@ -76,7 +82,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         uint256 liquidity = openLoan(_loan, lpTokens);
         _loan.rateIndex = s.accFeeIndex;
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        checkMargin(collateral, liquidity, 800);
+        checkMargin2(collateral, liquidity, 800);
 
         emit LoanCreated(msg.sender, tokenId);
     }
@@ -116,7 +122,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
     }
 
     function testCanLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) external virtual {
-        canLiquidate(collateral, liquidity, limit);
+        checkMargin(collateral, liquidity, limit);
     }
 
     function testUpdateLoan(uint256 tokenId) external virtual {

@@ -132,45 +132,6 @@ contract TestBaseStrategy is BaseStrategy {
         uint256 accFeeIndex = updateStore(_lastFeeIndex);
     }
 
-    function setAccFeeIndex(uint96 accFeeIndex) public virtual {
-        s.accFeeIndex = accFeeIndex;
-    }
-
-    function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex){
-        accFeeIndex = s.accFeeIndex;
-    }
-
-    function createLoan() public virtual returns(uint256 tokenId) {
-        tokenId = s.createLoan(s.tokens.length);
-        emit LoanCreated(msg.sender, tokenId);
-    }
-
-    function getLoan(uint256 tokenId) public virtual view returns(uint256 id, address poolId, uint128[] memory tokensHeld, uint256 initLiquidity, uint256 liquidity, uint256 lpTokens, uint256 rateIndex) {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
-        id = _loan.id;
-        poolId = _loan.poolId;
-        tokensHeld = _loan.tokensHeld;
-        initLiquidity = _loan.initLiquidity;
-        liquidity = _loan.liquidity;
-        lpTokens = _loan.lpTokens;
-        rateIndex = _loan.rateIndex;
-    }
-
-    function setLoanLiquidity(uint256 tokenId, uint128 liquidity) public virtual {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
-        _loan.liquidity = liquidity;
-    }
-
-    function testUpdateLoanLiquidity(uint256 tokenId, uint96 accFeeIndex) public virtual {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
-        updateLoanLiquidity(_loan, accFeeIndex);
-    }
-
-    function testUpdateLoan(uint256 tokenId) public virtual {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
-        updateLoan(_loan);
-    }
-
     function getLastFeeIndex() public virtual view returns(uint256){
         return _lastFeeIndex;
     }

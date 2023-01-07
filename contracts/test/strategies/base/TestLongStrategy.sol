@@ -223,4 +223,34 @@ contract TestLongStrategy is LongStrategy {
     function originationFee() internal override virtual view returns(uint16) {
         return origFee;
     }
+
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal virtual override {
+    }
+
+    function testUpdateIndex() public virtual {
+        (uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMFeeIndex) = updateIndex();
+    }
+
+    function setAccFeeIndex(uint96 accFeeIndex) public virtual {
+        s.accFeeIndex = accFeeIndex;
+    }
+
+    function getAccFeeIndex() public virtual view returns(uint256 accFeeIndex){
+        accFeeIndex = s.accFeeIndex;
+    }
+
+    function setLoanLiquidity(uint256 tokenId, uint128 liquidity) public virtual {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
+        _loan.liquidity = liquidity;
+    }
+
+    function testUpdateLoanLiquidity(uint256 tokenId, uint96 accFeeIndex) public virtual {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
+        updateLoanLiquidity(_loan, accFeeIndex);
+    }
+
+    function testUpdateLoan(uint256 tokenId) public virtual {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
+        super.updateLoan(_loan);
+    }
 }

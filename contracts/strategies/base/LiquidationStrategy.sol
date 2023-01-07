@@ -49,7 +49,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
 
-        canLiquidate(collateral, loanLiquidity, 950);
+        checkMargin(collateral, loanLiquidity, 950);
 
         loanLiquidity = writeDown(tokenId, collateral * 975 / 1000, loanLiquidity);
     }
@@ -109,7 +109,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         return(tokensHeld, refund);
     }
 
-    function canLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view {
+    function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual override view {
         if(hasMargin(collateral, liquidity, limit)) {
             revert HasMargin();
         }
