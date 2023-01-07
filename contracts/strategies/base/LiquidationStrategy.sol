@@ -12,6 +12,8 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     error NotFullLiquidation();
     error HasMargin();
 
+    function liquidationFeeThreshold() internal virtual view returns(uint16);
+
     function _liquidate(uint256 tokenId, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
         (LibStorage.Loan storage _loan, uint256 loanLiquidity, ) = getLoanLiquidityAndCollateral(tokenId);
 
@@ -35,7 +37,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     function _batchLiquidations(uint256[] calldata tokenIds) external override lock virtual returns(uint256[] memory refund) {
         (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPrincipalPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
 
-        loanLiquidity = writeDown(0, collateral * 975 / 1000, loanLiquidity);
+        loanLiquidity = writeDown(0, collateral * liquidationFeeThreshold() / 1000, loanLiquidity);
 
         (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPrincipalPaid, true);
     }
@@ -49,9 +51,9 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
 
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
 
-        checkMargin(collateral, loanLiquidity, 950);
+        checkMargin(collateral, loanLiquidity);
 
-        loanLiquidity = writeDown(tokenId, collateral * 975 / 1000, loanLiquidity);
+        loanLiquidity = writeDown(tokenId, collateral * liquidationFeeThreshold() / 1000, loanLiquidity);
     }
 
     function payLoanAndRefundLiquidator(uint256 tokenId, uint128[] memory tokensHeld, uint256 loanLiquidity, uint256 lpTokenPrincipalPaid, bool isFullPayment)
@@ -109,8 +111,8 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         return(tokensHeld, refund);
     }
 
-    function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual override view {
-        if(hasMargin(collateral, liquidity, limit)) {
+    function checkMargin(uint256 collateral, uint256 liquidity) internal virtual override view {
+        if(hasMargin(collateral, liquidity, ltvThreshold())) {
             revert HasMargin();
         }
     }
@@ -167,7 +169,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             liquidity = liquidity * accFeeIndex / rateIndex;
             tokensHeld = _loan.tokensHeld;
             uint256 collateral = calcInvariant(cfmm, tokensHeld);
-            if(hasMargin(collateral, liquidity, 950)) {
+            if(hasMargin(collateral, liquidity, ltvThreshold())) {
                 continue;
             }
             _tokenIds[i] = tokenIds[i];

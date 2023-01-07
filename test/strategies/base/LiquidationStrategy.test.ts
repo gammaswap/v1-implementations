@@ -289,14 +289,14 @@ describe("LiquidationStrategy", function () {
 
     it("Can Liquidate", async function () {
       await expect(
-        liquidationStrategy.testCanLiquidate(100001, 100000, 1000)
+        liquidationStrategy.testCanLiquidate(1001, 950)
       ).to.be.revertedWith("HasMargin");
 
       await expect(
-        liquidationStrategy.testCanLiquidate(100000, 100000, 1000)
+        liquidationStrategy.testCanLiquidate(1000, 950)
       ).to.be.revertedWith("HasMargin");
 
-      await liquidationStrategy.testCanLiquidate(100000 - 1, 100000, 1000);
+      await liquidationStrategy.testCanLiquidate(999, 950);
     });
   });
 

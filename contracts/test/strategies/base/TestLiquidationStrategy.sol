@@ -32,6 +32,14 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function ltvThreshold() internal virtual override pure returns(uint16) {
+        return 950;
+    }
+
+    function liquidationFeeThreshold() internal virtual override pure returns(uint16) {
+        return 975;
+    }
+
     function blocksPerYear() internal virtual override pure returns(uint256) {
         return 2252571;
     }
@@ -122,8 +130,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         sumLiquidity(tokenIds);
     }
 
-    function testCanLiquidate(uint256 collateral, uint256 liquidity, uint256 limit) external virtual {
-        checkMargin(collateral, liquidity, limit);
+    function testCanLiquidate(uint256 collateral, uint256 liquidity) external virtual {
+        checkMargin(collateral, liquidity);
     }
 
     function testUpdateLoan(uint256 tokenId) external virtual {

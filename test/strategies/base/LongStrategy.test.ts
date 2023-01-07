@@ -190,12 +190,12 @@ describe("LongStrategy", function () {
       const res = await (await strategy.createLoan()).wait();
       const tokenId = res.events[0].args.tokenId;
       const ONE = BigNumber.from(10).pow(18);
-      await (await strategy.setLiquidity(tokenId, ONE)).wait();
+      const liquidity = ONE.mul(800).div(1000);
+      await (await strategy.setLiquidity(tokenId, liquidity)).wait();
       await (await strategy.setHeldAmounts(tokenId, [ONE, ONE])).wait();
-      expect(await strategy.checkMargin(tokenId, 1000)).to.equal(true);
-      await expect(strategy.checkMargin(tokenId, 999)).to.be.revertedWith(
-        "Margin"
-      );
+      expect(await strategy.checkMargin2(tokenId)).to.equal(true);
+      await (await strategy.setLiquidity(tokenId, liquidity.add(1))).wait();
+      await expect(strategy.checkMargin2(tokenId)).to.be.revertedWith("Margin");
     });
   });
 
@@ -1657,7 +1657,7 @@ describe("LongStrategy", function () {
       expect(res1b.lpTokens).to.equal(loanLPTokens);
 
       const rebalAmt1 = ONE.mul(10);
-      const rebalAmt2 = ethers.constants.Zero.sub(ONE.mul(20));
+      const rebalAmt2 = ethers.constants.Zero.sub(ONE.mul(19));
 
       const res = await (
         await strategy._rebalanceCollateral(tokenId, [rebalAmt1, rebalAmt2])

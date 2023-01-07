@@ -18,6 +18,8 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     function originationFee() internal virtual view returns(uint16);
 
+    function ltvThreshold() internal virtual view returns(uint16);
+
     function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage _loan) {
         _loan = s.loans[tokenId];
         if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
@@ -25,7 +27,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         }
     }
 
-    function checkMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual view;
+    function checkMargin(uint256 collateral, uint256 liquidity) internal virtual view;
 
     function hasMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure returns(bool) {
         return collateral * limit / 1000 >= liquidity;
