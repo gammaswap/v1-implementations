@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "../base/BaseLongStrategy.sol";
 import "./BalancerBaseStrategy.sol";
 
+import "../../libraries/Math.sol";
+
 abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStrategy {
     error BadDelta();
     error ZeroReserves();
@@ -24,6 +26,13 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
     // TODO: Implement the corresponding logic for this for Balancer
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+        // uint256[] memory weights = getWeights(cfmm);
+
+        // This calculation should become:
+        // (liquidity / lastCFMMInvariant)^(1 / weights[0]) * s.CFMM_RESERVES[0] = amounts[0]
+        // (liquidity / lastCFMMInvariant)^(1 / weights[1]) * s.CFMM_RESERVES[1] = amounts[1]
+        // TODO: Implement this in Solidity
+        
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         amounts[0] = liquidity * s.CFMM_RESERVES[0] / lastCFMMInvariant;

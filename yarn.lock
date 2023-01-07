@@ -23,6 +23,19 @@
     "chalk" "^2.0.0"
     "js-tokens" "^4.0.0"
 
+"@balancer-labs/v2-asset-manager-utils@0.2.0":
+  "integrity" "sha512-6ti1pzbpgB5aT1WzbGwo69ILTNAJdAnaJcw3L9QB2aBsAhQ41H+MF3tjPvuv6P84RgJ9z42EhtwLYZqklRF0rg=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-asset-manager-utils/-/v2-asset-manager-utils-0.2.0.tgz"
+  "version" "0.2.0"
+  dependencies:
+    "@balancer-labs/v2-solidity-utils" "2.0.0"
+    "@balancer-labs/v2-vault" "2.0.0"
+
+"@balancer-labs/v2-deployments@^3.1.1":
+  "integrity" "sha512-Jk9QjG88UjyBF8XOsehPOHFaYxh4og98AztXe4dQ1FLCSnlRc2vQWEAXIRw8Yw7M8M+CXsW11uLGypMftxGNcw=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-deployments/-/v2-deployments-3.1.1.tgz"
+  "version" "3.1.1"
+
 "@balancer-labs/v2-interfaces@0.2.0":
   "integrity" "sha512-p317Ojk3iZ6ja689u72HZvi03mG02LRkS+40J/EO2o1SDdOxbKThP7cWaZNbNJBC3IP8hzRcsZI+zmLqGa6Emw=="
   "resolved" "https://registry.npmjs.org/@balancer-labs/v2-interfaces/-/v2-interfaces-0.2.0.tgz"
@@ -33,12 +46,43 @@
   "resolved" "https://registry.npmjs.org/@balancer-labs/v2-interfaces/-/v2-interfaces-0.2.1.tgz"
   "version" "0.2.1"
 
+"@balancer-labs/v2-pool-utils@^3.0.1":
+  "integrity" "sha512-ST7oNdddvj1KXkRvid1RJRuKSyLhZ3Zw4ar0GlTpmI0m3qT+X/Oupr7vVM7xlwi5hqONdmYHo2smWNLVruzpmQ=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-pool-utils/-/v2-pool-utils-3.0.1.tgz"
+  "version" "3.0.1"
+  dependencies:
+    "@balancer-labs/v2-interfaces" "0.2.1"
+    "@balancer-labs/v2-solidity-utils" "3.0.1"
+
+"@balancer-labs/v2-pool-utils@2.0.1":
+  "integrity" "sha512-Xt3d8LqJnqq5JkuSgvf0sZuWqaywg9JxrCT1myVsG6zgbtfvcraJgSCLERUdqxP47aUPHwKvm5/+mdT9xayCXA=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-pool-utils/-/v2-pool-utils-2.0.1.tgz"
+  "version" "2.0.1"
+  dependencies:
+    "@balancer-labs/v2-asset-manager-utils" "0.2.0"
+    "@balancer-labs/v2-solidity-utils" "2.0.0"
+    "@balancer-labs/v2-vault" "2.0.0"
+
+"@balancer-labs/v2-pool-weighted@^2.0.1":
+  "integrity" "sha512-0rNdK/7grQ1UlqmEtZV2nldSlNrGaBevfoiIbhYK3K+GHRTBs4cyCtuucDvEgtmDxbKIoO4W4p0xcrfCtMiyBw=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-pool-weighted/-/v2-pool-weighted-2.0.1.tgz"
+  "version" "2.0.1"
+  dependencies:
+    "@balancer-labs/v2-pool-utils" "2.0.1"
+    "@balancer-labs/v2-solidity-utils" "2.0.0"
+    "@balancer-labs/v2-vault" "2.0.0"
+
 "@balancer-labs/v2-solidity-utils@^3.0.1", "@balancer-labs/v2-solidity-utils@3.0.1":
   "integrity" "sha512-uhaQbgFyT5uRWW39aPWH0ZARzqIICJvwZXKJpv7EPG2NAUrf03ZsF/Zb3gxpTZXfNoKsKznJWtxgJ1W0rnLu9w=="
   "resolved" "https://registry.npmjs.org/@balancer-labs/v2-solidity-utils/-/v2-solidity-utils-3.0.1.tgz"
   "version" "3.0.1"
   dependencies:
     "@balancer-labs/v2-interfaces" "0.2.0"
+
+"@balancer-labs/v2-solidity-utils@2.0.0":
+  "integrity" "sha512-OB+05vJqrs35B1d40y7tnSm6oYWnsmfRa/wpI2owJXhwx/8qr2buE+RDmT0x6Upr/c7wBdUh8v4UVk9l0+CNiA=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-solidity-utils/-/v2-solidity-utils-2.0.0.tgz"
+  "version" "2.0.0"
 
 "@balancer-labs/v2-vault@^3.0.1":
   "integrity" "sha512-uVvHWDR8sGUCxdMOluYPEjeqeNYHo9/47ALYnpv4NLdXwNH8nw7PWun+cExLLdTBJ3XEc/6IyuYUlfcoWWpfcw=="
@@ -47,6 +91,13 @@
   dependencies:
     "@balancer-labs/v2-interfaces" "0.2.1"
     "@balancer-labs/v2-solidity-utils" "3.0.1"
+
+"@balancer-labs/v2-vault@2.0.0":
+  "integrity" "sha512-GwPY84j6g7OY1z13wRYYGQeupb6DI3U+s22Ebg2v32djS9CnPzM04GJapURRbKZkpraUOYIcqhEF3Cm1AafAKg=="
+  "resolved" "https://registry.npmjs.org/@balancer-labs/v2-vault/-/v2-vault-2.0.0.tgz"
+  "version" "2.0.0"
+  dependencies:
+    "@balancer-labs/v2-solidity-utils" "2.0.0"
 
 "@colors/colors@1.5.0":
   "integrity" "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="
@@ -314,7 +365,7 @@
   dependencies:
     "@ethersproject/bignumber" "^5.7.0"
 
-"@ethersproject/contracts@5.7.0":
+"@ethersproject/contracts@^5.0.0", "@ethersproject/contracts@5.7.0":
   "integrity" "sha512-5GJbzEU3X+d33CdfPhcyS+z8MzsTrBGk/sc+G+59+tPa9yFkl6HQ9D6L0QMgNTA9q8dT0XKxxkyp883XsQvbbg=="
   "resolved" "https://registry.npmjs.org/@ethersproject/contracts/-/contracts-5.7.0.tgz"
   "version" "5.7.0"
@@ -5795,7 +5846,7 @@
     "eth-gas-reporter" "^0.2.25"
     "sha1" "^1.1.1"
 
-"hardhat@^2.0.0", "hardhat@^2.0.10", "hardhat@^2.0.2", "hardhat@^2.0.4", "hardhat@^2.9.9":
+"hardhat@^2.0.0", "hardhat@^2.0.10", "hardhat@^2.0.2", "hardhat@^2.0.4", "hardhat@^2.8.3", "hardhat@^2.9.9":
   "integrity" "sha512-mNJFbVG479HwOzxiaLxobyvED2M1aEAuPPYhEo1+88yicMDSTrU2JIS7vV+V0GSNQKaDoiHCmV6bcKjiljT/dQ=="
   "resolved" "https://registry.npmjs.org/hardhat/-/hardhat-2.12.0.tgz"
   "version" "2.12.0"
