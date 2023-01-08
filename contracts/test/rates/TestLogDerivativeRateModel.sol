@@ -13,7 +13,4 @@ contract TestLogDerivativeRateModel is LogDerivativeRateModel {
         return calcBorrowRate(lpInvariant, borrowedInvariant);
     }
 
-    function getInvariantFactor() internal virtual override view returns(uint256) {
-        return 10 ** 18;
-    }
 }

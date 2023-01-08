@@ -8,10 +8,8 @@ abstract contract AbstractRateModel {
         if(totalInvariant == 0)
             return 0;
 
-        return borrowedInvariant * getInvariantFactor() / totalInvariant;
+        return borrowedInvariant * (10 ** 18) / totalInvariant;
     }
 
     function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual view returns(uint256);
-
-    function getInvariantFactor() internal virtual view returns(uint256);
 }
