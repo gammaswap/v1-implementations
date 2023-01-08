@@ -12,8 +12,4 @@ contract TestLinearKinkedRateModel is LinearKinkedRateModel {
     function testCalcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) public virtual view returns(uint256) {
         return calcBorrowRate(lpInvariant, borrowedInvariant);
     }
-
-    function getInvariantFactor() internal virtual override view returns(uint256) {
-        return 10 ** 18;
-    }
 }

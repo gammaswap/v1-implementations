@@ -71,7 +71,7 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
                 revert NoLiquidityProvided();
             }
 
-            (payLiquidity, lpDeposit) = refundOverPayment(loanLiquidity, lpDeposit, lastCFMMTotalSupply, lastCFMMInvariant); // full payment, TODO: Trick is here, this has to return another variable to multiply with the collateral
+            (payLiquidity, lpDeposit) = refundOverPayment(loanLiquidity, lpDeposit, lastCFMMTotalSupply, lastCFMMInvariant); // full payment
 
             currLpBalance = currLpBalance + lpDeposit;
         }
@@ -87,9 +87,10 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             if(tokenId > 0) {
                 LibStorage.Loan storage _loan = s.loans[tokenId];
                 (lpTokenPrincipalPaid, loanLiquidity) = payLoanLiquidity(payLiquidity, loanLiquidity, _loan);
+                payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, isFullPayment ? currLpBalance - s.LP_TOKEN_BALANCE : 0);
+            } else {
+                payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, 0);
             }
-
-            payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, currLpBalance - s.LP_TOKEN_BALANCE);
         }
 
         emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
