@@ -11,7 +11,7 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
     event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_baseRate, _factor, _maxApy) {
+        BalancerBaseStrategy(2252571, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {

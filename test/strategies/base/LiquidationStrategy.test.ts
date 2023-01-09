@@ -289,14 +289,14 @@ describe("LiquidationStrategy", function () {
 
     it("Can Liquidate", async function () {
       await expect(
-        liquidationStrategy.testCanLiquidate(100001, 100000, 1000)
+        liquidationStrategy.testCanLiquidate(1001, 950)
       ).to.be.revertedWith("HasMargin");
 
       await expect(
-        liquidationStrategy.testCanLiquidate(100000, 100000, 1000)
+        liquidationStrategy.testCanLiquidate(1000, 950)
       ).to.be.revertedWith("HasMargin");
 
-      await liquidationStrategy.testCanLiquidate(100000 - 1, 100000, 1000);
+      await liquidationStrategy.testCanLiquidate(999, 950);
     });
   });
 
@@ -305,13 +305,18 @@ describe("LiquidationStrategy", function () {
       const payableLiquidity = ONE.add(1);
       const loanLiquidity = ONE;
       const res = await (
-        await liquidationStrategy.testWriteDown(payableLiquidity, loanLiquidity)
+        await liquidationStrategy.testWriteDown(
+          0,
+          payableLiquidity,
+          loanLiquidity
+        )
       ).wait();
       expect(res.events[0].event).to.equal("WriteDown2");
       expect(res.events[0].args.loanLiquidity).to.equal(loanLiquidity);
 
       const res0 = await (
         await liquidationStrategy.testWriteDown(
+          0,
           payableLiquidity,
           loanLiquidity.add(1)
         )
@@ -353,6 +358,7 @@ describe("LiquidationStrategy", function () {
 
       const res2 = await (
         await liquidationStrategy.testWriteDown(
+          tokenId,
           payableLiquidity,
           loan.liquidity
         )
@@ -768,13 +774,18 @@ describe("LiquidationStrategy", function () {
       const res2 = await (
         await liquidationStrategy.testSumLiquidity(tokenIds)
       ).wait();
-      expect(res2.events[0].event).to.equal("BatchLiquidity");
+      expect(res2.events[0].event).to.equal("BatchLiquidations");
       expect(res2.events[0].args.liquidityTotal).to.equal(lpTokens.mul(12));
       expect(res2.events[0].args.collateralTotal).to.equal(ONE.mul(25));
       expect(res2.events[0].args.lpTokensPrincipalTotal).to.equal(
         lpTokens.mul(5)
       );
-      expect(res2.events[0].args.count).to.equal(5);
+      expect(res2.events[0].args.tokenIds.length).to.equal(5);
+      expect(res2.events[0].args.tokenIds[0]).to.equal(tokenIds[0]);
+      expect(res2.events[0].args.tokenIds[1]).to.equal(tokenIds[1]);
+      expect(res2.events[0].args.tokenIds[2]).to.equal(tokenIds[2]);
+      expect(res2.events[0].args.tokenIds[3]).to.equal(tokenIds[3]);
+      expect(res2.events[0].args.tokenIds[4]).to.equal(tokenIds[4]);
       expect(res2.events[0].args.tokensHeldTotal.length).to.equal(2);
       expect(res2.events[0].args.tokensHeldTotal[0]).to.equal(amt0.mul(25));
       expect(res2.events[0].args.tokensHeldTotal[1]).to.equal(amt1.mul(25));
@@ -835,9 +846,23 @@ describe("LiquidationStrategy", function () {
       expect(res1.tokenBalances[0]).to.equal(amt0.mul(34));
       expect(res1.tokenBalances[1]).to.equal(amt1.mul(34));
 
-      await expect(
-        liquidationStrategy.testSumLiquidity(tokenIds)
-      ).to.be.revertedWith("HasMargin");
+      const tx = await (
+        await liquidationStrategy.testSumLiquidity(tokenIds)
+      ).wait();
+
+      expect(tx.events[0].event).to.eq("BatchLiquidations");
+      expect(tx.events[0].args.liquidityTotal).to.eq(lpTokens.mul(16));
+      expect(tx.events[0].args.collateralTotal).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.lpTokensPrincipalTotal).to.eq(lpTokens.mul(4));
+      expect(tx.events[0].args.tokensHeldTotal.length).to.eq(2);
+      expect(tx.events[0].args.tokensHeldTotal[0]).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.tokensHeldTotal[1]).to.eq(lpTokens.mul(10));
+      expect(tx.events[0].args.tokenIds.length).to.eq(5);
+      expect(tx.events[0].args.tokenIds[0]).to.eq(tokenIds[0]);
+      expect(tx.events[0].args.tokenIds[1]).to.eq(tokenIds[1]);
+      expect(tx.events[0].args.tokenIds[2]).to.eq(tokenIds[2]);
+      expect(tx.events[0].args.tokenIds[3]).to.eq(tokenIds[3]);
+      expect(tx.events[0].args.tokenIds[4]).to.eq(0);
     });
   });
 
@@ -935,6 +960,13 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
       ).wait();
@@ -1003,6 +1035,9 @@ describe("LiquidationStrategy", function () {
       expect(poolBal1.bal.LP_INVARIANT).to.equal(
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
+
+      expect(_lastCFMMTotalSupply).to.equal(poolBal0.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal0.bal.lastCFMMInvariant);
 
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
@@ -1073,6 +1108,13 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
       ).wait();
@@ -1143,6 +1185,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
       const refundGainPerc = refundGain.mul(ONE).div(payLiquidity);
@@ -1209,6 +1254,13 @@ describe("LiquidationStrategy", function () {
       const stratTokenBBal0 = await tokenB.balanceOf(
         liquidationStrategy.address
       );
+
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
 
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
@@ -1278,6 +1330,9 @@ describe("LiquidationStrategy", function () {
       expect(poolBal1.bal.LP_INVARIANT).to.equal(
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
+
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
 
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
@@ -1348,6 +1403,13 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
       ).wait();
@@ -1418,6 +1480,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
       const refundGainPerc = refundGain.mul(ONE).div(payLiquidity);
@@ -1486,6 +1551,13 @@ describe("LiquidationStrategy", function () {
       const stratTokenBBal0 = await tokenB.balanceOf(
         liquidationStrategy.address
       );
+
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
 
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
@@ -1556,6 +1628,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
       const refundGainPerc = refundGain.mul(ONE).div(payLiquidity);
@@ -1624,6 +1699,13 @@ describe("LiquidationStrategy", function () {
       const stratTokenBBal0 = await tokenB.balanceOf(
         liquidationStrategy.address
       );
+
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
 
       const res = await (
         await liquidationStrategy._liquidateWithLP(tokenIds[0])
@@ -1694,6 +1776,9 @@ describe("LiquidationStrategy", function () {
       expect(poolBal1.bal.LP_INVARIANT).to.equal(
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
+
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
 
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
@@ -1796,6 +1881,13 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
@@ -1865,6 +1957,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
       const refundGainPerc = refundGain.mul(ONE).div(payLiquidity);
@@ -1920,19 +2015,32 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
-      expect(res.events[0].event).to.equal("BatchLiquidity");
+      expect(res.events[0].event).to.equal("BatchLiquidations");
       expect(res.events[0].args.liquidityTotal).to.equal(loanLiquidityTotal);
       expect(res.events[0].args.collateralTotal).to.equal(loanLiquidityTotal);
       expect(res.events[0].args.lpTokensPrincipalTotal).to.equal(
         lpTokens.mul(5)
       );
       expect(res.events[0].args.tokensHeldTotal.length).to.equal(2);
-      expect(res.events[0].args.count).to.equal(5);
+      expect(res.events[0].args.tokenIds.length).to.equal(5);
+      expect(res.events[0].args.tokenIds[0]).to.equal(tokenIds[0]);
+      expect(res.events[0].args.tokenIds[1]).to.equal(tokenIds[1]);
+      expect(res.events[0].args.tokenIds[2]).to.equal(tokenIds[2]);
+      expect(res.events[0].args.tokenIds[3]).to.equal(tokenIds[3]);
+      expect(res.events[0].args.tokenIds[4]).to.equal(tokenIds[4]);
       expect(res.events[1].event).to.equal("WriteDown");
+      expect(res.events[1].args.tokenId).to.equal(0);
       expect(res.events[1].args.writeDownAmt).to.equal(writeDownTotal);
 
       const ownerCFMMBal1 = await cfmm.balanceOf(owner.address);
@@ -1998,6 +2106,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(payLiquidity)
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidity);
       const refundGainPerc = refundGain.mul(ONE).div(payLiquidity);
@@ -2051,6 +2162,13 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
       const lpTokenRefund = payLiquidity.sub(loanLiquidityTotal).div(2);
+
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
 
       const res = await (
         await liquidationStrategy._batchLiquidations(tokenIds)
@@ -2125,6 +2243,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(lpTokenPayment.sub(lpTokenRefund).mul(2))
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const payLiquidityAfterRefund = lpTokenPayment.sub(lpTokenRefund).mul(2);
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(payLiquidityAfterRefund);
@@ -2182,19 +2303,32 @@ describe("LiquidationStrategy", function () {
         liquidationStrategy.address
       );
 
+      const _lastCFMMTotalSupply = await cfmm.totalSupply();
+      const _reserves = await cfmm.getReserves();
+      const _lastCFMMInvariant = sqrt(_reserves[0].mul(_reserves[1]));
+      const _bal0 = (await liquidationStrategy.getPoolBalances()).bal;
+      expect(_lastCFMMTotalSupply).to.equal(_bal0.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(_bal0.lastCFMMInvariant);
+
       const res = await (
         await liquidationStrategy._batchLiquidations(tokenIds)
       ).wait();
 
-      expect(res.events[0].event).to.equal("BatchLiquidity");
+      expect(res.events[0].event).to.equal("BatchLiquidations");
       expect(res.events[0].args.liquidityTotal).to.equal(loanLiquidityTotal);
       expect(res.events[0].args.collateralTotal).to.equal(loanLiquidityTotal);
       expect(res.events[0].args.lpTokensPrincipalTotal).to.equal(
         lpTokens.mul(5)
       );
       expect(res.events[0].args.tokensHeldTotal.length).to.equal(2);
-      expect(res.events[0].args.count).to.equal(5);
+      expect(res.events[0].args.tokenIds.length).to.equal(5);
+      expect(res.events[0].args.tokenIds[0]).to.equal(tokenIds[0]);
+      expect(res.events[0].args.tokenIds[1]).to.equal(tokenIds[1]);
+      expect(res.events[0].args.tokenIds[2]).to.equal(tokenIds[2]);
+      expect(res.events[0].args.tokenIds[3]).to.equal(tokenIds[3]);
+      expect(res.events[0].args.tokenIds[4]).to.equal(tokenIds[4]);
       expect(res.events[1].event).to.equal("WriteDown");
+      expect(res.events[1].args.tokenId).to.equal(0);
       expect(res.events[1].args.writeDownAmt).to.equal(writeDownTotal);
 
       const ownerCFMMBal1 = await cfmm.balanceOf(owner.address);
@@ -2260,6 +2394,9 @@ describe("LiquidationStrategy", function () {
         poolBal0.bal.LP_INVARIANT.add(lpTokenPayment.sub(lpTokenRefund).mul(2))
       );
 
+      expect(_lastCFMMTotalSupply).to.equal(poolBal1.bal.lastCFMMTotalSupply);
+      expect(_lastCFMMInvariant).to.equal(poolBal1.bal.lastCFMMInvariant);
+
       const actualLiquidityPaid = lpTokenPayment.sub(lpTokenRefund).mul(2);
       const refundLiq = sqrt(tokenAChange.mul(tokenBChange));
       const refundGain = refundLiq.sub(actualLiquidityPaid);
@@ -2290,16 +2427,16 @@ describe("LiquidationStrategy", function () {
 
       // function _liquidate(uint256 tokenId, bool isRebalance, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund)
       await expect(
-        liquidationStrategy._liquidate(tokenIds[0], false, [])
+        liquidationStrategy._liquidate(tokenIds[0], [])
       ).to.be.revertedWith("HasMargin");
       await expect(
-        liquidationStrategy._liquidate(tokenIds[0], false, [1, 0])
+        liquidationStrategy._liquidate(tokenIds[0], [1, 0])
       ).to.be.revertedWith("HasMargin");
       await expect(
-        liquidationStrategy._liquidate(tokenIds[0], true, [])
+        liquidationStrategy._liquidate(tokenIds[0], [])
       ).to.be.revertedWith("HasMargin");
       await expect(
-        liquidationStrategy._liquidate(tokenIds[0], true, [1, 0])
+        liquidationStrategy._liquidate(tokenIds[0], [1, 0])
       ).to.be.revertedWith("HasMargin");
     });
 
@@ -2339,7 +2476,7 @@ describe("LiquidationStrategy", function () {
       ).wait();
 
       await borrowMostOfIt(ONE.mul(30)); // spike up interest, (this doesn't change the result)
-      await liquidationStrategy._liquidate(tokenId, false, [0, 0]);
+      await liquidationStrategy._liquidate(tokenId, [0, 0]);
 
       const res2 = await liquidationStrategy.getLoan(tokenId);
       expect(res2.poolId).to.equal(liquidationStrategy.address);

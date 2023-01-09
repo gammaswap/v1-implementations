@@ -11,32 +11,31 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     error ZeroReserves();
 
     uint16 immutable public origFee;
+    uint16 immutable public LTV_THRESHOLD;
     uint16 immutable public tradingFee;
 
-    constructor(uint16 _originationFee, uint16 _tradingFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_baseRate, _factor, _maxApy) {
+    constructor(uint16 _ltvThreshold, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        BalancerBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
+        LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
-        // TODO: Should we get this fee dynamically?
-        tradingFee = _tradingFee;
+        tradingFee = _tradingFee1;
+    }
+
+    function ltvThreshold() internal virtual override view returns(uint16) {
+        return LTV_THRESHOLD;
     }
 
     function originationFee() internal virtual override view returns(uint16) {
         return origFee;
     }
 
-    // TODO: Implement the corresponding logic for this for Balancer
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
-        // uint256[] memory weights = getWeights(cfmm);
+        uint256[] memory weights = getWeights(s.cfmm);
 
-        // This calculation should become:
-        // (liquidity / lastCFMMInvariant)^(1 / weights[0]) * s.CFMM_RESERVES[0] = amounts[0]
-        // (liquidity / lastCFMMInvariant)^(1 / weights[1]) * s.CFMM_RESERVES[1] = amounts[1]
-        // TODO: Implement this in Solidity
-        
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        amounts[0] = liquidity * s.CFMM_RESERVES[0] / lastCFMMInvariant;
-        amounts[1] = liquidity * s.CFMM_RESERVES[1] / lastCFMMInvariant;
+        amounts[0] = Math.power(liquidity / lastCFMMInvariant, 1e18 / weights[0]) * s.CFMM_RESERVES[0];
+        amounts[1] = Math.power(liquidity / lastCFMMInvariant, 1e18 / weights[1]) * s.CFMM_RESERVES[1];
     }
 
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
@@ -44,7 +43,24 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+        // IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
+        //     poolId: getPoolId(s.cfmm),
+        //     kind: IVault.SwapKind.GIVEN_IN,
+        //     assetIn: s.CFMM_TOKENS[0],
+        //     assetOut: s.CFMM_TOKENS[1],
+        //     amount: inAmts[0],
+        //     userData: abi.encode(outAmts[1])
+        // });
+
+        // IVault.FundManagement memory fundManagement = IVault.FundManagement({
+        //     sender;
+        //     fromInternalBalance;
+        //     recipient;
+        //     toInternalBalance;
+        // }
+        
         // TODO: Implement this for Balancer
+        // IVault(getVault(cfmm)).swap(singleSwap, funds, new bytes(0), address(this)
     }
 
     // TODO: What is this function doing exactly?
