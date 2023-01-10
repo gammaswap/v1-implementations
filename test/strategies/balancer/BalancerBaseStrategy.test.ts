@@ -3,10 +3,9 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
-const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/deprecated/20210418-weighted-pool/abi/WeightedPoolFactory.json");
-const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist/tasks/deprecated/20210418-weighted-pool/bytecode/WeightedPoolFactory.json");
+const _WeightedPoolFactory = require("@balancer-labs/v2-deployments/dist/tasks/deprecated/20210418-weighted-pool/artifact/WeightedPoolFactory.json");
 
-describe("BalancerBaseStrategy", function () {
+describe.only("BalancerBaseStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
   let BalancerVault: any;
@@ -24,17 +23,13 @@ describe("BalancerBaseStrategy", function () {
     [owner] = await ethers.getSigners();
 
     // Get contract factory for WeightedPool: '@balancer-labs/v2-pool-weighted/WeightedPoolFactory'
-    // https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/deployments/tasks/deprecated/20210418-weighted-pool/abi/WeightedPoolFactory.json
-
     WeightedPoolFactory = new ethers.ContractFactory(
-      _WeightedPoolFactoryAbi,
-      _WeightedPoolFactoryBytecode.creationCode,
+      _WeightedPoolFactory.abi,
+      _WeightedPoolFactory.bytecode,
       owner
     );
 
     // Get contract factory for Vault: '@balancer-labs/v2-vault/contracts/Vault'
-    // https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/deployments/tasks/20210418-vault/artifact/Vault.json
-    
     BalancerVault = new ethers.ContractFactory(
       _Vault.abi,
       _Vault.bytecode,
@@ -54,7 +49,6 @@ describe("BalancerBaseStrategy", function () {
     vault = await BalancerVault.deploy(owner.address, tokenA.address, MONTH, MONTH);
     
     // Deploy the WeightedPoolFactory contract
-
     factory = await WeightedPoolFactory.deploy(
         vault.address,
     );
@@ -68,7 +62,8 @@ describe("BalancerBaseStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
     
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
-
+    
+    console.log('Initializing strategy: ', strategy.address);
     await (
       await strategy.initialize(
         cfmm,
@@ -81,7 +76,13 @@ describe("BalancerBaseStrategy", function () {
   async function createPair(token1: any, token2: any) {
     const NAME = 'TESTPOOL';
     const SYMBOL = 'TP';
-    const TOKENS = [token2.address, token1.address];
+    let TOKENS;
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      TOKENS = [token2.address, token1.address];
+    }
+    else {
+      TOKENS = [token1.address, token2.address];
+    }
     const HUNDRETH = BigNumber.from(10).pow(16);
     const WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
     const FEE_PERCENTAGE = HUNDRETH;
@@ -109,15 +110,14 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.maxApy()).to.equal(maxApy);
     });
 
-    // it("Check Invariant Calculation", async function () {
-    //   expect(
-    //     await strategy.testCalcInvariant(cfmm, [
-    //       BigNumber.from(10),
-    //       BigNumber.from(10),
-    //     ])
-    //   ).to.equal(10);
-
-    // });
+    it("Check Invariant Calculation", async function () {
+      expect(
+        await strategy.testCalcInvariant(cfmm, [
+          BigNumber.from(10),
+          BigNumber.from(10),
+        ])
+      ).to.equal(10);
+    });
   });
 
 });
