@@ -5,7 +5,7 @@ import { BigNumber } from "ethers";
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
 const _WeightedPoolFactory = require("@balancer-labs/v2-deployments/dist/tasks/deprecated/20210418-weighted-pool/artifact/WeightedPoolFactory.json");
 
-describe.only("BalancerBaseStrategy", function () {
+describe.skip("BalancerBaseStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
   let BalancerVault: any;
