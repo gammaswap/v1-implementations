@@ -16,13 +16,13 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
         price = (reserves[1] * weights[0]) / (reserves[0] * weights[1]);
     }
 
-    function _getLatestCFMMReserves() public virtual override view returns(uint256[] memory reserves) {
+    function _getLatestCFMMReserves(address cfmm) public virtual override view returns(uint256[] memory reserves) {
         // TODO: This is already implemented in BalancerBaseStrategy but for uint128 type for use elsewhere
         // Do we need to do this casting? Is there an easier way?
         reserves = new uint256[](2);
 
         uint128[] memory poolReserves = new uint128[](2);
-        poolReserves = getPoolReserves(s.cfmm);
+        poolReserves = getPoolReserves(cfmm);
 
         reserves[0] = uint256(poolReserves[0]);
         reserves[1] = uint256(poolReserves[1]);
