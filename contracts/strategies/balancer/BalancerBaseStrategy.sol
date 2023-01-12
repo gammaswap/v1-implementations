@@ -4,24 +4,27 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/IVault.sol";
-import "../../interfaces/external/IWeightedPool2Tokens.sol";
+import "../../interfaces/external/IWeightedPool.sol";
 import "../../libraries/Math.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
+
+import "hardhat/console.sol";
 
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     uint256 immutable public BLOCKS_PER_YEAR;
 
     constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+        console.log("Initializing BalancerBaseStrategy");
         BLOCKS_PER_YEAR = _blocksPerYear;
     }
 
     function getVault(address cfmm) internal virtual view returns(address) {
-        return IWeightedPool2Tokens(cfmm).getVault();
+        return IWeightedPool(cfmm).getVault();
     }
 
     function getPoolId(address cfmm) internal virtual view returns(bytes32) {
-        bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
+        bytes32 poolId = IWeightedPool(cfmm).getPoolId();
         return poolId;
     }
 
@@ -68,8 +71,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     function getWeights(address cfmm) internal virtual view returns(uint256[] memory) {
-        uint256[] memory weights = new uint256[](2);
-        (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
+        uint256[] memory weights = IWeightedPool(cfmm).getNormalizedWeights();
         return weights;
     }
 
@@ -85,10 +87,18 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         uint256 minimumBPT = 0; // TODO: Do I need to estimate this?
         bytes memory userDataEncoded = abi.encode(1, amounts, minimumBPT);
 
+        console.log("Calling depositToCFMM:", cfmm, amounts[0], amounts[1]);
+
         IVault(getVault(cfmm)).joinPool(getPoolId(cfmm), 
-                to, // The GammaPool is sending the tokens
+                msg.sender, // The user is sending the tokens
                 to, // The GammaPool is receiving the Balancer LP tokens
-                IVault.JoinPoolRequest({assets: getTokens(cfmm), maxAmountsIn: amounts, userData: userDataEncoded, fromInternalBalance: false}) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
+                IVault.JoinPoolRequest(
+                    {
+                    assets: getTokens(cfmm), 
+                    maxAmountsIn: amounts, 
+                    userData: userDataEncoded, 
+                    fromInternalBalance: false
+                    }) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
                 );
 
         return 1;
@@ -134,7 +144,11 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amounts The pool reserves to use in the calculation.
      */
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256 invariant) {
+        console.log("Calling calcInvariant:", cfmm, amounts[0], amounts[1]);
         uint256[] memory weights = getWeights(cfmm);
-        invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
+
+        console.log("CFMM Info:", cfmm, weights[0], weights[1]);
+        invariant = Math._calculateInvariant(weights, Math.convertToUint256Array(amounts));
+        // invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
     }
 }

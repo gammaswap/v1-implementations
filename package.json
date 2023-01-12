@@ -70,6 +70,7 @@
     "@gammaswap/v1-core": "^0.2.4",
     "@gammaswap/v1-periphery": "^0.2.1",
     "@openzeppelin/contracts": "^4.7.0",
+    "@prb/math": "^3.1.0",
     "@uniswap/v2-core": "^1.0.1"
   }
 }

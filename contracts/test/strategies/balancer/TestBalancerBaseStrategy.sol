@@ -3,6 +3,8 @@ pragma solidity 0.8.4;
 
 import "../../../strategies/balancer/BalancerBaseStrategy.sol";
 
+import "hardhat/console.sol";
+
 contract TestBalancerBaseStrategy is BalancerBaseStrategy {
 
     using LibStorage for LibStorage.Storage;
@@ -24,6 +26,26 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
 
     function getCFMMReserves() public virtual view returns(uint128[] memory) {
         return s.CFMM_RESERVES;
+    }
+
+    function testGetPoolId(address cfmm) public virtual view returns(bytes32) {
+        return getPoolId(cfmm);
+    }
+
+    function testGetVault(address cfmm) public virtual view returns(address) {
+        return getVault(cfmm);
+    }
+
+    function testGetPoolReserves(address cfmm) public view returns(uint128[] memory) {
+        return getPoolReserves(cfmm);
+    }
+
+    function testGetWeights(address cfmm) public virtual view returns(uint256[] memory) {
+        return getWeights(cfmm);
+    }
+
+    function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
+        return getTokens(cfmm);
     }
 
     function testUpdateReserves() public virtual {

@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "../../interfaces/external/IVault.sol";
-import "../../interfaces/external/IWeightedPool2Tokens.sol";
+import "../../interfaces/external/IWeightedPool.sol";
 
 import "../base/ShortStrategyERC4626.sol";
 import "./BalancerBaseStrategy.sol";
