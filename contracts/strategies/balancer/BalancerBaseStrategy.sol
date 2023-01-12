@@ -100,7 +100,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         console.log("Vault address: ", vaultId);
 
         IVault(vaultId).joinPool(poolId, 
-                msg.sender, // The user is sending the tokens
+                address(this), // The user is sending the tokens
                 address(this), // The GammaPool is receiving the Balancer LP tokens
                 IVault.JoinPoolRequest(
                     {

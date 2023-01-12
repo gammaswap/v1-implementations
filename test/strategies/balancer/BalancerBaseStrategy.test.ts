@@ -241,9 +241,9 @@ describe.only("BalancerBaseStrategy", function () {
       
       // 'ERC20: insufficient allowance'
       // We must approve the strategy to spend the tokens we own
-      console.log('Approving the strategy to spend the tokens we own');
-      await tokenA.approve(strategy.address, ethers.constants.MaxUint256);
-      await tokenB.approve(strategy.address, ethers.constants.MaxUint256);
+      // console.log('Approving the strategy to spend the tokens we own');
+      // await tokenA.approve(strategy.address, ethers.constants.MaxUint256);
+      // await tokenB.approve(strategy.address, ethers.constants.MaxUint256);
 
       // We must send the tokens to the strategy before we can deposit
       await tokenA.transfer(strategy.address, amtA);
@@ -261,32 +261,32 @@ describe.only("BalancerBaseStrategy", function () {
       const userDataEncoded = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
       console.log("Expected bytecode: ", userDataEncoded);
 
-      console.log("Attempting a manual deposit:");
+      // console.log("Attempting a manual deposit:");
 
-      const userData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
+      // const userData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
 
-      const depositJoinPoolRequest = {
-        assets: TOKENS,
-        maxAmountsIn: [amtA, amtB],
-        userData: userData,
-        fromInternalBalance: false
-      } 
+      // const depositJoinPoolRequest = {
+      //   assets: TOKENS,
+      //   maxAmountsIn: [amtA, amtB],
+      //   userData: userData,
+      //   fromInternalBalance: false
+      // } 
 
-      console.log("calling .joinPool()");
-      const depositTx = await vault.joinPool(poolId, owner.address, owner.address, depositJoinPoolRequest);
-      console.log("successful!");
+      // console.log("calling .joinPool()");
+      // const depositTx = await vault.joinPool(poolId, owner.address, owner.address, depositJoinPoolRequest);
+      // console.log("successful!");
 
       // console.log(depositTx);
 
       // TODO: Why does this not work in the contract itself?
 
-      // const res = await (
-      //   await strategy.testDepositToCFMM(
-      //     cfmm,
-      //     [amtA, amtB],
-      //     strategy.address
-      //   )
-      // ).wait();
+      const res = await (
+        await strategy.testDepositToCFMM(
+          cfmm,
+          [amtA, amtB],
+          strategy.address
+        )
+      ).wait();
       
       // const depositToCFMMEvent = res.events[res.events.length - 1];
       // expect(depositToCFMMEvent.args.cfmm).to.equal(cfmm);
