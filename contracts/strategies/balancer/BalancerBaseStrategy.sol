@@ -84,14 +84,24 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      */
     function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {
         // We need to encode userData for the joinPool call
-        uint256 minimumBPT = 0; // TODO: Do I need to estimate this?
-        bytes memory userDataEncoded = abi.encode(1, amounts, minimumBPT);
+        bytes memory userDataEncoded = abi.encode(1, amounts, 0);
+
+        console.log("User data encoded: ");
+        console.logBytes(userDataEncoded);
 
         console.log("Calling depositToCFMM:", cfmm, amounts[0], amounts[1]);
+        console.log("Strategy address: ", address(this), to);
+        console.log("Strategy token balances: ", IERC20(getTokens(cfmm)[0]).balanceOf(address(this)), IERC20(getTokens(cfmm)[1]).balanceOf(address(this)));
+        console.log("Sender token balances: ", IERC20(getTokens(cfmm)[0]).balanceOf(msg.sender), IERC20(getTokens(cfmm)[1]).balanceOf(msg.sender));
 
-        IVault(getVault(cfmm)).joinPool(getPoolId(cfmm), 
+        address vaultId = getVault(cfmm);
+        bytes32 poolId = getPoolId(cfmm);
+
+        console.log("Vault address: ", vaultId);
+
+        IVault(vaultId).joinPool(poolId, 
                 msg.sender, // The user is sending the tokens
-                to, // The GammaPool is receiving the Balancer LP tokens
+                address(this), // The GammaPool is receiving the Balancer LP tokens
                 IVault.JoinPoolRequest(
                     {
                     assets: getTokens(cfmm), 
