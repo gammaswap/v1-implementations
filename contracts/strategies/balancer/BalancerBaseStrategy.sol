@@ -121,9 +121,10 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param to The address to return the pool reserve tokens to.
      * @param amount The amount of Balancer LP token to burn.
      */    
-    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
+    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory) {
         // We need to encode userData for the exitPool call
         bytes memory userDataEncoded = abi.encode(1, amount);
+
 
         // Notes from Balancer Documentation:
         // When providing your assets, you must ensure that the tokens are sorted numerically by token address. 
@@ -132,9 +133,12 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         // Log the initial reserves in the pool
         uint128[] memory initialReserves = getPoolReserves(cfmm);
+        
+        console.log("Getting initial pool reserves:", initialReserves[0], initialReserves[1]);
 
         uint[] memory minAmountsOut = new uint[](2);
 
+        console.log("Calling .exitPool()");
         IVault(getVault(cfmm)).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
                 payable(to), // The user is receiving the pool reserve tokens
@@ -143,9 +147,18 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         // Must return amounts as an array of withdrawn reserves
         uint128[] memory finalReserves = getPoolReserves(cfmm);
+        console.log("Getting final pool reserves:", finalReserves[0], finalReserves[1]);
+        console.log(initialReserves[0] - finalReserves[0], initialReserves[1] - finalReserves[1]);
 
-        amounts[0] = uint256(finalReserves[0] - initialReserves[0]);
-        amounts[1] = uint256(finalReserves[1] - initialReserves[1]);
+        uint128 reserveDifference0 = initialReserves[0] - finalReserves[0];
+        uint128 reserveDifference1 = initialReserves[1] - finalReserves[1];
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = uint256(reserveDifference0);
+        amounts[1] = uint256(reserveDifference1);
+        console.log("Change in reserves:", amounts[0], amounts[1]);
+
+        return amounts;
     }
 
     /**

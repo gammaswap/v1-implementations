@@ -3,6 +3,8 @@ pragma solidity 0.8.4;
 
 import "../../../strategies/balancer/BalancerBaseStrategy.sol";
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "hardhat/console.sol";
 
 contract TestBalancerBaseStrategy is BalancerBaseStrategy {
@@ -17,6 +19,10 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        // TODO: Add in maximum approvals for the vault to spend reserve tokens here
+        IERC20(tokens[0]).approve(getVault(cfmm), type(uint256).max); // previously uint(-1) now something else in Sol 8
+        IERC20(tokens[1]).approve(getVault(cfmm), type(uint256).max); // previously uint(-1) now something else in Sol 8
+
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 

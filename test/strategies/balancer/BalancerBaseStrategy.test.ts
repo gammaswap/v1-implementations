@@ -190,7 +190,33 @@ describe.only("BalancerBaseStrategy", function () {
 
   
   describe("Check Write Functions", function () {
+    async function initialisePool(initialBalances: any) {
+        // We must perform an INIT join at the beginning to start the pool
+      console.log('Performing the INIT join on the pool');
+      const JOIN_KIND_INIT = 0;
+      const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
+
+      // 'ERC20: insufficient allowance'
+      // We must approve the vault to spend the tokens we own
+      console.log('Approving the vault to spend the tokens we own');
+      await tokenA.approve(vault.address, ethers.constants.MaxUint256);
+      await tokenB.approve(vault.address, ethers.constants.MaxUint256);
+
+      const joinPoolRequest = {
+        assets: TOKENS,
+        maxAmountsIn: initialBalances,
+        userData: initUserData,
+        fromInternalBalance: false
+      } 
+
+      const tx = await vault.joinPool(poolId, owner.address, owner.address, joinPoolRequest);
+    }
+
     async function depositIntoPool(amounts: any) {
+        // We must send the tokens to the strategy before we can deposit
+        await tokenA.transfer(strategy.address, amounts[0]);
+        await tokenB.transfer(strategy.address, amounts[1]);
+
         const res = await (
           await strategy.testDepositToCFMM(
             cfmm,
@@ -207,8 +233,8 @@ describe.only("BalancerBaseStrategy", function () {
       const ONE = BigNumber.from(10).pow(18);
       const amtA = ONE.mul(500);
       const amtB = ONE.mul(500);
-      const expectedSupply = ONE.mul(100);
-      const expectedLiquidity = expectedSupply.sub(1000); // subtract 1000 because 1st deposit
+      // const expectedSupply = ONE.mul(100);
+      // const expectedLiquidity = expectedSupply.sub(1000); // subtract 1000 because 1st deposit
 
       console.log('Performing checks on pool quantities before deposit');
       expect(await pool.balanceOf(owner.address)).to.equal(0);
@@ -261,6 +287,11 @@ describe.only("BalancerBaseStrategy", function () {
       const userDataEncoded = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
       console.log("Expected bytecode: ", userDataEncoded);
 
+      // TODO:
+
+      // How does the Vault handle approvals?
+      // Some stuff you pass max uint256
+
       // console.log("Attempting a manual deposit:");
 
       // const userData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
@@ -288,9 +319,9 @@ describe.only("BalancerBaseStrategy", function () {
         )
       ).wait();
       
-      // const depositToCFMMEvent = res.events[res.events.length - 1];
-      // expect(depositToCFMMEvent.args.cfmm).to.equal(cfmm);
-      // expect(depositToCFMMEvent.args.to).to.equal(strategy.address);
+      const depositToCFMMEvent = res.events[res.events.length - 1];
+      expect(depositToCFMMEvent.args.cfmm).to.equal(cfmm);
+      expect(depositToCFMMEvent.args.to).to.equal(strategy.address);
       // expect(depositToCFMMEvent.args.liquidity).to.equal(expectedLiquidity);
       // expect(await cfmm.balanceOf(strategy.address)).to.equal(
       //   expectedLiquidity
@@ -299,65 +330,75 @@ describe.only("BalancerBaseStrategy", function () {
       // expect(await cfmm.totalSupply()).to.equal(expectedSupply);
     });
 
-    it.skip("Withdraw from CFMM", async function () {
+    it("Withdraw from CFMM", async function () {
       const ONE = BigNumber.from(10).pow(18);
-      const amtA = ONE.mul(20);
+      const amtA = ONE.mul(500);
       const amtB = ONE.mul(500);
-      await sendToCFMM(amtA, amtB);
-      await (
-        await strategy.testDepositToCFMM(
-          cfmm.address,
-          [amtA, amtB],
-          strategy.address
-        )
-      ).wait();
+
+      // Perform the INIT join on the pool
+      await initialisePool([amtA, amtB]);
+
+      // Perform the pool join
+      await depositIntoPool([amtA, amtB]);
 
       const withdrawAmt = ONE.mul(50);
-      const expectedAmtA = ONE.mul(10);
+      const expectedAmtA = ONE.mul(250);
       const expectedAmtB = ONE.mul(250);
+
+      // Expect to have deposited all tokens
       expect(await tokenA.balanceOf(strategy.address)).to.equal(0);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(0);
+
+      console.log('Calling withdrawFromCFMM():');
       const res = await (
         await strategy.testWithdrawFromCFMM(
-          cfmm.address,
+          cfmm,
           withdrawAmt,
           strategy.address
         )
       ).wait();
 
+      console.log('withdrawFromCFMM() called successfully!');
       const withdrawFromCFMMEvent = res.events[res.events.length - 1];
-      expect(withdrawFromCFMMEvent.args.cfmm).to.equal(cfmm.address);
+      expect(withdrawFromCFMMEvent.args.cfmm).to.equal(cfmm);
       expect(withdrawFromCFMMEvent.args.to).to.equal(strategy.address);
       expect(withdrawFromCFMMEvent.args.amounts.length).to.equal(2);
+
+      console.log("Testing the arugments given to the event:");
       expect(withdrawFromCFMMEvent.args.amounts[0]).to.equal(expectedAmtA);
       expect(withdrawFromCFMMEvent.args.amounts[1]).to.equal(expectedAmtB);
+
+      console.log("Testing the balance of the strategy contract:");
       expect(await tokenA.balanceOf(strategy.address)).to.equal(expectedAmtA);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(expectedAmtB);
     });
 
-    it.skip("Update Reserves", async function () {
-      const res = await strategy.getCFMMReserves();
-      expect(res.length).to.equal(2);
-      expect(res[0]).to.equal(0);
-      expect(res[1]).to.equal(0);
-
+    it("Update Reserves", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const amtA = ONE.mul(20);
       const amtB = ONE.mul(500);
-      await sendToCFMM(amtA, amtB);
 
-      await (
-        await strategy.testDepositToCFMM(
-          cfmm.address,
-          [amtA, amtB],
-          strategy.address
-        )
-      ).wait();
+      const reserves0 = await strategy.getCFMMReserves();
 
-      const res1 = await strategy.getCFMMReserves();
-      expect(res1.length).to.equal(2);
-      expect(res1[0]).to.equal(0);
-      expect(res1[1]).to.equal(0);
+      expect(reserves0.length).to.equal(2);
+      expect(reserves0[0]).to.equal(0);
+      expect(reserves0[1]).to.equal(0);
+
+      // Perform the INIT join on the pool
+      await initialisePool([amtA, amtB]);
+
+      const reserves1 = await strategy.getCFMMReserves();
+      expect(reserves1.length).to.equal(2);
+      expect(reserves1[0]).to.equal(amtA);
+      expect(reserves1[1]).to.equal(amtB);
+
+      // Perform the pool join
+      await depositIntoPool([amtA, amtB]);
+
+      const reserves2 = await strategy.getCFMMReserves();
+      expect(reserves2.length).to.equal(2);
+      expect(reserves2[0]).to.equal(amtA.mul(2));
+      expect(reserves2[1]).to.equal(amtB.mul(2));
 
       await (await strategy.testUpdateReserves()).wait();
 
