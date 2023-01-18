@@ -8,7 +8,7 @@ const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist
 const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
 const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
-describe.only("BalancerBaseStrategy", function () {
+describe("BalancerBaseStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
   let BalancerVault: any;

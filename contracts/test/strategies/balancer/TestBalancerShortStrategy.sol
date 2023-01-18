@@ -3,16 +3,64 @@ pragma solidity 0.8.4;
 
 import "../../../strategies/balancer/BalancerShortStrategy.sol";
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 contract TestBalancerShortStrategy is BalancerShortStrategy {
 
     using LibStorage for LibStorage.Storage;
+
+    event DepositToCFMM(address cfmm, address to, uint256 liquidity);
+    event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
     constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         BalancerShortStrategy(2252571, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        // TODO: Add in maximum approvals for the vault to spend reserve tokens here
+        IERC20(tokens[0]).approve(getVault(cfmm), type(uint256).max); // previously uint(-1) now something else in Sol 8
+        IERC20(tokens[1]).approve(getVault(cfmm), type(uint256).max); // previously uint(-1) now something else in Sol 8
+
         s.initialize(msg.sender, cfmm, tokens, decimals);
+    }
+
+    function getCFMM() public virtual view returns(address) {
+        return s.cfmm;
+    }
+
+    function getCFMMReserves() public virtual view returns(uint128[] memory) {
+        return s.CFMM_RESERVES;
+    }
+
+    function testGetPoolId(address cfmm) public virtual view returns(bytes32) {
+        return getPoolId(cfmm);
+    }
+
+    function testGetVault(address cfmm) public virtual view returns(address) {
+        return getVault(cfmm);
+    }
+
+    function testGetPoolReserves(address cfmm) public view returns(uint128[] memory) {
+        return getPoolReserves(cfmm);
+    }
+
+    function testGetWeights(address cfmm) public virtual view returns(uint256[] memory) {
+        return getWeights(cfmm);
+    }
+
+    function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
+        return getTokens(cfmm);
+    }
+
+
+    function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {
+        uint256 liquidity = depositToCFMM(cfmm, amounts, to);
+        emit DepositToCFMM(cfmm, to, liquidity);
+    }
+
+    function testWithdrawFromCFMM(address cfmm, uint256 amount, address to) public virtual {
+        uint256[] memory amounts = withdrawFromCFMM(cfmm, to, amount);
+        emit WithdrawFromCFMM(cfmm, to, amounts);
     }
 
     function testCalcDeposits(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) public virtual view returns(uint256[] memory amounts, address payee) {

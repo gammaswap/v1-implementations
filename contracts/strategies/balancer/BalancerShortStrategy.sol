@@ -7,6 +7,8 @@ import "../../interfaces/external/IWeightedPool.sol";
 import "../base/ShortStrategyERC4626.sol";
 import "./BalancerBaseStrategy.sol";
 
+import "hardhat/console.sol";
+
 contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
     error ZeroDeposits();
     error NotOptimalDeposit();
@@ -33,11 +35,17 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
             revert ZeroDeposits();
         }
 
+        console.log("SC - Calling calcDepositAmounts with arguments", amountsDesired[0], amountsDesired[1]);
+
         // TODO: Does this contract have access to s.cfmm?
         uint128[] memory reserves = getPoolReserves(s.cfmm);
 
+        console.log("SC - reserves", reserves[0], reserves[1]);
+
         // Get normalised weights for price calculation
         uint256[] memory weights = getWeights(s.cfmm);
+
+        console.log("SC - weights", weights[0], weights[1]);
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);
@@ -52,11 +60,13 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
 
         amounts = new uint256[](2);
 
+        console.log("Code went past the zero reserves check");
+
         // Calculates optimal amount as the amount of token1 which corresponds to an amountsDesired of token0
-        // Note: This calculate preserves price, which is almost the same as price in a UniV2 pool
+        // Note: This calculation preserves price, which is almost the same as price in a UniV2 pool
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount1 = (amountsDesired[0] * reserves[1] * weights[0]) / (reserves[0] * (1e18 - weights[1]));
+        uint256 optimalAmount1 = (amountsDesired[0] * reserves[1] * weights[0]) / (reserves[0] * weights[1]);
         if (optimalAmount1 <= amountsDesired[1]) {
             checkOptimalAmt(optimalAmount1, amountsMin[1]);
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
