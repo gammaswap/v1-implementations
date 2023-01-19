@@ -74,7 +74,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         }
 
         // TODO: Is there an overflow risk here?
-        uint256 optimalAmount0 = (amountsDesired[1] * reserves[0] * weights[1]) / (reserves[1] * (1e18 - weights[0]));
+        uint256 optimalAmount0 = (amountsDesired[1] * reserves[0] * weights[1]) / (reserves[1] * weights[0]);
         assert(optimalAmount0 <= amountsDesired[0]);
         checkOptimalAmt(optimalAmount0, amountsMin[0]);
         (amounts[0], amounts[1]) = (optimalAmount0, amountsDesired[1]);
