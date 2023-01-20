@@ -5,6 +5,8 @@ import "../base/BaseLongStrategy.sol";
 import "./BalancerBaseStrategy.sol";
 
 import "../../libraries/Math.sol";
+import "../../libraries/weighted/FixedPoint.sol";
+import "../../libraries/weighted/WeightedMath.sol";
 
 abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStrategy {
     error BadDelta();
@@ -35,8 +37,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         // TODO: Requires exponentiation again
-        amounts[0] = Math.power(liquidity / lastCFMMInvariant, 1e18 / weights[0]) * s.CFMM_RESERVES[0];
-        amounts[1] = Math.power(liquidity / lastCFMMInvariant, 1e18 / weights[1]) * s.CFMM_RESERVES[1];
+        amounts[0] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[0]) * s.CFMM_RESERVES[0];
+        amounts[1] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[1]) * s.CFMM_RESERVES[1];
     }
 
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
@@ -44,50 +46,50 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
-        // address assetIn;
-        // address assetOut;
-        // uint256 amountIn;
-        // uint256 amountOut;
+        address assetIn;
+        address assetOut;
+        uint256 amountIn;
+        uint256 amountOut;
 
-        // address[] tokens = getTokens(s.cfmm);
+        address[] memory tokens = getTokens(s.cfmm);
 
-        // // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
-        // // outAmts is the quantity of tokens going OUT OF the GammaPool
+        // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
+        // outAmts is the quantity of tokens going OUT OF the GammaPool
 
-        // // Parse the function inputs to determine which direction and outputs are expected
-        // if (outAmts[0] == 0) {
-        //     assetIn = tokens[1];
-        //     assetOut = tokens[0];
-        //     amountIn = outAmts[1];
-        //     amountOut = inAmts[0];
-        // } elif (outAmts[1] == 0) {
-        //     assetIn = tokens[0];
-        //     assetOut = tokens[1];
-        //     amountIn = outAmts[0];
-        //     amountOut = inAmts[1];
-        // } else {
-        //     revert("The parameter outAmts is not defined correctly.");
-        // }
+        // Parse the function inputs to determine which direction and outputs are expected
+        if (outAmts[0] == 0) {
+            assetIn = tokens[1];
+            assetOut = tokens[0];
+            amountIn = outAmts[1];
+            amountOut = inAmts[0];
+        } else if (outAmts[1] == 0) {
+            assetIn = tokens[0];
+            assetOut = tokens[1];
+            amountIn = outAmts[0];
+            amountOut = inAmts[1];
+        } else {
+            revert("The parameter outAmts is not defined correctly.");
+        }
 
-        // // ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
-        // IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
-        //     poolId: getPoolId(s.cfmm),
-        //     kind: IVault.SwapKind.GIVEN_IN,
-        //     assetIn: assetIn,
-        //     assetOut: assetOut,
-        //     amount: amountIn,
-        //     userData: abi.encode(amountOut)
-        // });
+        // ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
+        IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
+            poolId: getPoolId(s.cfmm),
+            kind: IVault.SwapKind.GIVEN_IN,
+            assetIn: assetIn,
+            assetOut: assetOut,
+            amount: amountIn,
+            userData: abi.encode(amountOut)
+        });
 
-        // IVault.FundManagement memory fundManagement = IVault.FundManagement({
-        //     sender: address(this);
-        //     fromInternalBalance: false,
-        //     recipient: address(this);
-        //     toInternalBalance: false;
-        // });
+        IVault.FundManagement memory fundManagement = IVault.FundManagement({
+            sender: address(this),
+            fromInternalBalance: false,
+            recipient: address(this),
+            toInternalBalance: false
+        });
         
-        // // TODO: Implement this for Balancer
-        // IVault(getVault(cfmm)).swap(singleSwap, funds, new bytes(0), address(this));
+        // TODO: Implement this for Balancer
+        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, new bytes(0), address(this));
     }
 
     // Determines the amounts of tokens in and out expected
@@ -106,43 +108,48 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     // according to adjusting the delta of the GammaPool by the calldata quantities
     function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
         internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
-        // if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
-        //     revert BadDelta();
-        // }
-        // //inAmt is what GS is getting, outAmt is what GS is sending
-        // if(delta0 > 0 || delta1 > 0) {
-        //     inAmt0 = uint256(delta0);//buy exact token0 (what you'll ask)
-        //     inAmt1 = uint256(delta1);//buy exact token1 (what you'll ask)
-        //     if(inAmt0 > 0) {
-        //         outAmt0 = 0;
-        //         outAmt1 = getAmountIn(inAmt0, reserve1, reserve0); // Calculate what the GP will send
-        //         uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-        //         if(_outAmt1 != outAmt1) {
-        //             outAmt1 = _outAmt1;
-        //             inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GP will receive
-        //         }
-        //     } else {
-        //         outAmt0 = getAmountIn(inAmt1, reserve0, reserve1); // Calculate what the GP will send
-        //         outAmt1 = 0;
-        //         uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
-        //         if(_outAmt0 != outAmt0) {
-        //             outAmt0 = _outAmt0;
-        //             inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GP will receive
-        //         }
-        //     }
-        // } else {
-        //     outAmt0 = uint256(-delta0); // Sell exact token0 which will be sent by the GP
-        //     outAmt1 = uint256(-delta1); // Sell exact token1 which will be sent by the GP
-        //     if(outAmt0 > 0) {
-        //         outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
-        //         inAmt0 = 0;
-        //         inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GP will receive
-        //     } else {
-        //         outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-        //         inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GP will receive
-        //         inAmt1 = 0;
-        //     }
-        // }
+        if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
+            revert BadDelta();
+        }
+
+        if(reserve0 == 0 || reserve1 == 0) {
+            revert ZeroReserves();
+        }
+
+        // inAmt is the amount that the GammaPool is getting, outAmt is the amount that the GammaPool is sending
+        if(delta0 > 0 || delta1 > 0) {
+            inAmt0 = uint256(delta0); // Buy exact token0
+            inAmt1 = uint256(delta1); // Buy exact token1
+            if(inAmt0 > 0) {
+                outAmt0 = 0;
+                outAmt1 = getAmountIn(inAmt0, reserve1, reserve0); // Calculate what the GammaPool will send
+                uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
+                if(_outAmt1 != outAmt1) {
+                    outAmt1 = _outAmt1;
+                    inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GammaPool will receive
+                }
+            } else {
+                outAmt0 = getAmountIn(inAmt1, reserve0, reserve1); // Calculate what the GammaPool will send
+                outAmt1 = 0;
+                uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+                if(_outAmt0 != outAmt0) {
+                    outAmt0 = _outAmt0;
+                    inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GammaPool will receive
+                }
+            }
+        } else {
+            outAmt0 = uint256(-delta0); // Sell exact token0 which will be sent by the GammaPool
+            outAmt1 = uint256(-delta1); // Sell exact token1 which will be sent by the GammaPool
+            if(outAmt0 > 0) {
+                outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+                inAmt0 = 0;
+                inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GammaPool will receive
+            } else {
+                outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
+                inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GammaPool will receive
+                inAmt1 = 0;
+            }
+        }
     }
 
     // TODO: Add a function description for this function.
@@ -167,7 +174,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         uint256 base = reserveOut / (reserveOut - amountOut);
         uint256 exponent = weightOut / weightIn;
-        uint256 power = Math.power(base, exponent);
+        uint256 power = FixedPoint.powDown(base, exponent);
 
         // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
         // the following subtraction should never revert.
@@ -194,7 +201,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         uint256 base = reserveIn / denominator;
         uint256 exponent = weightIn / weightOut;
-        uint256 power = Math.power(base, exponent);
+        uint256 power = FixedPoint.powDown(base, exponent);
         return reserveOut * (1e18 - power);
     }
 }

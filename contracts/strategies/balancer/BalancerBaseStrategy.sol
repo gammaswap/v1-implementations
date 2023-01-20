@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/external/IVault.sol";
 import "../../interfaces/external/IWeightedPool.sol";
 import "../../libraries/Math.sol";
+import "../../libraries/weighted/WeightedMath.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
@@ -171,7 +172,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         uint256[] memory weights = getWeights(cfmm);
 
         console.log("CFMM Info:", cfmm, weights[0], weights[1]);
-        invariant = Math._calculateInvariant(weights, Math.convertToUint256Array(amounts));
+        invariant = WeightedMath._calculateInvariant(weights, Math.convertToUint256Array(amounts));
         // invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
     }
 }

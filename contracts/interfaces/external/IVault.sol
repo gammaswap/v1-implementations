@@ -126,4 +126,30 @@ interface IVault {
         bytes userData;
         bool toInternalBalance;
     }
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256 amountCalculated);
+
+    struct SingleSwap {
+        bytes32 poolId;
+        uint256 kind;
+        address assetIn;
+        address assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
 }
