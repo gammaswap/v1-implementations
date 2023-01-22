@@ -3,8 +3,6 @@ pragma solidity 0.8.4;
 
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/ILiquidationStrategy.sol";
 import "./BaseLongStrategy.sol";
-import "../../libraries/Math.sol";
-import "hardhat/console.sol";
 
 abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy {
 
