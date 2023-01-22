@@ -29,13 +29,16 @@ contract TestPositionManager is ISendTokensCallback {
 
     function sendTokensCallback(address[] calldata tokens, uint256[] calldata amounts, address payee, bytes calldata data) external virtual override {
         SendTokensCallbackData memory decoded = abi.decode(data, (SendTokensCallbackData));
-        for(uint i = 0; i < tokens.length; i++) {
+        for(uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
                 if(amounts[i] % 2 == 0) {
                     send(tokens[i], decoded.payer, payee, amounts[i]);
                 } else {
                     send(tokens[i], decoded.payer, payee, amounts[i] - 1);
                 }
+            }
+            unchecked {
+                ++i;
             }
         }
     }

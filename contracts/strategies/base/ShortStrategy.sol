@@ -52,15 +52,21 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual {
         address[] storage tokens = s.tokens;
         uint256[] memory balances = new uint256[](tokens.length);
-        for(uint256 i = 0; i < tokens.length; i++) {
+        for(uint256 i; i < tokens.length;) {
             balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
+            unchecked {
+                ++i;
+            }
         }
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
-        for(uint256 i = 0; i < tokens.length; i++) {
+        for(uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
                 if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
                     revert WrongTokenBalance(tokens[i]);
                 }
+            }
+            unchecked {
+                ++i;
             }
         }
     }

@@ -100,12 +100,15 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         address[] memory tokens = s.tokens;
         uint256[] memory refund = new uint256[](tokens.length);
         uint128 payAmt = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i; i < tokens.length;) {
             payAmt = uint128(payLiquidity * tokensHeld[i] / loanLiquidity);
             s.TOKEN_BALANCE[i] = s.TOKEN_BALANCE[i] - payAmt;
             refund[i] = payAmt;
             tokensHeld[i] = tokensHeld[i] - payAmt;
             GammaSwapLibrary.safeTransfer(IERC20(tokens[i]), msg.sender, refund[i]);
+            unchecked {
+                ++i;
+            }
         }
         return(tokensHeld, refund);
     }
@@ -158,17 +161,23 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         tokensHeldTotal = new uint128[](tokens.length);
         (uint256 accFeeIndex,,) = updateIndex();
         uint256[] memory _tokenIds = new uint256[](tokenIds.length);
-        for(uint256 i = 0; i < tokenIds.length; i++) {
+        for(uint256 i; i < tokenIds.length;) {
             LibStorage.Loan storage _loan = s.loans[tokenIds[i]];
             uint256 liquidity = _loan.liquidity;
             uint256 rateIndex = _loan.rateIndex;
             if(liquidity == 0 || rateIndex == 0) {
+                unchecked {
+                    ++i;
+                }
                 continue;
             }
             liquidity = liquidity * accFeeIndex / rateIndex;
             tokensHeld = _loan.tokensHeld;
             uint256 collateral = calcInvariant(cfmm, tokensHeld);
             if(hasMargin(collateral, liquidity, ltvThreshold())) {
+                unchecked {
+                    ++i;
+                }
                 continue;
             }
             _tokenIds[i] = tokenIds[i];
@@ -179,9 +188,15 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
             _loan.lpTokens = 0;
             collateralTotal = collateralTotal + collateral;
             liquidityTotal = liquidityTotal + liquidity;
-            for(uint256 j = 0; j < tokens.length; j++) {
+            for(uint256 j; j < tokens.length;) {
                 tokensHeldTotal[j] = tokensHeldTotal[j] + tokensHeld[j];
                 _loan.tokensHeld[j] = 0;
+                unchecked {
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -191,7 +206,6 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     function rebalanceAndDepositCollateral(LibStorage.Loan storage _loan, uint256 loanLiquidity, int256[] calldata deltas) internal virtual returns(uint128[] memory tokensHeld){
         if(deltas.length > 0) {
             (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(_loan, deltas);
-
             swapTokens(_loan, outAmts, inAmts);
         }
         updateCollateral(_loan);

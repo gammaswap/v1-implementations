@@ -35,9 +35,12 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     function sendTokens(LibStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
         address[] memory tokens = s.tokens;
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
                 sendToken(IERC20(tokens[i]), to, amounts[i], s.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
+            }
+            unchecked {
+                ++i;
             }
         }
     }
@@ -153,10 +156,9 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     function updateCollateral(LibStorage.Loan storage _loan) internal returns(uint128[] memory tokensHeld){
         address[] memory tokens = s.tokens;
-        uint256 len = tokens.length;
         uint128[] memory tokenBalance = s.TOKEN_BALANCE;
         tokensHeld = _loan.tokensHeld;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < tokens.length;) {
             uint256 currentBalance = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), address(this));
             if(currentBalance > tokenBalance[i]) {
                 uint128 balanceChange = uint128(currentBalance - tokenBalance[i]);
@@ -170,10 +172,13 @@ abstract contract BaseLongStrategy is BaseStrategy {
                 if(balanceChange > tokensHeld[i]){
                     revert NotEnoughCollateral();
                 }
-            unchecked {
-                tokensHeld[i] = tokensHeld[i] - balanceChange;
-                tokenBalance[i] = tokenBalance[i] - balanceChange;
+                unchecked {
+                    tokensHeld[i] = tokensHeld[i] - balanceChange;
+                    tokenBalance[i] = tokenBalance[i] - balanceChange;
+                }
             }
+            unchecked {
+                ++i;
             }
         }
         _loan.tokensHeld = tokensHeld;
