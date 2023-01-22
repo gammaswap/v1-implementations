@@ -9,7 +9,7 @@ import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
-    uint256 immutable public BLOCKS_PER_YEAR;//2252571 year block count in ETH mainnet
+    uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
 
     constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
         BLOCKS_PER_YEAR = _blocksPerYear;
