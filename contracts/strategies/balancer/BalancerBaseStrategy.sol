@@ -11,8 +11,10 @@ import "../base/BaseStrategy.sol";
 
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     uint256 immutable public BLOCKS_PER_YEAR;
+    uint256 immutable public MAX_TOTAL_APY;
 
     constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+        MAX_TOTAL_APY = 1e19;
         BLOCKS_PER_YEAR = _blocksPerYear;
     }
 
@@ -23,6 +25,10 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     function getPoolId(address cfmm) internal virtual view returns(bytes32) {
         bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
         return poolId;
+    }
+
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return MAX_TOTAL_APY;
     }
 
     function blocksPerYear() internal virtual override view returns(uint256) {

@@ -12,7 +12,7 @@ contract TestBaseStrategy is BaseStrategy {
     using LibStorage for LibStorage.Storage;
 
     uint16 public _protocolId;
-    uint256 public borrowRate = 10**18;
+    uint256 public borrowRate = 1e18;
     uint256 public invariant;
     address public _factory;
     uint80 public _lastFeeIndex;
@@ -25,6 +25,10 @@ contract TestBaseStrategy is BaseStrategy {
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
         s.initialize(_factory, cfmm, tokens, decimals);
+    }
+
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
     }
 
     function blocksPerYear() internal virtual override pure returns(uint256) {

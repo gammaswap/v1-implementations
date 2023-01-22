@@ -12,5 +12,4 @@ artifacts
 .idea
 
 #access tokens
-secrets.json
 .npmrc

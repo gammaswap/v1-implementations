@@ -8,8 +8,8 @@ contract CPMMLiquidationStrategy is CPMMBaseLongStrategy, LiquidationStrategy {
 
     uint16 immutable public LIQUIDATION_FEE_THRESHOLD;
 
-    constructor(uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _blocksPerYear, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseLongStrategy(_liquidationThreshold, _blocksPerYear, 0, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        CPMMBaseLongStrategy(_liquidationThreshold, _maxTotalApy, _blocksPerYear, 0, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
         LIQUIDATION_FEE_THRESHOLD = _liquidationFeeThreshold;
     }
 

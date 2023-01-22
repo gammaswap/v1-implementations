@@ -4,16 +4,26 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/ICPMM.sol";
-import "../../libraries/Math.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
-    uint256 immutable public BLOCKS_PER_YEAR;//2252571 year block count in ETH mainnet
+    error MaxTotalApy();
 
-    constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
+    uint256 immutable public MAX_TOTAL_APY;
+
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+        if(_maxTotalApy < _maxApy) {
+            revert MaxTotalApy();
+        }
+        MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
+    }
+
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return MAX_TOTAL_APY;
     }
 
     function blocksPerYear() internal virtual override view returns(uint256) {

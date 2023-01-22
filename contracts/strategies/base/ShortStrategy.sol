@@ -52,15 +52,21 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual {
         address[] storage tokens = s.tokens;
         uint256[] memory balances = new uint256[](tokens.length);
-        for(uint256 i = 0; i < tokens.length; i++) {
+        for(uint256 i; i < tokens.length;) {
             balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
+            unchecked {
+                ++i;
+            }
         }
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
-        for(uint256 i = 0; i < tokens.length; i++) {
+        for(uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
                 if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
                     revert WrongTokenBalance(tokens[i]);
                 }
+            }
+            unchecked {
+                ++i;
             }
         }
     }
@@ -177,12 +183,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function _convertToShares(uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         uint256 _totalAssets = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
+        return supply == 0 || _totalAssets == 0 ? assets : (assets * supply / _totalAssets);
     }
 
     function _convertToAssets(uint256 shares) internal view virtual returns (uint256) {
         uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        return supply == 0 ? shares : (shares * (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST)) / supply;
+        return supply == 0 ? shares : (shares * (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST) / supply);
     }
 
     //INTERNAL HOOKS LOGIC
