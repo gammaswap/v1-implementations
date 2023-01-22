@@ -27,6 +27,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
 
     function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual returns(uint256[] memory amounts);
 
+    function maxTotalApy() internal virtual view returns(uint256);
+
     function blocksPerYear() internal virtual view returns(uint256);
 
     /*
@@ -42,17 +44,16 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         if(lastCFMMInvariant > 0 && lastCFMMTotalSupply > 0 && prevCFMMInvariant > 0 && prevCFMMTotalSupply > 0) {
             uint256 prevInvariant = borrowedInvariant > prevCFMMInvariant ? borrowedInvariant : prevCFMMInvariant; // deleverage CFMM Yield
             uint256 denominator = prevInvariant * lastCFMMTotalSupply;
-            return (lastCFMMInvariant * prevCFMMTotalSupply + lastCFMMTotalSupply * (prevInvariant - prevCFMMInvariant)) * (10**18) / denominator;
+            return (lastCFMMInvariant * prevCFMMTotalSupply + lastCFMMTotalSupply * (prevInvariant - prevCFMMInvariant)) * 1e18 / denominator;
         }
-        return 10**18;
+        return 1e18;
     }
 
     function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 lastBlockNum) internal virtual view returns(uint256) {
         uint256 blockDiff = block.number - lastBlockNum;
         uint256 _blocksPerYear = blocksPerYear();
-        uint256 adjBorrowRate = (blockDiff * borrowRate) / _blocksPerYear;
-        uint256 ONE = 10**18;
-        uint256 apy1k = ONE + (blockDiff * 10 * ONE) / _blocksPerYear;
+        uint256 adjBorrowRate = blockDiff * borrowRate / _blocksPerYear;
+        uint256 apy1k = 1e18 + (blockDiff * maxTotalApy()) / _blocksPerYear;
         return Math.min(apy1k, lastCFMMFeeIndex + adjBorrowRate);
     }
 
@@ -71,7 +72,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual pure returns(uint256) {
-        return  borrowedInvariant * lastFeeIndex / (10**18);
+        return  borrowedInvariant * lastFeeIndex / 1e18;
     }
 
     function calcLPTokenBorrowedPlusInterest(uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) internal virtual pure returns(uint256) {
@@ -88,7 +89,7 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.LP_INVARIANT = uint128(calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
 
-        accFeeIndex = (s.accFeeIndex * lastFeeIndex) / 10**18;
+        accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
         s.accFeeIndex = uint96(accFeeIndex);
         s.LAST_BLOCK_NUMBER = uint48(block.number);
     }
@@ -107,9 +108,9 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         if(feeTo != address(0) && devFee > 0) {
             uint256 gsFeeIndex = lastFeeIndex > lastCFMMIndex ? lastFeeIndex - lastCFMMIndex : 0;
             uint256 denominator =  lastFeeIndex - gsFeeIndex * devFee / 100000; // devFee is 10000 by default (10%)
-            uint256 pctToPrint = lastFeeIndex * (10 ** 18) / denominator - (10 ** 18);
-            if(pctToPrint > 0) {
-                uint256 devShares = s.totalSupply * pctToPrint / (10 ** 18);
+            uint256 pctToPrint = lastFeeIndex * 1e18 / denominator - 1e18;
+            uint256 devShares = pctToPrint > 0 ? s.totalSupply * pctToPrint / 1e18 : 0;
+            if(devShares > 0) {
                 _mint(feeTo, devShares);
             }
         }

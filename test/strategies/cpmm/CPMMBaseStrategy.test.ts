@@ -95,6 +95,8 @@ describe("CPMMBaseStrategy", function () {
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
+      expect(await strategy.BLOCKS_PER_YEAR()).to.equal(2252571);
+      expect(await strategy.MAX_TOTAL_APY()).to.equal(ONE.mul(10));
     });
 
     it("Check Invariant Calculation", async function () {

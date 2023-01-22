@@ -40,6 +40,10 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return 975;
     }
 
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
+    }
+
     function blocksPerYear() internal virtual override pure returns(uint256) {
         return 2252571;
     }
@@ -144,14 +148,14 @@ contract TestLiquidationStrategy is LiquidationStrategy {
 
     function updateIndex() internal override virtual returns(uint256 accFeeIndex, uint256 lastFeeIndex, uint256 lastCFMMIndex) {
         accFeeIndex = s.accFeeIndex;
-        lastFeeIndex = 10**18;
-        lastCFMMIndex = 10**18;
+        lastFeeIndex = 1e18;
+        lastCFMMIndex = 1e18;
     }
 
     function incBorrowedInvariant(uint256 invariant) external virtual {
         uint256 borrowedInvariant = s.BORROWED_INVARIANT + invariant;
-        uint256 feeGrowth = borrowedInvariant * (10**18) / s.BORROWED_INVARIANT;
-        s.accFeeIndex = uint96(s.accFeeIndex * feeGrowth / (10**18));
+        uint256 feeGrowth = borrowedInvariant * 1e18 / s.BORROWED_INVARIANT;
+        s.accFeeIndex = uint96(s.accFeeIndex * feeGrowth / 1e18);
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
     }

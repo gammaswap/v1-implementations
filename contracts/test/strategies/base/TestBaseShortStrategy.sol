@@ -18,6 +18,10 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
+    }
+
     function blocksPerYear() internal virtual override pure returns(uint256) {
         return 2252571;
     }
@@ -136,7 +140,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
 
     function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {
         uint256 totalInvariant = lpInvariant + borrowedInvariant;
-        return totalInvariant == 0 ? 0 : (borrowedInvariant * (10**18) / totalInvariant);
+        return totalInvariant == 0 ? 0 : (borrowedInvariant * 1e18 / totalInvariant);
     }
 
     //ShortGamma

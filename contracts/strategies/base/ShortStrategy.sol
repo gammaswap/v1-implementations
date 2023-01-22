@@ -183,12 +183,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function _convertToShares(uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
         uint256 _totalAssets = s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST;
-        return supply == 0 || _totalAssets == 0 ? assets : (assets * supply) / _totalAssets;
+        return supply == 0 || _totalAssets == 0 ? assets : (assets * supply / _totalAssets);
     }
 
     function _convertToAssets(uint256 shares) internal view virtual returns (uint256) {
         uint256 supply = s.totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
-        return supply == 0 ? shares : (shares * (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST)) / supply;
+        return supply == 0 ? shares : (shares * (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST) / supply);
     }
 
     //INTERNAL HOOKS LOGIC

@@ -6,8 +6,8 @@ import "./CPMMBaseLongStrategy.sol";
 
 contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
 
-    constructor(uint16 _ltvThreshold, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseLongStrategy(_ltvThreshold, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        CPMMBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
     function _getLatestCFMMReserves(address cfmm) public virtual override view returns(uint256[] memory reserves) {

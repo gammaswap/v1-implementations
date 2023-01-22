@@ -25,6 +25,10 @@ contract TestLongStrategy is LongStrategy {
         s.initialize(msg.sender, _cfmm, _tokens, _decimals);
     }
 
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
+    }
+
     function blocksPerYear() internal virtual override pure returns(uint256) {
         return 2252571;
     }
@@ -105,7 +109,7 @@ contract TestLongStrategy is LongStrategy {
     }
 
     function squareRoot(uint256 num) public virtual pure returns(uint256) {
-        return Math.sqrt(num * (10**18));
+        return Math.sqrt(num * 1e18);
     }
 
     function beforeSwapTokens(LibStorage.Loan storage, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){

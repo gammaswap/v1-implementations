@@ -13,7 +13,7 @@ contract TestERC20WithFee is ERC20 {
     constructor(string memory name_, string memory symbol_, uint256 fee_) ERC20(name_, symbol_) {
         owner = msg.sender;
         fee = fee_;
-        _mint(msg.sender, 100000 * (10 ** 18));
+        _mint(msg.sender, 100000 * 1e18);
     }
 
     function setFee(uint256 fee_) public virtual {
@@ -76,7 +76,7 @@ contract TestERC20WithFee is ERC20 {
         unchecked {
             _balances[from] = fromBalance - amount;
         }
-        uint256 feeAmt = amount * fee / (10**18);
+        uint256 feeAmt = amount * fee / 1e18;
         amount = amount - feeAmt;
         _balances[to] += amount;
         _balances[owner] += feeAmt;
