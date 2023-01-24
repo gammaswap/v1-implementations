@@ -89,7 +89,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         });
         
         // TODO: Implement this for Balancer
-        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, new bytes(0), address(this));
+        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
     }
 
     // Determines the amounts of tokens in and out expected
@@ -116,25 +116,29 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             revert ZeroReserves();
         }
 
+        uint256[] memory weights = getWeights(s.cfmm);
+        uint256 weightIn = delta0 > 0 ? weights[0] : weights[1];
+        uint256 weightOut = delta0 > 0 ? weights[1] : weights[0];
+
         // inAmt is the amount that the GammaPool is getting, outAmt is the amount that the GammaPool is sending
         if(delta0 > 0 || delta1 > 0) {
             inAmt0 = uint256(delta0); // Buy exact token0
             inAmt1 = uint256(delta1); // Buy exact token1
             if(inAmt0 > 0) {
                 outAmt0 = 0;
-                outAmt1 = getAmountIn(inAmt0, reserve1, reserve0); // Calculate what the GammaPool will send
+                outAmt1 = getAmountIn(inAmt0, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will send
                 uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 if(_outAmt1 != outAmt1) {
                     outAmt1 = _outAmt1;
-                    inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GammaPool will receive
+                    inAmt0 = getAmountOut(outAmt1, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will receive
                 }
             } else {
-                outAmt0 = getAmountIn(inAmt1, reserve0, reserve1); // Calculate what the GammaPool will send
+                outAmt0 = getAmountIn(inAmt1, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will send
                 outAmt1 = 0;
                 uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 if(_outAmt0 != outAmt0) {
                     outAmt0 = _outAmt0;
-                    inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GammaPool will receive
+                    inAmt1 = getAmountOut(outAmt0, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will receive
                 }
             }
         } else {
@@ -143,10 +147,10 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             if(outAmt0 > 0) {
                 outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 inAmt0 = 0;
-                inAmt1 = getAmountOut(outAmt0, reserve0, reserve1); // Calculate what the GammaPool will receive
+                inAmt1 = getAmountOut(outAmt0, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will receive
             } else {
                 outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-                inAmt0 = getAmountOut(outAmt1, reserve1, reserve0); // Calculate what the GammaPool will receive
+                inAmt0 = getAmountOut(outAmt1, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will receive
                 inAmt1 = 0;
             }
         }

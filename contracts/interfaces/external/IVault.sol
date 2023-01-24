@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IAsset {}
 
 interface IVault {
+    enum SwapKind {GIVEN_IN, GIVEN_OUT}
+
     /**
      * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
      * the tokens' `balances` changed.
@@ -152,4 +154,6 @@ interface IVault {
         address payable recipient;
         bool toInternalBalance;
     }
+
+
 }
