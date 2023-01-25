@@ -76,12 +76,12 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         s.allowance[owner][spender] = amount;
     }
 
-    function spendAllowance(address owner, address spender, uint256 amount) public virtual {
-        _spendAllowance(owner, spender, amount);
+    function _spendAllowance(address owner, address spender, uint256 amount) public virtual {
+        spendAllowance(owner, spender, amount);
     }
 
-    function withdrawAssets(address caller, address receiver, address owner, uint256 assets, uint256 shares) public virtual {
-        _withdrawAssets(caller, receiver, owner, assets, shares, false);
+    function _withdrawAssets(address caller, address receiver, address owner, uint256 assets, uint256 shares) public virtual {
+        withdrawAssets(caller, receiver, owner, assets, shares, false);
     }
 
     function testUpdateIndex() public virtual {
@@ -94,7 +94,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
 
     function depositLPTokens(address to) public virtual {
         uint256 assets = IERC20(s.cfmm).balanceOf(address(this)) - s.LP_TOKEN_BALANCE;
-        uint256 shares = _convertToShares(assets);
+        uint256 shares = convertToShares(assets);
         _mint(to, shares);
         s.LP_TOKEN_BALANCE = IERC20(s.cfmm).balanceOf(address(this));
     }
@@ -130,12 +130,12 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         emit Transfer(from, to, amount);
     }
 
-    function convertToShares(uint256 assets) public view virtual returns(uint256) {
-        return _convertToShares(assets);
+    function _convertToShares(uint256 assets) public view virtual returns(uint256) {
+        return convertToShares(assets);
     }
 
-    function convertToAssets(uint256 shares) public view virtual returns(uint256) {
-        return _convertToAssets(shares);
+    function _convertToAssets(uint256 shares) public view virtual returns(uint256) {
+        return convertToAssets(shares);
     }
 
     function calcBorrowRate(uint256 lpInvariant, uint256 borrowedInvariant) internal virtual override view returns(uint256) {

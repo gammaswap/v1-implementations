@@ -56,37 +56,37 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
             revert BadDelta();
         }
-        //inAmt is what GS is getting, outAmt is what GS is sending
+        // inAmt is what GS is getting, outAmt is what GS is sending
         if(delta0 > 0 || delta1 > 0) {
-            inAmt0 = uint256(delta0);//buy exact token0 (what you'll ask)
-            inAmt1 = uint256(delta1);//buy exact token1 (what you'll ask)
+            inAmt0 = uint256(delta0); // buy exact token0 (what you'll ask)
+            inAmt1 = uint256(delta1); // buy exact token1 (what you'll ask)
             if(inAmt0 > 0) {
                 outAmt0 = 0;
-                outAmt1 = calcAmtOut(inAmt0, reserve1, reserve0);//calc what you'll send
+                outAmt1 = calcAmtOut(inAmt0, reserve1, reserve0); // calc what you'll send
                 uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 if(_outAmt1 != outAmt1) {
                     outAmt1 = _outAmt1;
-                    inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0);//calc what you'll ask
+                    inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
                 }
             } else {
-                outAmt0 = calcAmtOut(inAmt1, reserve0, reserve1);//calc what you'll send
+                outAmt0 = calcAmtOut(inAmt1, reserve0, reserve1); // calc what you'll send
                 outAmt1 = 0;
                 uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 if(_outAmt0 != outAmt0) {
                     outAmt0 = _outAmt0;
-                    inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1);//calc what you'll ask
+                    inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
                 }
             }
         } else {
-            outAmt0 = uint256(-delta0);//sell exact token0 (what you'll send)
-            outAmt1 = uint256(-delta1);//sell exact token1 (what you'll send) (here we can send then calc how much to ask)
+            outAmt0 = uint256(-delta0); // sell exact token0 (what you'll send)
+            outAmt1 = uint256(-delta1); // sell exact token1 (what you'll send) (here we can send then calc how much to ask)
             if(outAmt0 > 0) {
                 outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 inAmt0 = 0;
-                inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1);//calc what you'll ask
+                inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
             } else {
                 outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-                inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0);//calc what you'll ask
+                inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
                 inAmt1 = 0;
             }
         }

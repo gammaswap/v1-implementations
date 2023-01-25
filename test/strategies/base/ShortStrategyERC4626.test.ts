@@ -229,7 +229,7 @@ describe("ShortStrategyERC4626", function () {
     const callerAddr = caller;
 
     await (
-      await strategy.withdrawAssets(
+      await strategy._withdrawAssets(
         callerAddr,
         receiverAddr,
         ownerAddr,
@@ -335,7 +335,7 @@ describe("ShortStrategyERC4626", function () {
       ).to.equal(100);
 
       await expect(
-        strategy.spendAllowance(
+        strategy._spendAllowance(
           owner.address,
           strategy.address,
           allowance.add(1)
@@ -343,7 +343,7 @@ describe("ShortStrategyERC4626", function () {
       ).to.be.revertedWith("ExcessiveSpend");
 
       await (
-        await strategy.spendAllowance(
+        await strategy._spendAllowance(
           owner.address,
           strategy.address,
           allowance.div(2)
@@ -365,7 +365,7 @@ describe("ShortStrategyERC4626", function () {
       ).to.equal(ethers.constants.MaxUint256);
 
       await (
-        await strategy.spendAllowance(
+        await strategy._spendAllowance(
           owner.address,
           strategy.address,
           ethers.constants.MaxUint256
@@ -441,7 +441,7 @@ describe("ShortStrategyERC4626", function () {
         expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
 
         const assets = shares.div(2);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -499,7 +499,7 @@ describe("ShortStrategyERC4626", function () {
         expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
 
         const assets = shares.div(2);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -526,7 +526,7 @@ describe("ShortStrategyERC4626", function () {
         await (await cfmm.trade(tradeYield)).wait();
 
         const assets2 = assets.div(2);
-        const expectedGSShares2 = await strategy.convertToShares(assets2);
+        const expectedGSShares2 = await strategy._convertToShares(assets2);
 
         // time passes by
         // mine 256 blocks
@@ -612,7 +612,7 @@ describe("ShortStrategyERC4626", function () {
         expect(await cfmm.invariant()).to.equal(lpTokens.add(tradeYield));
 
         const shares = lpTokens.div(2);
-        const expectedAssets = await strategy.convertToAssets(shares);
+        const expectedAssets = await strategy._convertToAssets(shares);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -668,7 +668,7 @@ describe("ShortStrategyERC4626", function () {
         expect(await cfmm.invariant()).to.equal(lpTokens.add(tradeYield));
 
         const shares = lpTokens.div(2);
-        const expectedAssets = await strategy.convertToAssets(shares);
+        const expectedAssets = await strategy._convertToAssets(shares);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -765,7 +765,7 @@ describe("ShortStrategyERC4626", function () {
         const assets = ONE.mul(25);
         const shares = ONE.mul(50);
         await expect(
-          strategy.withdrawAssets(
+          strategy._withdrawAssets(
             callerAddr,
             receiverAddr,
             ownerAddr,
@@ -1045,15 +1045,15 @@ describe("ShortStrategyERC4626", function () {
       expect(
         await testConvertToShares(
           assets0,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets0);
       expect(
         await testConvertToAssets(
           shares0,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(shares0);
 
@@ -1066,15 +1066,15 @@ describe("ShortStrategyERC4626", function () {
       expect(
         await testConvertToShares(
           assets1,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets1);
       expect(
         await testConvertToAssets(
           shares1,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(shares1);
     });
@@ -1091,15 +1091,15 @@ describe("ShortStrategyERC4626", function () {
       expect(
         await testConvertToShares(
           assets0,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets0);
       expect(
         await testConvertToAssets(
           shares0,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(0);
 
@@ -1112,15 +1112,15 @@ describe("ShortStrategyERC4626", function () {
       expect(
         await testConvertToShares(
           assets1,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.not.equal(assets1);
       expect(
         await testConvertToAssets(
           shares1,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.not.equal(shares1);
 
@@ -1133,15 +1133,15 @@ describe("ShortStrategyERC4626", function () {
       expect(
         await testConvertToShares(
           assets2,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.not.equal(assets2);
       expect(
         await testConvertToAssets(
           shares2,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.not.equal(shares2);
     });
