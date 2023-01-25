@@ -67,7 +67,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         // unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
         uint256 assets = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
 
-        // update interest rate and global state variables of GammaPool, so conversion of assets to shares is correct
+        // update interest rate and state variables before conversion
         updateIndex();
 
         // convert CFMM LP tokens (`assets`) to GS LP tokens (`shares`)
@@ -144,7 +144,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         // check is GammaPool has received GS LP tokens
         uint256 shares = s.balanceOf[address(this)];
 
-        // update interest rate and global state variables of GammaPool, so conversion of shares to assets is correct
+        // update interest rate and state variables before conversion
         updateIndex();
 
         // convert GS LP tokens (`shares`) to CFMM LP tokens (`assets`)
