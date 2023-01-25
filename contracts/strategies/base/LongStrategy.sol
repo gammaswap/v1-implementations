@@ -15,9 +15,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
     // LongGamma
 
-    /// @dev Check if loan is undercollateralized
-    /// @param collateral - liquidity invariant collateral
-    /// @param liquidity - liquidity invariant debt
+    /// @dev See {BaseLongStrategy-checkMargin}.
     function checkMargin(uint256 collateral, uint256 liquidity) internal virtual override view {
         if(!hasMargin(collateral, liquidity, ltvThreshold())) { // if collateral is below ltvThreshold revert transaction
             revert Margin();

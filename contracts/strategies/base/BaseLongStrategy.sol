@@ -3,32 +3,65 @@ pragma solidity 0.8.4;
 
 import "./BaseStrategy.sol";
 
+/// @title Base Long Strategy implementation contract
+/// @author Daniel D. Alcarraz
+/// @notice Common functions used by all strategy implementations that need access to loans
+/// @dev This contract inherits from BaseStrategy and should normally be inherited by LongStrategy and LiquidationStrategy
 abstract contract BaseLongStrategy is BaseStrategy {
 
     error Forbidden();
     error Margin();
 
-    function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual;
+    /// @dev Perform necessary transaction before repaying liquidity debt
+    /// @param loan - liquidity loan that will be repaid
+    /// @param amounts - collateral amounts that will be used to repay liquidity loan
+    function beforeRepay(LibStorage.Loan storage loan, uint256[] memory amounts) internal virtual;
 
+    /// @dev Calculate token amounts the liquidity invariant amount converts to in the CFMM
+    /// @param liquidity - liquidity invariant units from CFMM
+    /// @return amounts - reserve token amounts in CFMM that liquidity invariant converted to
     function calcTokensToRepay(uint256 liquidity) internal virtual view returns(uint256[] memory amounts);
 
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual returns(uint256[] memory outAmts, uint256[] memory inAmts);
+    /// @dev Perform necessary transaction before repaying swapping tokens
+    /// @param loan - liquidity loan whose collateral will be swapped
+    /// @param deltas - collateral amounts that will be swapped (> 0 buy, < 0 sell, 0 ignore)
+    /// @return outAmts - collateral amounts that will be sent out of GammaPool (sold)
+    /// @return inAmts - collateral amounts that will be received in GammaPool (bought)
+    function beforeSwapTokens(LibStorage.Loan storage loan, int256[] calldata deltas) internal virtual returns(uint256[] memory outAmts, uint256[] memory inAmts);
 
-    function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
+    /// @dev Calculate tokens liquidity invariant amount converts to in CFMM
+    /// @param loan - liquidity loan whose collateral will be traded
+    /// @param outAmts - expected amounts to send to CFMM (sold),
+    /// @param inAmts - expected amounts to receive from CFMM (bought)
+    function swapTokens(LibStorage.Loan storage loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
 
+    /// @return origFee - origination fee charged to every new loan that is issued
     function originationFee() internal virtual view returns(uint16);
 
+    /// @return LTV_THRESHOLD - max ltv ratio acceptable before a loan is eligible for liquidation
     function ltvThreshold() internal virtual view returns(uint16);
 
-    function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage _loan) {
-        _loan = s.loans[tokenId];
-        if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
+    /// @dev Get `loan` from `tokenId` and authenticate requester has permission to get loan
+    /// @param tokenId - liquidity loan whose collateral will be traded
+    /// @return loan - origination fee charged to every new loan that is issued
+    function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage loan) {
+        loan = s.loans[tokenId]; // read loan
+        // revert if keccak256 hash of msg.sender, GammaPool address, and loan counter at time of loan creation is not tokenId
+        if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), loan.id)))) {
             revert Forbidden();
         }
     }
 
+    /// @dev Check if loan is undercollateralized
+    /// @param collateral - liquidity invariant collateral
+    /// @param liquidity - liquidity invariant debt
     function checkMargin(uint256 collateral, uint256 liquidity) internal virtual view;
 
+    /// @dev Check if loan is over collateralized
+    /// @param collateral - liquidity invariant collateral
+    /// @param liquidity - liquidity invariant debt
+    /// @param limit - loan to value ratio limit in tenths of a percent (e.g. 800 => 80%)
+    /// @return bool - true if loan is over collateralized, false otherwise
     function hasMargin(uint256 collateral, uint256 liquidity, uint256 limit) internal virtual pure returns(bool) {
         return collateral * limit / 1000 >= liquidity;
     }
