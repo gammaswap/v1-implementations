@@ -200,7 +200,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return Math.sqrt(uint256(amounts[0]) * amounts[1]);
     }
 
-    function depositToCFMM(address, uint256[] memory, address) internal virtual override returns(uint256) {
+    function depositToCFMM(address, address, uint256[] memory) internal virtual override returns(uint256) {
         return 0;
     }
 

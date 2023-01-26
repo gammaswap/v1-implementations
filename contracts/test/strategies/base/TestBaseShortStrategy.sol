@@ -161,7 +161,7 @@ abstract contract TestBaseShortStrategy is ShortStrategy {
         return TestCFMM(cfmm).invariant();
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address) internal override virtual returns(uint256 liquidity) {
+    function depositToCFMM(address cfmm, address, uint256[] memory amounts) internal override virtual returns(uint256 liquidity) {
         liquidity = amounts[0] + amounts[1];
         TestCFMM(cfmm).mint(liquidity, address(this));
     }

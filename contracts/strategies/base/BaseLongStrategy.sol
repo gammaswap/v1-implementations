@@ -85,10 +85,10 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @dev Repay loan's liquidity debt
     /// @param loan - loan whose debt we're repaying
     /// @param amounts - reserve token amounts used to repay liquidity debt
-    /// @return liquidity - liquidity debt repaid
+    /// @return lpTokens - CFMM LP tokens received for liquidity repayment
     function repayTokens(LibStorage.Loan storage loan, uint256[] memory amounts) internal virtual returns(uint256) {
         beforeRepay(loan, amounts); // Perform necessary transactions before depositing to CFMM
-        return depositToCFMM(s.cfmm, amounts, address(this)); // Reserve token amounts sent to CFMM
+        return depositToCFMM(s.cfmm, address(this), amounts); // Reserve token amounts sent to CFMM
     }
 
     /// @dev Update GammaPool's state variables (interest rate index) and loan's liquidity debt

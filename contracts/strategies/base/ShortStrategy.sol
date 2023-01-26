@@ -126,7 +126,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         preDepositToCFMM(reserves, payee, data);
 
         // call deposit function requesting CFMM LP tokens from CFMM and deposit them in GammaPool
-        depositToCFMM(s.cfmm, reserves, address(this));
+        depositToCFMM(s.cfmm, address(this), reserves);
 
         // mint GS LP Tokens to receiver (`to`) equivalent in value to CFMM LP tokens just deposited
         shares = depositAssetsNoPull(to);
