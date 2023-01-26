@@ -126,7 +126,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // We need to encode userData for the exitPool call
         bytes memory userDataEncoded = abi.encode(1, amount);
 
-
         // Notes from Balancer Documentation:
         // When providing your assets, you must ensure that the tokens are sorted numerically by token address. 
         // It's also important to note that the values in minAmountsOut correspond to the same index value in assets, 

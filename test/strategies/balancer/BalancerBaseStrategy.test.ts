@@ -327,13 +327,16 @@ describe("BalancerBaseStrategy", function () {
       // expect(await cfmm.totalSupply()).to.equal(expectedSupply);
     });
 
-    it.skip("Withdraw from CFMM", async function () {
+    it("Withdraw from CFMM", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const amtA = ONE.mul(500);
       const amtB = ONE.mul(500);
 
       // Perform the INIT join on the pool
       await initialisePool([amtA, amtB]);
+
+      // TODO Store the pool reserves before the deposit/open interest on LP tokens
+      // Halve this and then test that the withdrawFromCFMM() function works
 
       // Perform the pool join
       await depositIntoPool([amtA, amtB]);
@@ -432,11 +435,6 @@ describe("BalancerBaseStrategy", function () {
       const storageReserves3 = await strategy.getCFMMReserves();
 
       expect(reserves3.length).to.equal(2);
-      // TODO: Figure out how the Balancer contract is calculating the reserves post-withdrawal
-      // AssertionError: Expected "34999999999999799960" to be equal 10000000000000000000
-
-      // expect(reserves3[0]).to.equal(expectedAmtA);
-      // expect(reserves3[1]).to.equal(expectedAmtB);
       expect(reserves3).to.deep.equal(storageReserves3);
 
     });

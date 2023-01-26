@@ -304,6 +304,8 @@ describe("BalancerShortStrategy", function () {
     });
 
     // TODO: I don't believe that these tests can actually occur with Balancer
+
+    // Check if Balancer expects a revert and test for it on initialisePool()
     
     // it("Error Calc Deposit Amounts, 0 reserve tokenA", async function () {
     //   // await (await tokenB.transfer(cfmm, 1)).wait();

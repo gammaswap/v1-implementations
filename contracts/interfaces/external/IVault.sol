@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IAsset {}
 
 interface IVault {
-    enum SwapKind {GIVEN_IN, GIVEN_OUT}
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     /**
      * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
@@ -147,6 +147,10 @@ interface IVault {
         uint256 amount;
         bytes userData;
     }
+
+    // How is the vault working when doing a swap?
+    // If they are sending Ether, we need payable address
+    // At the moment we expect WETH
 
     struct FundManagement {
         address sender;
