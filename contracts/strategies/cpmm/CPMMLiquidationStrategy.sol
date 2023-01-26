@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "../base/LiquidationStrategy.sol";
 import "./CPMMLongStrategy.sol";
 
-/// @title Liquidation Strategy implementation contract for Constant Product Market Maker
+/// @title Liquidation Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz
 /// @notice Sets up variables used by LiquidationStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2

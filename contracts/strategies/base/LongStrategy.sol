@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/ILongStrategy.sol";
 import "./BaseLongStrategy.sol";
 
-/// @title Long Strategy contract implementation of ILongStrategy
+/// @title Long Strategy abstract contract implementation of ILongStrategy
 /// @author Daniel D. Alcarraz
 /// @notice All external functions are locked to avoid reentrancy
-/// @dev Abstract contract that only defines common functions that would be used by all concrete contracts that borrow and repay liquidity
+/// @dev Only defines common functions that would be used by all concrete contracts that borrow and repay liquidity
 abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
     error ExcessiveBorrowing();

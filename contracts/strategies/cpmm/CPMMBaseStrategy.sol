@@ -6,7 +6,7 @@ import "../../interfaces/external/ICPMM.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
-/// @title Base Strategy implementation contract for Constant Product Market Maker
+/// @title Base Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker
 /// @dev This implementation was specifically designed to work with UniswapV2. Inherits Rate Model

@@ -8,7 +8,7 @@ import "../../libraries/GammaSwapLibrary.sol";
 import "../../libraries/Math.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 
-/// @title Base Strategy implementation contract
+/// @title Base Strategy abstract contract
 /// @author Daniel D. Alcarraz
 /// @notice Common functions used by all strategy implementations
 /// @dev Root Strategy contract. Only place where AppStorage and AbstractRateModel should be inherited
@@ -127,23 +127,23 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     }
 
     /// @notice  Convert CFMM LP tokens into liquidity invariant units.
-    /// @dev In case of CFMM where calcLPTokenBorrowedPlusInterest calculation is different from calcLPInvariant
-    /// @param borrowedInvariant - liquidity invariant borrowed in the GammaPool
+    /// @dev In case of CFMM where convertInvariantToLP calculation is different from convertLPToInvariant
+    /// @param liquidityInvariant - liquidity invariant borrowed in the GammaPool
     /// @param lastCFMMTotalSupply - total supply of LP tokens issued by CFMM
     /// @param lastCFMMInvariant - liquidity invariant in CFMM
-    /// @return lpTokenBorrowedPlusInterest - borrowed invariant in terms of LP tokens
-    function calcLPTokenBorrowedPlusInterest(uint256 borrowedInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) internal virtual pure returns(uint256) {
-        return lastCFMMInvariant == 0 ? 0 : (borrowedInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
+    /// @return lpTokens - liquidity invariant in terms of LP tokens
+    function convertInvariantToLP(uint256 liquidityInvariant, uint256 lastCFMMTotalSupply, uint256 lastCFMMInvariant) internal virtual pure returns(uint256) {
+        return lastCFMMInvariant == 0 ? 0 : (liquidityInvariant * lastCFMMTotalSupply) / lastCFMMInvariant;
     }
 
     /// @notice Convert CFMM LP tokens into liquidity invariant units.
-    /// @dev In case of CFMM where calcLPInvariant calculation is different from calcLPTokenBorrowedPlusInterest
-    /// @param lpTokenBalance - liquidity invariant borrowed in the GammaPool
+    /// @dev In case of CFMM where convertLPToInvariant calculation is different from convertInvariantToLP
+    /// @param lpTokens - liquidity invariant borrowed in the GammaPool
     /// @param lastCFMMInvariant - liquidity invariant in CFMM
     /// @param lastCFMMTotalSupply - total supply of LP tokens issued by CFMM
-    /// @return lpInvariant - liquidity invariant lpTokenBalance represents
-    function calcLPInvariant(uint256 lpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual pure returns(uint256) {
-        return lastCFMMTotalSupply == 0 ? 0 : (lpTokenBalance * lastCFMMInvariant) / lastCFMMTotalSupply;
+    /// @return liquidityInvariant - liquidity invariant lpTokens represents
+    function convertLPToInvariant(uint256 lpTokens, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual pure returns(uint256) {
+        return lastCFMMTotalSupply == 0 ? 0 : (lpTokens * lastCFMMInvariant) / lastCFMMTotalSupply;
     }
 
     /// @dev Update pool invariant, LP tokens borrowed plus interest, interest rate index, and last block update
@@ -154,8 +154,8 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
         s.BORROWED_INVARIANT = uint128(accrueBorrowedInvariant(s.BORROWED_INVARIANT, lastFeeIndex));
 
         // Convert borrowed liquidity to corresponding CFMM LP tokens using current conversion rate
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
-        s.LP_INVARIANT = uint128(calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        s.LP_TOKEN_BORROWED_PLUS_INTEREST = convertInvariantToLP(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
+        s.LP_INVARIANT = uint128(convertLPToInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
 
         // Update GammaPool's interest rate index and update last block updated
         accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;

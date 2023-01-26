@@ -60,7 +60,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         s.lastCFMMInvariant = uint128(TestCFMM2(cfmm).invariant());
         s.lastCFMMTotalSupply = TestCFMM2(cfmm).totalSupply();
         s.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
-        s.LP_INVARIANT = uint128(calcLPInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        s.LP_INVARIANT = uint128(convertLPToInvariant(s.LP_TOKEN_BALANCE, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
     }
 
     function getPoolBalances() external virtual view returns(PoolBalances memory bal, uint128[] memory tokenBalances, uint256 accFeeIndex) {
@@ -157,7 +157,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         uint256 feeGrowth = borrowedInvariant * 1e18 / s.BORROWED_INVARIANT;
         s.accFeeIndex = uint96(s.accFeeIndex * feeGrowth / 1e18);
         s.BORROWED_INVARIANT = uint128(borrowedInvariant);
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = calcLPTokenBorrowedPlusInterest(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
+        s.LP_TOKEN_BORROWED_PLUS_INTEREST = convertInvariantToLP(s.BORROWED_INVARIANT, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
     }
 
     function testRefundOverPayment(uint256 loanLiquidity, uint256 lpDeposit) external virtual {

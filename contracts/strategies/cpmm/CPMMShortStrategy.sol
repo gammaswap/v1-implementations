@@ -5,7 +5,7 @@ import "../../interfaces/external/ICPMM.sol";
 import "../base/ShortStrategyERC4626.sol";
 import "./CPMMBaseStrategy.sol";
 
-/// @title Short Strategy implementation contract for Constant Product Market Maker
+/// @title Short Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz
 /// @notice Sets up variables used by ShortStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2

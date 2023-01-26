@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "../base/LongStrategy.sol";
 import "./CPMMBaseLongStrategy.sol";
 
-/// @title Long Strategy implementation contract for Constant Product Market Maker
+/// @title Long Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz
 /// @notice Sets up variables used by LongStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2

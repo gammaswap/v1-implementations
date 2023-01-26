@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "../base/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
-/// @title Base Long Strategy implementation contract for Constant Product Market Maker
+/// @title Base Long Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker that need access to loans
 /// @dev This implementation was specifically designed to work with UniswapV2.
@@ -63,14 +63,14 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
     }
 
     /// @dev Calculate expected bought and sold amounts given reserves in CFMM
-    /// @param loan - liquidity loan whose collateral will be used to calculates swap amounts
+    /// @param _loan - liquidity loan whose collateral will be used to calculates swap amounts
     /// @param reserve0 - amount of token0 in CFMM
     /// @param reserve1 - amount of token1 in CFMM
     /// @param delta0 - desired amount of collateral token0 from loan to swap (> 0 buy, < 0 sell, 0 ignore)
@@ -79,7 +79,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return inAmt1 - expected amount of token1 to receive from CFMM (buy)
     /// @return outAmt0 - expected amount of token0 to send to CFMM (sell)
     /// @return outAmt1 - expected amount of token1 to send to CFMM (sell)
-    function calcInAndOutAmounts(LibStorage.Loan storage loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
+    function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
         internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         // can only have one non zero delta
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
@@ -92,7 +92,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             if(inAmt0 > 0) {
                 outAmt0 = 0;
                 outAmt1 = calcAmtOut(inAmt0, reserve1, reserve0); // calc what you'll send
-                uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], loan.tokensHeld[1]);
+                uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 if(_outAmt1 != outAmt1) {
                     outAmt1 = _outAmt1;
                     inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
@@ -100,7 +100,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             } else {
                 outAmt0 = calcAmtOut(inAmt1, reserve0, reserve1); // calc what you'll send
                 outAmt1 = 0;
-                uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], loan.tokensHeld[0]);
+                uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 if(_outAmt0 != outAmt0) {
                     outAmt0 = _outAmt0;
                     inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
@@ -110,11 +110,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             outAmt0 = uint256(-delta0); // sell exact token0 (what you'll send)
             outAmt1 = uint256(-delta1); // sell exact token1 (what you'll send) (here we can send then calc how much to ask)
             if(outAmt0 > 0) {
-                outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], loan.tokensHeld[0]);
+                outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 inAmt0 = 0;
                 inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
             } else {
-                outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], loan.tokensHeld[1]);
+                outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
                 inAmt1 = 0;
             }

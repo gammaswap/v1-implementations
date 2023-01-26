@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "./BaseStrategy.sol";
 
-/// @title Base Long Strategy implementation contract
+/// @title Base Long Strategy abstract contract
 /// @author Daniel D. Alcarraz
 /// @notice Common functions used by all strategy implementations that need access to loans
 /// @dev This contract inherits from BaseStrategy and should normally be inherited by LongStrategy and LiquidationStrategy
@@ -13,9 +13,9 @@ abstract contract BaseLongStrategy is BaseStrategy {
     error Margin();
 
     /// @dev Perform necessary transaction before repaying liquidity debt
-    /// @param loan - liquidity loan that will be repaid
+    /// @param _loan - liquidity loan that will be repaid
     /// @param amounts - collateral amounts that will be used to repay liquidity loan
-    function beforeRepay(LibStorage.Loan storage loan, uint256[] memory amounts) internal virtual;
+    function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual;
 
     /// @dev Calculate token amounts the liquidity invariant amount converts to in the CFMM
     /// @param liquidity - liquidity invariant units from CFMM
@@ -23,17 +23,17 @@ abstract contract BaseLongStrategy is BaseStrategy {
     function calcTokensToRepay(uint256 liquidity) internal virtual view returns(uint256[] memory amounts);
 
     /// @dev Perform necessary transaction before repaying swapping tokens
-    /// @param loan - liquidity loan whose collateral will be swapped
+    /// @param _loan - liquidity loan whose collateral will be swapped
     /// @param deltas - collateral amounts that will be swapped (> 0 buy, < 0 sell, 0 ignore)
     /// @return outAmts - collateral amounts that will be sent out of GammaPool (sold)
     /// @return inAmts - collateral amounts that will be received in GammaPool (bought)
-    function beforeSwapTokens(LibStorage.Loan storage loan, int256[] calldata deltas) internal virtual returns(uint256[] memory outAmts, uint256[] memory inAmts);
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual returns(uint256[] memory outAmts, uint256[] memory inAmts);
 
     /// @dev Calculate tokens liquidity invariant amount converts to in CFMM
-    /// @param loan - liquidity loan whose collateral will be traded
+    /// @param _loan - liquidity loan whose collateral will be traded
     /// @param outAmts - expected amounts to send to CFMM (sold),
     /// @param inAmts - expected amounts to receive from CFMM (bought)
-    function swapTokens(LibStorage.Loan storage loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
+    function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual;
 
     /// @return origFee - origination fee charged to every new loan that is issued
     function originationFee() internal virtual view returns(uint16);
@@ -43,11 +43,11 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     /// @dev Get `loan` from `tokenId` and authenticate requester has permission to get loan
     /// @param tokenId - liquidity loan whose collateral will be traded
-    /// @return loan - origination fee charged to every new loan that is issued
-    function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage loan) {
-        loan = s.loans[tokenId]; // Get loan
+    /// @return _loan - origination fee charged to every new loan that is issued
+    function _getLoan(uint256 tokenId) internal virtual view returns(LibStorage.Loan storage _loan) {
+        _loan = s.loans[tokenId]; // Get loan
         // Revert if msg.sender is not the creator of this loan
-        if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), loan.id)))) {
+        if(tokenId != uint256(keccak256(abi.encode(msg.sender, address(this), _loan.id)))) {
             revert Forbidden();
         }
     }
@@ -67,14 +67,14 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     /// @dev Send tokens `amounts` from `loan` collateral to receiver (`to`)
-    /// @param loan - loan whose collateral we are sending to recipient
+    /// @param _loan - loan whose collateral we are sending to recipient
     /// @param to - recipient of token `amounts`
     /// @param amounts - quantities of loan's collateral tokens being sent to recipient
-    function sendTokens(LibStorage.Loan storage loan, address to, uint256[] memory amounts) internal virtual {
+    function sendTokens(LibStorage.Loan storage _loan, address to, uint256[] memory amounts) internal virtual {
         address[] memory tokens = s.tokens;
         for (uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
-                sendToken(IERC20(tokens[i]), to, amounts[i], s.TOKEN_BALANCE[i], loan.tokensHeld[i]);
+                sendToken(IERC20(tokens[i]), to, amounts[i], s.TOKEN_BALANCE[i], _loan.tokensHeld[i]);
             }
             unchecked {
                 ++i;
@@ -83,38 +83,38 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     /// @dev Repay loan's liquidity debt
-    /// @param loan - loan whose debt we're repaying
+    /// @param _loan - loan whose debt we're repaying
     /// @param amounts - reserve token amounts used to repay liquidity debt
     /// @return lpTokens - CFMM LP tokens received for liquidity repayment
-    function repayTokens(LibStorage.Loan storage loan, uint256[] memory amounts) internal virtual returns(uint256) {
-        beforeRepay(loan, amounts); // Perform necessary transactions before depositing to CFMM
+    function repayTokens(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual returns(uint256) {
+        beforeRepay(_loan, amounts); // Perform necessary transactions before depositing to CFMM
         return depositToCFMM(s.cfmm, address(this), amounts); // Reserve token amounts sent to CFMM
     }
 
     /// @dev Update GammaPool's state variables (interest rate index) and loan's liquidity debt
-    /// @param loan - loan whose debt is being updated
+    /// @param _loan - loan whose debt is being updated
     /// @return liquidity - new liquidity debt of loan including interest
-    function updateLoan(LibStorage.Loan storage loan) internal virtual returns(uint256) {
+    function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256) {
         (uint256 accFeeIndex,,) = updateIndex();
-        return updateLoanLiquidity(loan, accFeeIndex);
+        return updateLoanLiquidity(_loan, accFeeIndex);
     }
 
     /// @dev Update loan's liquidity debt
-    /// @param loan - loan whose debt is being updated
+    /// @param _loan - loan whose debt is being updated
     /// @param accFeeIndex - GammaPool's interest rate index
     /// @return liquidity - new liquidity debt of loan including interest
-    function updateLoanLiquidity(LibStorage.Loan storage loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity) {
-        uint256 rateIndex = loan.rateIndex;
-        liquidity = rateIndex == 0 ? 0 : (loan.liquidity * accFeeIndex) / rateIndex;
-        loan.liquidity = uint128(liquidity);
-        loan.rateIndex = uint96(accFeeIndex);
+    function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual returns(uint256 liquidity) {
+        uint256 rateIndex = _loan.rateIndex;
+        liquidity = rateIndex == 0 ? 0 : (_loan.liquidity * accFeeIndex) / rateIndex;
+        _loan.liquidity = uint128(liquidity);
+        _loan.rateIndex = uint96(accFeeIndex);
     }
 
     /// @dev Account for newly borrowed liquidity debt
-    /// @param loan - loan that incurred debt
+    /// @param _loan - loan that incurred debt
     /// @param lpTokens - CFMM LP tokens borrowed
     /// @return liquidity - new loan liquidity debt
-    function openLoan(LibStorage.Loan storage loan, uint256 lpTokens) internal virtual returns(uint256 liquidity) {
+    function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual returns(uint256 liquidity) {
         // Liquidity invariant in CFMM, updated at start of transaction that opens loan. Overstated after loan opening
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         // Total CFMM LP tokens in existence, updated at start of transaction that opens loan. Overstated after loan opening
@@ -122,13 +122,13 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
         // Calculate borrowed liquidity invariant excluding loan origination fee
         // Irrelevant that lastCFMMInvariant and lastCFMMInvariant are overstated since their conversion rate did not change
-        uint256 liquidityBorrowedExFee = calcLPInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 liquidityBorrowedExFee = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
 
         // Calculate add loan origination fee to LP token debt
         uint256 lpTokensPlusOrigFee = lpTokens + lpTokens * originationFee() / 10000;
 
         // Calculate borrowed liquidity invariant including origination fee
-        uint256 liquidityBorrowed = calcLPInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 liquidityBorrowed = convertLPToInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);
 
         // Add liquidity invariant borrowed including origination fee to total pool liquidity invariant borrowed
         uint256 borrowedInvariant = s.BORROWED_INVARIANT + liquidityBorrowed;
@@ -145,7 +145,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         lastCFMMTotalSupply = lastCFMMTotalSupply - lpTokens;
 
         // Update liquidity invariant from CFMM LP tokens deposited in GammaPool
-        uint256 lpInvariant = calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 lpInvariant = convertLPToInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         s.LP_INVARIANT = uint128(lpInvariant);
 
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
@@ -155,23 +155,23 @@ abstract contract BaseLongStrategy is BaseStrategy {
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = s.LP_TOKEN_BORROWED_PLUS_INTEREST + lpTokensPlusOrigFee;
 
         // Update loan's total liquidity debt and principal amounts
-        liquidity = loan.liquidity + liquidityBorrowed;
-        loan.initLiquidity = loan.initLiquidity + uint128(liquidityBorrowed);
-        loan.lpTokens = loan.lpTokens + lpTokens;
-        loan.liquidity = uint128(liquidity);
+        liquidity = _loan.liquidity + liquidityBorrowed;
+        _loan.initLiquidity = _loan.initLiquidity + uint128(liquidityBorrowed);
+        _loan.lpTokens = _loan.lpTokens + lpTokens;
+        _loan.liquidity = uint128(liquidity);
     }
 
     /// @dev Account for paid liquidity debt
-    /// @param loan - loan whose debt was paid
+    /// @param _loan - loan whose debt was paid
     /// @param liquidity - liquidity invariant paid
     /// @param loanLiquidity - loan liquidity debt
     /// @return remainingLiquidity - outstanding loan liquidity debt after payment
-    function payLoan(LibStorage.Loan storage loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
+    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
         (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) = getLpTokenBalance();
         liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // Take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
         // If more liquidity than stated was actually paid, that goes to liquidity providers
         uint256 lpTokenPrincipal;
-        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, loan);
+        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, _loan);
 
         payPoolDebt(liquidity, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance, lpTokenChange);
     }
@@ -197,7 +197,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         lastCFMMTotalSupply = s.lastCFMMTotalSupply;
 
         // Irrelevant that lastCFMMInvariant and lastCFMMTotalSupply are outdated because their conversion rate did not change
-        paidLiquidity = calcLPInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
+        paidLiquidity = convertLPToInvariant(lpTokenChange, lastCFMMInvariant, lastCFMMTotalSupply);
     }
 
     /// @dev Account for paid liquidity debt in pool
@@ -212,10 +212,10 @@ abstract contract BaseLongStrategy is BaseStrategy {
         uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST; // saves gas
 
         // Calculate CFMM LP tokens that were intended to be repaid
-        uint256 _lpTokenPaid = calcLPTokenBorrowedPlusInterest(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);
+        uint256 _lpTokenPaid = convertInvariantToLP(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);
 
         // Update lastCFMMInvariant and lastCFMMTotalSupply to account for actual repaid amounts (can be greater than what was intended to be repaid)
-        lastCFMMInvariant = lastCFMMInvariant + calcLPTokenBorrowedPlusInterest(lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply);
+        lastCFMMInvariant = lastCFMMInvariant + convertLPToInvariant(lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply);
         lastCFMMTotalSupply = lastCFMMTotalSupply + lpTokenPaid; // Total supply went up by actual repaid amounts in CFMM LP tokens
 
         // Won't overflow because liquidity paid <= loan's liquidity debt and borrowedInvariant = sum(liquidity debt of all loans)
@@ -226,7 +226,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         s.LP_TOKEN_BALANCE = newLPBalance;
 
         // Update liquidity invariant from CFMM LP tokens deposited in GammaPool
-        uint256 lpInvariant = calcLPInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 lpInvariant = convertLPToInvariant(newLPBalance, lastCFMMInvariant, lastCFMMTotalSupply);
         s.LP_INVARIANT = uint128(lpInvariant);
         s.lastCFMMInvariant = uint128(lastCFMMInvariant);
         s.lastCFMMTotalSupply = lastCFMMTotalSupply;
@@ -241,30 +241,30 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @dev Account for paid liquidity debt in loan
     /// @param liquidity - current CFMM LP token balance in GammaPool
     /// @param loanLiquidity - liquidity invariant in CFMM during last GammaPool state update
-    /// @param loan - amount of liquidity invariant paid calculated from `lpTokenChange`
+    /// @param _loan - amount of liquidity invariant paid calculated from `lpTokenChange`
     /// @return lpTokenPrincipal - total LP tokens outstanding from CFMM during last GammaPool state update
     /// @return remainingLiquidity - current CFMM LP token balance in GammaPool
-    function payLoanLiquidity(uint256 liquidity, uint256 loanLiquidity, LibStorage.Loan storage loan) internal virtual
+    function payLoanLiquidity(uint256 liquidity, uint256 loanLiquidity, LibStorage.Loan storage _loan) internal virtual
         returns(uint256 lpTokenPrincipal, uint256 remainingLiquidity) {
-        uint256 loanLpTokens = loan.lpTokens; // Loan's CFMM LP token principal
-        uint256 loanInitLiquidity = loan.initLiquidity; // Loan's liquidity invariant principal
+        uint256 loanLpTokens = _loan.lpTokens; // Loan's CFMM LP token principal
+        uint256 loanInitLiquidity = _loan.initLiquidity; // Loan's liquidity invariant principal
 
         // Calculate loan's CFMM LP token principal repaid
-        lpTokenPrincipal = calcLPTokenBorrowedPlusInterest(liquidity, loanLpTokens, loanLiquidity);
+        lpTokenPrincipal = convertInvariantToLP(liquidity, loanLpTokens, loanLiquidity);
 
         // Calculate loan's outstanding liquidity invariant principal after liquidity payment
-        loan.initLiquidity = uint128(loanInitLiquidity - calcLPTokenBorrowedPlusInterest(liquidity, loanInitLiquidity, loanLiquidity));
+        _loan.initLiquidity = uint128(loanInitLiquidity - (liquidity * loanInitLiquidity / loanLiquidity));
 
         // Update loan's outstanding CFMM LP token principal
-        loan.lpTokens = loanLpTokens - lpTokenPrincipal;
+        _loan.lpTokens = loanLpTokens - lpTokenPrincipal;
 
         // Calculate loan's outstanding liquidity invariant after liquidity payment
         remainingLiquidity = loanLiquidity - liquidity;
-        loan.liquidity = uint128(remainingLiquidity);
+        _loan.liquidity = uint128(remainingLiquidity);
 
         // If fully paid, free memory to save gas
         if(remainingLiquidity == 0) {
-            loan.rateIndex = 0;
+            _loan.rateIndex = 0;
         }
     }
 
@@ -285,12 +285,12 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     /// @dev Update collateral amounts in loan (increased/decreased)
-    /// @param loan - address of ERC20 token being transferred
+    /// @param _loan - address of ERC20 token being transferred
     /// @return tokensHeld - current CFMM LP token balance in GammaPool
-    function updateCollateral(LibStorage.Loan storage loan) internal returns(uint128[] memory tokensHeld) {
+    function updateCollateral(LibStorage.Loan storage _loan) internal returns(uint128[] memory tokensHeld) {
         address[] memory tokens = s.tokens; // GammaPool collateral tokens (saves gas)
         uint128[] memory tokenBalance = s.TOKEN_BALANCE; // Tracked collateral token balances in GammaPool (saves gas)
-        tokensHeld = loan.tokensHeld; // Loan's collateral token amounts (saves gas)
+        tokensHeld = _loan.tokensHeld; // Loan's collateral token amounts (saves gas)
         for (uint256 i; i < tokens.length;) {
             // Get i token's balance
             uint256 currentBalance = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), address(this));
@@ -315,7 +315,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
                 ++i;
             }
         }
-        loan.tokensHeld = tokensHeld; // Update storage
+        _loan.tokensHeld = tokensHeld; // Update storage
         s.TOKEN_BALANCE = tokenBalance; // Update storage
     }
 }

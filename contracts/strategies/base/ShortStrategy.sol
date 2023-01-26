@@ -6,10 +6,10 @@ import "@gammaswap/v1-core/contracts/interfaces/strategies/base/IShortStrategy.s
 import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
 import "./BaseStrategy.sol";
 
-/// @title Short Strategy contract implementation of IShortStrategy
+/// @title Short Strategy abstract contract implementation of IShortStrategy
 /// @author Daniel D. Alcarraz
-/// @notice All external functions that modify the state are locked to avoid reentrancy
-/// @dev Abstract contract that only defines common functions that would be used by all concrete contracts that deposit and withdraw liquidity
+/// @notice All external functions are locked to avoid reentrancy
+/// @dev Only defines common functions that would be used by all concrete contracts that deposit and withdraw liquidity
 abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     error ZeroShares();
@@ -45,13 +45,13 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
 
         // calculate liquidity invariant in CFMM from LP tokens in GammaPool
-        uint256 lpInvariant = calcLPInvariant(lpBalance, prevCFMMInvariant, prevCFMMTotalSupply);
+        uint256 lpInvariant = convertLPToInvariant(lpBalance, prevCFMMInvariant, prevCFMMTotalSupply);
 
         // calculate interest that would be charged to entire pool's liquidity debt if pool were updated in this transaction
         uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpInvariant, borrowedInvariant), lastBlockNum);
 
         // return CFMM LP tokens depositedin GammaPool plus borrowed liquidity invariant with accrued interest in terms of CFMM LP tokens
-        return lpBalance + calcLPTokenBorrowedPlusInterest(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
+        return lpBalance + convertInvariantToLP(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
     }
 
     //********* Short Gamma Functions *********//
@@ -174,7 +174,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
         // update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
         uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
-        uint128 lpInvariant = uint128(calcLPInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         s.LP_TOKEN_BALANCE = lpTokenBalance;
         s.LP_INVARIANT = lpInvariant;
 
@@ -210,13 +210,13 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
             lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
             uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
             uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
-            lpInvariant = uint128(calcLPInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply));
+            lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply));
             s.lastCFMMInvariant = uint128(lastCFMMInvariant); // less invariant
             s.lastCFMMTotalSupply = lastCFMMTotalSupply; // less CFMM LP tokens in existence
         } else { // if withdrawing CFMM LP tokens
             GammaSwapLibrary.safeTransfer(IERC20(cfmm), to, assets); // doesn't change lastCFMMTotalSupply or lastCFMMInvariant
             lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
-            lpInvariant = uint128(calcLPInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+            lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         }
         s.LP_INVARIANT = lpInvariant;
         s.LP_TOKEN_BALANCE = lpTokenBalance;
