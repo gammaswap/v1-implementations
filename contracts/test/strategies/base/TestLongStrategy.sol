@@ -97,7 +97,7 @@ contract TestLongStrategy is LongStrategy {
         _loan.tokensHeld[1] -= uint128(amounts[1]);
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address) internal virtual override returns(uint256 liquidity) {
+    function depositToCFMM(address cfmm, address, uint256[] memory amounts) internal virtual override returns(uint256 liquidity) {
         liquidity = uint128(amounts[0]);
         TestCFMM(cfmm).mint(liquidity / 2, address(this));
     }

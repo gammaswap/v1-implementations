@@ -31,7 +31,7 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
     }
 
     function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {
-        uint256 liquidity = depositToCFMM(cfmm, amounts, to);
+        uint256 liquidity = depositToCFMM(cfmm, to, amounts);
         emit DepositToCFMM(cfmm, to, liquidity);
     }
 

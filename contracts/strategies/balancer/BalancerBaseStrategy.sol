@@ -86,7 +86,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amounts The amounts of each pool token to deposit.
      * @param to The address to mint the Balancer LP tokens to.
      */
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address to) internal virtual override returns(uint256) {
+    function depositToCFMM(address cfmm, address to, uint256[] memory amounts) internal virtual override returns(uint256) {
         // We need to encode userData for the joinPool call
         uint256 minimumBPT = 0; // TODO: Do I need to estimate this?
         bytes memory userDataEncoded = abi.encode(1, amounts, minimumBPT);

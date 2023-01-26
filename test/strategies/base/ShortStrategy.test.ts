@@ -367,7 +367,7 @@ describe("ShortStrategy", function () {
       ).to.equal(100);
 
       await expect(
-        strategy.spendAllowance(
+        strategy._spendAllowance(
           owner.address,
           strategy.address,
           allowance.add(1)
@@ -375,7 +375,7 @@ describe("ShortStrategy", function () {
       ).to.be.revertedWith("ExcessiveSpend");
 
       await (
-        await strategy.spendAllowance(
+        await strategy._spendAllowance(
           owner.address,
           strategy.address,
           allowance.div(2)
@@ -397,7 +397,7 @@ describe("ShortStrategy", function () {
       ).to.equal(ethers.constants.MaxUint256);
 
       await (
-        await strategy.spendAllowance(
+        await strategy._spendAllowance(
           owner.address,
           strategy.address,
           ethers.constants.MaxUint256
@@ -447,15 +447,15 @@ describe("ShortStrategy", function () {
       expect(
         await testConvertToShares(
           assets0,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets0);
       expect(
         await testConvertToAssets(
           shares0,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(shares0);
 
@@ -468,15 +468,15 @@ describe("ShortStrategy", function () {
       expect(
         await testConvertToShares(
           assets1,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets1);
       expect(
         await testConvertToAssets(
           shares1,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(shares1);
     });
@@ -493,15 +493,15 @@ describe("ShortStrategy", function () {
       expect(
         await testConvertToShares(
           assets0,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.be.equal(assets0);
       expect(
         await testConvertToAssets(
           shares0,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.be.equal(0);
 
@@ -514,15 +514,15 @@ describe("ShortStrategy", function () {
       expect(
         await testConvertToShares(
           assets1,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.not.equal(assets1);
       expect(
         await testConvertToAssets(
           shares1,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.not.equal(shares1);
 
@@ -535,15 +535,15 @@ describe("ShortStrategy", function () {
       expect(
         await testConvertToShares(
           assets2,
-          strategy.convertToShares,
-          strategy.convertToAssets
+          strategy._convertToShares,
+          strategy._convertToAssets
         )
       ).to.not.equal(assets2);
       expect(
         await testConvertToAssets(
           shares2,
-          strategy.convertToAssets,
-          strategy.convertToShares
+          strategy._convertToAssets,
+          strategy._convertToShares
         )
       ).to.not.equal(shares2);
     });
@@ -580,7 +580,7 @@ describe("ShortStrategy", function () {
         expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
 
         const assets = shares.div(2);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -637,7 +637,7 @@ describe("ShortStrategy", function () {
         expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
 
         const assets = shares.div(2);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -666,7 +666,7 @@ describe("ShortStrategy", function () {
         await (await cfmm.trade(tradeYield)).wait();
 
         const assets2 = assets.div(2);
-        const expectedGSShares2 = await strategy.convertToShares(assets2);
+        const expectedGSShares2 = await strategy._convertToShares(assets2);
 
         // time passes by
         // mine 256 blocks
@@ -843,7 +843,7 @@ describe("ShortStrategy", function () {
         ).wait();
 
         const assets = BigNumber.from(20);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -915,7 +915,7 @@ describe("ShortStrategy", function () {
         ).wait();
 
         const assets = shares.div(2);
-        const expectedGSShares = await strategy.convertToShares(assets);
+        const expectedGSShares = await strategy._convertToShares(assets);
         const params = await strategy.getTotalAssetsParams();
         expect(params.lpBalance).to.equal(0);
 
@@ -942,7 +942,7 @@ describe("ShortStrategy", function () {
         await (await cfmm.trade(tradeYield)).wait();
 
         const assets2 = assets.div(2);
-        const expectedGSShares2 = await strategy.convertToShares(assets2);
+        const expectedGSShares2 = await strategy._convertToShares(assets2);
 
         // time passes by
         // mine 256 blocks
