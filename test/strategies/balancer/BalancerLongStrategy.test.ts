@@ -1,181 +1,125 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
+import { IERC20 } from "../../../typechain";
 
-const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json");
-const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
+const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
+const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPoolFactory.json");
+const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPoolFactory.json");
+const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
+const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
-describe.only("CPMMLongStrategy", function () {
+describe("CPMMLongStrategy", function () {
   let TestERC20: any;
-  let TestERC20WithFee: any;
   let TestStrategy: any;
-  let UniswapV2Factory: any;
-  let UniswapV2Pair: any;
+  let BalancerVault: any;
+  let WeightedPoolFactory: any;
+  let WeightedPool: any;
   let tokenA: any;
   let tokenB: any;
-  let tokenAFee: any;
-  let tokenBFee: any;
   let cfmm: any;
-  let cfmmFee: any;
-  let uniFactory: any;
+  let vault: any;
+  let factory: any;
   let strategy: any;
-  let strategyFee: any;
   let owner: any;
-  let addr1: any;
+  let pool: any;
+  let poolId: any;
+  let weightedMathFactory: any;
+  let weightedMath: any;
+  
+  let TOKENS: any;
+  let WEIGHTS: any;
 
-  // `beforeEach` will run before each test, re-deploying the contract every
-  // time. It receives a callback, which can be async.
   beforeEach(async function () {
-    // Get the ContractFactory and Signers here.
+    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
+    weightedMath = await weightedMathFactory.deploy();
+
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1] = await ethers.getSigners();
-    UniswapV2Factory = new ethers.ContractFactory(
-      UniswapV2FactoryJSON.abi,
-      UniswapV2FactoryJSON.bytecode,
+    [owner] = await ethers.getSigners();
+
+    // Get contract factory for WeightedPool: '@balancer-labs/v2-pool-weighted/WeightedPoolFactory'
+    WeightedPoolFactory = new ethers.ContractFactory(
+      _WeightedPoolFactoryAbi,
+      _WeightedPoolFactoryBytecode.creationCode,
       owner
     );
-    UniswapV2Pair = new ethers.ContractFactory(
-      UniswapV2PairJSON.abi,
-      UniswapV2PairJSON.bytecode,
+
+    WeightedPool = new ethers.ContractFactory(
+      _WeightedPoolAbi,
+      _WeightedPoolBytecode.creationCode,
       owner
     );
-    TestStrategy = await ethers.getContractFactory("TestCPMMLongStrategy");
+
+    // Get contract factory for Vault: '@balancer-labs/v2-vault/contracts/Vault'
+    BalancerVault = new ethers.ContractFactory(
+      _Vault.abi,
+      _Vault.bytecode,
+      owner
+    );
+
+    TestStrategy = await ethers.getContractFactory("TestBalancerLongStrategy", { libraries: { WeightedMath: weightedMath.address } });
+
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
 
-    uniFactory = await UniswapV2Factory.deploy(owner.address);
+    const HOUR = 60 * 60;
+    const DAY = HOUR * 24;
+    const MONTH = DAY * 30;
 
+    // Deploy the Vault contract
+    vault = await BalancerVault.deploy(owner.address, tokenA.address, MONTH, MONTH);
+
+    // Deploy the WeightedPoolFactory contract
+    factory = await WeightedPoolFactory.deploy(
+      vault.address,
+    );
+
+    // Create a WeightedPool using the WeightedPoolFactory
     cfmm = await createPair(tokenA, tokenB);
 
-    // because Uniswap's CFMM reorders tokenA and tokenB in increasing order
-    const token0addr = await cfmm.token0();
-    const token1addr = await cfmm.token1();
-
-    tokenA = await TestERC20.attach(
-      token0addr // The deployed contract address
-    );
-    tokenB = await TestERC20.attach(
-      token1addr // The deployed contract address
-    );
+    pool = WeightedPool.attach(cfmm);
+    poolId = await pool.getPoolId();
 
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
 
-    strategy = await TestStrategy.deploy(
-      0,
-      997,
-      1000,
-      baseRate,
-      factor,
-      maxApy
-    );
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
 
+    console.log('Initializing strategy: ', strategy.address);
     await (
       await strategy.initialize(
-        cfmm.address,
-        [tokenA.address, tokenB.address],
+        cfmm,
+        [tokenB.address, tokenA.address],
         [18, 18]
       )
     ).wait();
   });
 
-  async function createStrategy(tok0Fee: any, tok1Fee: any) {
-    const _tokenAFee = await TestERC20WithFee.deploy(
-      "Test Token A Fee",
-      "TOKAF",
-      0
-    );
-    const _tokenBFee = await TestERC20WithFee.deploy(
-      "Test Token B Fee",
-      "TOKBF",
-      0
-    );
+  // function calcAmtIn(
+  //   amountOut: BigNumber,
+  //   reserveOut: BigNumber,
+  //   reserveIn: BigNumber,
+  //   tradingFee1: any,
+  //   tradingFee2: any
+  // ): BigNumber {
+  //   const amountOutWithFee = amountOut.mul(tradingFee1);
+  //   const denominator = reserveOut.mul(tradingFee2).add(amountOutWithFee);
+  //   return amountOutWithFee.mul(reserveIn).div(denominator);
+  // }
 
-    cfmmFee = await createPair(_tokenAFee, _tokenBFee);
-
-    // because Uniswap's CFMM reorders tokenA and tokenB in increasing order
-    const token0addr = await cfmmFee.token0();
-    const token1addr = await cfmmFee.token1();
-
-    tokenAFee = await TestERC20WithFee.attach(
-      token0addr // The deployed contract address
-    );
-
-    tokenBFee = await TestERC20WithFee.attach(
-      token1addr // The deployed contract address
-    );
-
-    const fee = BigNumber.from(10).pow(16);
-
-    if (tok0Fee) {
-      await (await tokenAFee.setFee(fee)).wait();
-    }
-
-    if (tok1Fee) {
-      await (await tokenBFee.setFee(fee)).wait();
-    }
-
-    const ONE = BigNumber.from(10).pow(18);
-    const baseRate = ONE.div(100);
-    const factor = ONE.mul(4).div(100);
-    const maxApy = ONE.mul(75).div(100);
-
-    strategyFee = await TestStrategy.deploy(
-      0,
-      997,
-      1000,
-      baseRate,
-      factor,
-      maxApy
-    );
-
-    await (
-      await strategyFee.initialize(
-        cfmmFee.address,
-        [tokenAFee.address, tokenBFee.address],
-        [18, 18]
-      )
-    ).wait();
-  }
-
-  async function createPair(token1: any, token2: any) {
-    await uniFactory.createPair(token1.address, token2.address);
-    const uniPairAddress: string = await uniFactory.getPair(
-      token1.address,
-      token2.address
-    );
-
-    return await UniswapV2Pair.attach(
-      uniPairAddress // The deployed contract address
-    );
-  }
-
-  function calcAmtIn(
-    amountOut: BigNumber,
-    reserveOut: BigNumber,
-    reserveIn: BigNumber,
-    tradingFee1: any,
-    tradingFee2: any
-  ): BigNumber {
-    const amountOutWithFee = amountOut.mul(tradingFee1);
-    const denominator = reserveOut.mul(tradingFee2).add(amountOutWithFee);
-    return amountOutWithFee.mul(reserveIn).div(denominator);
-  }
-
-  function calcAmtOut(
-    amountIn: BigNumber,
-    reserveOut: BigNumber,
-    reserveIn: BigNumber,
-    tradingFee1: any,
-    tradingFee2: any
-  ): BigNumber {
-    const denominator = reserveIn.sub(amountIn).mul(tradingFee1);
-    const num = reserveOut.mul(amountIn).mul(tradingFee2).div(denominator);
-    return num.add(1);
-  }
+  // function calcAmtOut(
+  //   amountIn: BigNumber,
+  //   reserveOut: BigNumber,
+  //   reserveIn: BigNumber,
+  //   tradingFee1: any,
+  //   tradingFee2: any
+  // ): BigNumber {
+  //   const denominator = reserveIn.sub(amountIn).mul(tradingFee1);
+  //   const num = reserveOut.mul(amountIn).mul(tradingFee2).div(denominator);
+  //   return num.add(1);
+  // }
 
   async function setUpStrategyAndCFMM(tokenId: any, hasFee: any) {
     const ONE = BigNumber.from(10).pow(18);
@@ -218,21 +162,70 @@ describe.only("CPMMLongStrategy", function () {
     return { res0: reserves0, res1: reserves1 };
   }
 
-  // You can nest describe calls to create subsections.
+  async function createPair(token1: any, token2: any) {
+    const NAME = 'TESTPOOL';
+    const SYMBOL = 'TP';
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      TOKENS = [token2.address, token1.address];
+    }
+    else {
+      TOKENS = [token1.address, token2.address];
+    }
+    const HUNDRETH = BigNumber.from(10).pow(16);
+    WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+    const FEE_PERCENTAGE = HUNDRETH;
+
+    const poolReturnData = await factory.create(
+      NAME, SYMBOL, TOKENS, WEIGHTS, FEE_PERCENTAGE, owner.address
+    );
+
+    const receipt = await poolReturnData.wait();
+
+    // console.log('RECEIPT:', receipt);
+
+    const events = receipt.events.filter((e) => e.event === 'PoolCreated');
+    
+    // console.log('EVENTS:', events);
+
+    const poolAddress = events[0].args.pool;
+
+    console.log('POOL ADDRESS: ', poolAddress);
+
+    return poolAddress
+  }
+
+  function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
+    const MAX_ERROR = BigNumber.from(10).pow(15); // Max error
+
+    let error = actual.sub(expected).abs();
+    expect(error.lte(MAX_ERROR));
+  }
+
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.origFee()).to.equal(0);
-      expect(await strategy.tradingFee1()).to.equal(997);
-      expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
+
+      // Check strategy params are correct
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
+
+      // Check the strategy parameters align
+      const HUNDRETH = BigNumber.from(10).pow(16);
+      const WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+
+      expect(pool.address).to.equal(cfmm);
+      expect(await strategy.getCFMM()).to.equal(cfmm);
+      expect(await strategy.getCFMMReserves()).to.deep.equal([BigNumber.from(0), BigNumber.from(0)]);
+      expect(await strategy.testGetVault(cfmm)).to.equal(await pool.getVault());
+      expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
+      expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
+      expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
     });
-  });
 
   describe("Repay Functions", function () {
     it("Calc Tokens to Repay", async function () {
