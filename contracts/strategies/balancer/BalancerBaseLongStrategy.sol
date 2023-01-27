@@ -81,14 +81,14 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             userData: abi.encode(amountOut)
         });
 
-        // IVault.FundManagement memory fundManagement = IVault.FundManagement({
-        //     sender: address(this),
-        //     fromInternalBalance: false,
-        //     recipient: address(this), // address(this) is correct but GammaPool is not payable
-        //     toInternalBalance: false
-        // });
+        IVault.FundManagement memory fundManagement = IVault.FundManagement({
+            sender: address(this),
+            fromInternalBalance: false,
+            recipient: address(this), // address(this) is correct but GammaPool is not payable
+            toInternalBalance: false
+        });
         
-        // IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
+        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
     }
 
     // Determines the amounts of tokens in and out expected
@@ -101,6 +101,14 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // outAmts is the quantity of tokens going OUT OF the GammaPool
 
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+    }
+
+    struct ActualAmtOutArguments {
+        IERC20 token;
+        address to;
+        uint256 amount;
+        uint256 balance;
+        uint256 collateral;
     }
 
     /**
@@ -134,19 +142,19 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // If the delta is positive, then we are buying a token from the Balancer pool
         if (delta0 > 0 || delta1 > 0) {
             // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
-            amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
-            reserveIn = delta0 > 0 ? reserve0 : reserve1;
-            reserveOut = delta0 > 0 ? reserve1 : reserve0;
-            tokenIndex = delta0 > 0 ? 1 : 0;
+            uint256 amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
+            uint256 reserveIn = delta0 > 0 ? reserve0 : reserve1;
+            uint256 reserveOut = delta0 > 0 ? reserve1 : reserve0;
+            uint256 tokenIndex = delta0 > 0 ? 1 : 0;
 
-            amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
-            actualAmountOut = calcActualOutAmt(IERC20(s.tokens[tokenIndex]), s.cfmm, amountOut, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]);
+            uint256 amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
+            // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountOut, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
 
-            // If the actual amount out is less than the amount out, then we need to adjust the amount in
-            if (actualAmountOut < amountOut) {
-                amountOut = actualAmountOut;
-                amountIn = getAmountOut(amountOut, reserveIn, weightIn, reserveOut, weightOut);
-            }
+            // // If the actual amount out is less than the amount out, then we need to adjust the amount in
+            // if (actualAmountOut < amountOut) {
+            //     amountOut = actualAmountOut;
+            //     amountIn = getAmountOut(amountOut, reserveIn, weightIn, reserveOut, weightOut);
+            // }
 
             // Assigning values to the return variables
             inAmt0 = delta0 > 0 ? amountIn : 0;
@@ -155,13 +163,13 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             outAmt1 = delta0 > 0 ? amountOut : 0;
         } else {
             // If the delta is negative, then we are selling a token to the Balancer pool
-            amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
-            reserveIn = delta0 < 0 ? reserve0 : reserve1;
-            reserveOut = delta0 < 0 ? reserve1 : reserve0;
-            tokenIndex = delta0 < 0 ? 0 : 1;
+            uint256 amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
+            uint256 reserveIn = delta0 < 0 ? reserve0 : reserve1;
+            uint256 reserveOut = delta0 < 0 ? reserve1 : reserve0;
+            uint256 tokenIndex = delta0 < 0 ? 0 : 1;
 
-            actualAmountOut = calcActualOutAmt(IERC20(s.tokens[tokenIndex]), s.cfmm, amountIn, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]);
-            amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
+            // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountIn, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
+            uint256 amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
 
             // Assigning values to the return variables
             inAmt0 = delta0 < 0 ? 0 : amountOut;
@@ -171,12 +179,18 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         }
     }
 
-    // TODO: Add a function description for this function.
-    function calcActualOutAmt(IERC20 token, address to, uint256 amount, uint256 balance, uint256 collateral) internal returns(uint256) {
-        uint256 balanceBefore = GammaSwapLibrary.balanceOf(token, to);
-        sendToken(token, to, amount, balance, collateral);
-        return GammaSwapLibrary.balanceOf(token, to) - balanceBefore;
-    }
+    // LOAN UPDATE OCCURS IN THE BASE CODE
+
+    // // TODO: Add a function description for this function.
+    // // TODO: If I change the calldata for this function, will I break it elsewhere? Looks like no.
+    // function calcActualOutAmt(ActualAmtOutArguments memory _actualAmtOutArguments) internal returns(uint256) {
+    //     uint256 balanceBefore = GammaSwapLibrary.balanceOf(_actualAmtOutArguments.token, _actualAmtOutArguments.to);
+
+    //     // TODO: We don't need to use this function at all
+
+    //     // sendToken(_actualAmtOutArguments.token, _actualAmtOutArguments.to, _actualAmtOutArguments.amount, _actualAmtOutArguments.balance, _actualAmtOutArguments.collateral);
+    //     return GammaSwapLibrary.balanceOf(_actualAmtOutArguments.token, _actualAmtOutArguments.to) - balanceBefore;
+    // }
 
     /**
      * @dev Calculates the amountIn amount required for an exact amountOut value according to the Balancer invariant formula.

@@ -155,7 +155,7 @@ interface IVault {
     struct FundManagement {
         address sender;
         bool fromInternalBalance;
-        address payable recipient;
+        address recipient; // Changed to not payable, originally 'address payable recipient'
         bool toInternalBalance;
     }
 

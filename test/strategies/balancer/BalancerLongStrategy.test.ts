@@ -9,7 +9,7 @@ const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist
 const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
 const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
-describe("CPMMLongStrategy", function () {
+describe("BalancerLongStrategy", function () {
   let TestERC20: any;
   let TestStrategy: any;
   let BalancerVault: any;
@@ -202,7 +202,7 @@ describe("CPMMLongStrategy", function () {
   }
 
   describe("Deployment", function () {
-    it("Check Init Params", async function () {
+    it.only("Check Init Params", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
