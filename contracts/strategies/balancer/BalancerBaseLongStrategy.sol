@@ -103,8 +103,19 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
     }
 
-    // This function is calculating the exact amount of tokens which need to be swapped
-    // according to adjusting the delta of the GammaPool by the calldata quantities
+    /**
+     * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
+     *      This calculation depends on the reserves existing in the Balancer pool.
+     * @param _loan Liquidity loan whose collateral will be used to calculate the swap amounts
+     * @param reserve0 The amount of reserve token0 in the Balancer pool
+     * @param reserve1 The amount of reserve token1 in the Balancer pool
+     * @param delta0 The desired amount of collateral token0 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
+     * @param delta1 The desired amount of collateral token1 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
+     * @return inAmt0 The expected amount of token0 to receive from the Balancer pool (corresponding to a buy)
+     * @return inAmt1 The expected amount of token1 to receive from the Balancer pool (corresponding to a buy)
+     * @return outAmt0 The expected amount of token0 to send to the Balancer pool (corresponding to a sell)
+     * @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
+     */
     function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
         internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
@@ -115,43 +126,48 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             revert ZeroReserves();
         }
 
+        // Get the Balancer weights and re-org them to represent in and out weights
         uint256[] memory weights = getWeights(s.cfmm);
         uint256 weightIn = delta0 > 0 ? weights[0] : weights[1];
         uint256 weightOut = delta0 > 0 ? weights[1] : weights[0];
 
-        // inAmt is the amount that the GammaPool is getting, outAmt is the amount that the GammaPool is sending
-        if(delta0 > 0 || delta1 > 0) {
-            inAmt0 = uint256(delta0); // Buy exact token0
-            inAmt1 = uint256(delta1); // Buy exact token1
-            if(inAmt0 > 0) {
-                outAmt0 = 0;
-                outAmt1 = getAmountIn(inAmt0, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will send
-                uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-                if(_outAmt1 != outAmt1) {
-                    outAmt1 = _outAmt1;
-                    inAmt0 = getAmountOut(outAmt1, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will receive
-                }
-            } else {
-                outAmt0 = getAmountIn(inAmt1, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will send
-                outAmt1 = 0;
-                uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
-                if(_outAmt0 != outAmt0) {
-                    outAmt0 = _outAmt0;
-                    inAmt1 = getAmountOut(outAmt0, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will receive
-                }
+        // If the delta is positive, then we are buying a token from the Balancer pool
+        if (delta0 > 0 || delta1 > 0) {
+            // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
+            amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
+            reserveIn = delta0 > 0 ? reserve0 : reserve1;
+            reserveOut = delta0 > 0 ? reserve1 : reserve0;
+            tokenIndex = delta0 > 0 ? 1 : 0;
+
+            amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
+            actualAmountOut = calcActualOutAmt(IERC20(s.tokens[tokenIndex]), s.cfmm, amountOut, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]);
+
+            // If the actual amount out is less than the amount out, then we need to adjust the amount in
+            if (actualAmountOut < amountOut) {
+                amountOut = actualAmountOut;
+                amountIn = getAmountOut(amountOut, reserveIn, weightIn, reserveOut, weightOut);
             }
+
+            // Assigning values to the return variables
+            inAmt0 = delta0 > 0 ? amountIn : 0;
+            inAmt1 = delta0 > 0 ? 0 : amountIn;
+            outAmt0 = delta0 > 0 ? 0 : amountOut;
+            outAmt1 = delta0 > 0 ? amountOut : 0;
         } else {
-            outAmt0 = uint256(-delta0); // Sell exact token0 which will be sent by the GammaPool
-            outAmt1 = uint256(-delta1); // Sell exact token1 which will be sent by the GammaPool
-            if(outAmt0 > 0) {
-                outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
-                inAmt0 = 0;
-                inAmt1 = getAmountOut(outAmt0, reserve0, weightOut, reserve1, weightIn); // Calculate what the GammaPool will receive
-            } else {
-                outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
-                inAmt0 = getAmountOut(outAmt1, reserve1, weightOut, reserve0, weightIn); // Calculate what the GammaPool will receive
-                inAmt1 = 0;
-            }
+            // If the delta is negative, then we are selling a token to the Balancer pool
+            amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
+            reserveIn = delta0 < 0 ? reserve0 : reserve1;
+            reserveOut = delta0 < 0 ? reserve1 : reserve0;
+            tokenIndex = delta0 < 0 ? 0 : 1;
+
+            actualAmountOut = calcActualOutAmt(IERC20(s.tokens[tokenIndex]), s.cfmm, amountIn, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]);
+            amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
+
+            // Assigning values to the return variables
+            inAmt0 = delta0 < 0 ? 0 : amountOut;
+            inAmt1 = delta0 < 0 ? amountOut : 0;
+            outAmt0 = delta0 < 0 ? actualAmountOut : 0;
+            outAmt1 = delta0 < 0 ? 0 : actualAmountOut;
         }
     }
 
