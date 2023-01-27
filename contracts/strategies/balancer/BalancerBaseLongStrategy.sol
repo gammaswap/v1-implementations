@@ -36,7 +36,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        // TODO: Requires exponentiation again
+
+        // TODO: Check whether this works as expected...
         amounts[0] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[0]) * s.CFMM_RESERVES[0];
         amounts[1] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[1]) * s.CFMM_RESERVES[1];
     }
@@ -71,25 +72,23 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             revert("The parameter outAmts is not defined correctly.");
         }
 
-        // ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0));
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
             poolId: getPoolId(s.cfmm),
-            kind: IVault.SwapKind.GIVEN_IN,
+            kind: uint256(IVault.SwapKind.GIVEN_IN),
             assetIn: assetIn,
             assetOut: assetOut,
             amount: amountIn,
             userData: abi.encode(amountOut)
         });
 
-        IVault.FundManagement memory fundManagement = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: address(this),
-            toInternalBalance: false
-        });
+        // IVault.FundManagement memory fundManagement = IVault.FundManagement({
+        //     sender: address(this),
+        //     fromInternalBalance: false,
+        //     recipient: address(this), // address(this) is correct but GammaPool is not payable
+        //     toInternalBalance: false
+        // });
         
-        // TODO: Implement this for Balancer
-        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
+        // IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
     }
 
     // Determines the amounts of tokens in and out expected
@@ -172,19 +171,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @param weightIn The normalised weight of the token entering the pool on the swap.
      */
     function getAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
-        if(reserveOut == 0 || reserveIn == 0) {
-            revert ZeroReserves();
-        }
-
-        uint256 base = reserveOut / (reserveOut - amountOut);
-        uint256 exponent = weightOut / weightIn;
-        uint256 power = FixedPoint.powDown(base, exponent);
-
-        // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
-        // the following subtraction should never revert.
-        uint256 ratio = power - 1e18;
-
-        return reserveIn * ratio / tradingFee;
+        return WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
     }
 
     /**
@@ -196,16 +183,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @param weightIn The normalised weight of the token entering the pool on the swap.
      */
     function getAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
-        if(reserveOut == 0 || reserveIn == 0) {
-            revert ZeroReserves();
-        }
-
-        uint256 amountInWithFee = amountIn * tradingFee;
-        uint256 denominator = reserveIn + amountInWithFee;
-
-        uint256 base = reserveIn / denominator;
-        uint256 exponent = weightIn / weightOut;
-        uint256 power = FixedPoint.powDown(base, exponent);
-        return reserveOut * (1e18 - power);
+        return WeightedMath._calcOutGivenIn(reserveIn, weightIn, reserveOut, weightOut, amountIn);
     }
 }

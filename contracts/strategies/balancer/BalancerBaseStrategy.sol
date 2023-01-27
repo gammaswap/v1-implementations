@@ -172,6 +172,5 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         console.log("CFMM Info:", cfmm, weights[0], weights[1]);
         invariant = WeightedMath._calculateInvariant(weights, Math.convertToUint256Array(amounts));
-        // invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
     }
 }

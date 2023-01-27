@@ -82,7 +82,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountIn
-    ) internal pure returns (uint256) {
+    ) external view returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = amountOut                                                                            //
@@ -117,7 +117,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountOut
-    ) internal pure returns (uint256) {
+    ) external view returns (uint256) {
         /**********************************************************************************************
         // inGivenOut                                                                                //
         // aO = amountOut                                                                            //

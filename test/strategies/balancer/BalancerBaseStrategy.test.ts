@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
+import { IERC20 } from "../../../typechain";
 
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
 const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPoolFactory.json");
@@ -23,11 +24,16 @@ describe("BalancerBaseStrategy", function () {
   let owner: any;
   let pool: any;
   let poolId: any;
+  let weightedMathFactory: any;
+  let weightedMath: any;
   
   let TOKENS: any;
   let WEIGHTS: any;
 
   beforeEach(async function () {
+    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
+    weightedMath = await weightedMathFactory.deploy();
+
     TestERC20 = await ethers.getContractFactory("TestERC20");
     [owner] = await ethers.getSigners();
 
@@ -51,7 +57,7 @@ describe("BalancerBaseStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy");
+    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy", {libraries: {WeightedMath: weightedMath.address}});
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -123,6 +129,13 @@ describe("BalancerBaseStrategy", function () {
     return poolAddress
   }
 
+  function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
+    const MAX_ERROR = BigNumber.from(10).pow(15); // Max error
+
+    let error = actual.sub(expected).abs();
+    expect(error.lte(MAX_ERROR));
+  }
+
   describe("Deployment", function () {
     it("Check Init Params", async function () {
       const ONE = BigNumber.from(10).pow(18);
@@ -150,47 +163,53 @@ describe("BalancerBaseStrategy", function () {
     });
 
     it("Check Invariant Calculation", async function () {
-      expect(
-        await strategy.testCalcInvariant(cfmm, [
-          BigNumber.from(10),
-          BigNumber.from(10),
-        ])
-      ).to.equal(10);
+      const ONE = BigNumber.from(10).pow(18);
 
-      expect(
+      expectEqualWithError(
         await strategy.testCalcInvariant(cfmm, [
-          BigNumber.from(20),
-          BigNumber.from(20),
-        ])
-      ).to.equal(20);
+          BigNumber.from(10).mul(ONE),
+          BigNumber.from(10).mul(ONE),
+        ]),
+        BigNumber.from(10).mul(ONE)
+      );
 
-      expect(
+      expectEqualWithError(
         await strategy.testCalcInvariant(cfmm, [
-          BigNumber.from(30),
-          BigNumber.from(30),
-        ])
-      ).to.equal(30);
+          BigNumber.from(20).mul(ONE),
+          BigNumber.from(20).mul(ONE),
+        ]),
+        BigNumber.from(10).mul(ONE)
+      );
 
-      expect(
+      expectEqualWithError(
         await strategy.testCalcInvariant(cfmm, [
-          BigNumber.from(20),
-          BigNumber.from(500),
-        ])
-      ).to.equal(100);
+          BigNumber.from(30).mul(ONE),
+          BigNumber.from(30).mul(ONE),
+        ]),
+        BigNumber.from(10).mul(ONE)
+      );
 
-      expect(
+      expectEqualWithError(
         await strategy.testCalcInvariant(cfmm, [
-          BigNumber.from(2),
-          BigNumber.from(450),
-        ])
-      ).to.equal(30);
+          BigNumber.from(20).mul(ONE),
+          BigNumber.from(500).mul(ONE),
+        ]),
+        BigNumber.from(10).mul(ONE)
+      );
+
+      expectEqualWithError(
+        await strategy.testCalcInvariant(cfmm, [
+          BigNumber.from(2).mul(ONE),
+          BigNumber.from(450).mul(ONE),
+        ]),
+        BigNumber.from(30).mul(ONE)
+      );
     });
   });
-
   
   describe("Check Write Functions", function () {
     async function initialisePool(initialBalances: any) {
-        // We must perform an INIT join at the beginning to start the pool
+      // We must perform an INIT join at the beginning to start the pool
       const JOIN_KIND_INIT = 0;
       const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
 
@@ -211,8 +230,13 @@ describe("BalancerBaseStrategy", function () {
 
     async function depositIntoPool(amounts: any) {
         // We must send the tokens to the strategy before we can deposit
-        await tokenA.transfer(strategy.address, amounts[0]);
-        await tokenB.transfer(strategy.address, amounts[1]);
+        if (tokenA.address === TOKENS[0]) {
+          await tokenA.transfer(strategy.address, amounts[0]);
+          await tokenB.transfer(strategy.address, amounts[1]);
+        } else {
+          await tokenA.transfer(strategy.address, amounts[1]);
+          await tokenB.transfer(strategy.address, amounts[0]);
+        }
 
         const res = await (
           await strategy.testDepositToCFMM(

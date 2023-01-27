@@ -4,15 +4,16 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
-const MAX_ERROR = BigNumber.from(10).pow(15); // Max error
 
-describe.only('WeightedMath', function () {
+describe('WeightedMath', function () {
   let math: Contract;
   let mathFactory: any;
   let ONE = BigNumber.from(10).pow(18);
   let TENTH = BigNumber.from(10).pow(17);
 
   function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
+    const MAX_ERROR = BigNumber.from(10).pow(15); // Max error
+
     let error = actual.sub(expected).abs();
     expect(error.lte(MAX_ERROR));
   }

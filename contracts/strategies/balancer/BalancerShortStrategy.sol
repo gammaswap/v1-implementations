@@ -65,16 +65,14 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
         // Calculates optimal amount as the amount of token1 which corresponds to an amountsDesired of token0
         // Note: This calculation preserves price, which is almost the same as price in a UniV2 pool
 
-        // TODO: Is there an overflow risk here?
-        uint256 optimalAmount1 = (amountsDesired[0] * reserves[1] * weights[0]) / (reserves[0] * weights[1]);
+        uint256 optimalAmount1 = (amountsDesired[0] * reserves[1]) / (reserves[0]);
         if (optimalAmount1 <= amountsDesired[1]) {
             checkOptimalAmt(optimalAmount1, amountsMin[1]);
             (amounts[0], amounts[1]) = (amountsDesired[0], optimalAmount1);
             return(amounts, payee);
         }
 
-        // TODO: Is there an overflow risk here?
-        uint256 optimalAmount0 = (amountsDesired[1] * reserves[0] * weights[1]) / (reserves[1] * weights[0]);
+        uint256 optimalAmount0 = (amountsDesired[1] * reserves[0]) / (reserves[1]);
         assert(optimalAmount0 <= amountsDesired[0]);
         checkOptimalAmt(optimalAmount0, amountsMin[0]);
         (amounts[0], amounts[1]) = (optimalAmount0, amountsDesired[1]);
