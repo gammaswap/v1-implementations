@@ -613,6 +613,7 @@ describe("ShortStrategy", function () {
         expect(poolUpdatedEvent.args.lpTokenBorrowedPlusInterest).to.equal(0);
         expect(poolUpdatedEvent.args.lpInvariant).to.equal(lpInvariant);
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.txType).to.equal(0);
 
         expect(await strategy.totalSupply()).to.equal(expectedGSShares);
         expect(await strategy.balanceOf(owner.address)).to.equal(
@@ -874,6 +875,7 @@ describe("ShortStrategy", function () {
         const lpInvariant = cfmmBalance.mul(cfmmInvariant).div(cfmmTotalSupply);
         expect(poolUpdatedEvent.args.lpInvariant).to.equal(lpInvariant);
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
+        expect(poolUpdatedEvent.args.txType).to.equal(2);
 
         const depositReserveEvent = res.events[res.events.length - 1];
         expect(depositReserveEvent.args.pool).to.equal(strategy.address);

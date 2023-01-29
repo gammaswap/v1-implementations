@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
-import "@gammaswap/v1-periphery/contracts/libraries/TransferHelper.sol";
+import "@gammaswap/v1-core/contracts/interfaces/periphery/ISendTokensCallback.sol";
+import "@gammaswap/v1-core/contracts/interfaces/IGammaPoolEvents.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "./strategies/base/TestShortStrategy.sol";
 
-contract TestPositionManager is ISendTokensCallback {
+contract TestPositionManager is IGammaPoolEvents, ISendTokensCallback {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    event Deposit(address indexed caller, address indexed to, uint256 assets, uint256 shares);
-    event Withdraw(address indexed caller, address indexed to, address indexed from, uint256 assets, uint256 shares);
+    //event Deposit(address indexed caller, address indexed to, uint256 assets, uint256 shares);
+    //event Withdraw(address indexed caller, address indexed to, address indexed from, uint256 assets, uint256 shares);
 
-    event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
-        uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
+    //event PoolUpdated(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lastBlockNumber, uint256 accFeeIndex,
+    //    uint256 lpTokenBorrowedPlusInterest, uint256 lpInvariant, uint256 borrowedInvariant);
 
     event DepositReserve(address indexed pool, uint256 reservesLen, uint256[] reserves, uint256 shares);
 
@@ -52,10 +52,10 @@ contract TestPositionManager is ISendTokensCallback {
     function send(address token, address sender, address to, uint256 amount) internal {
         if (sender == address(this)) {
             // send with tokens already in the contract
-            TransferHelper.safeTransfer(IERC20(token), to, amount);
+            GammaSwapLibrary.safeTransfer(IERC20(token), to, amount);
         } else {
             // pull transfer
-            TransferHelper.safeTransferFrom(IERC20(token), sender, to, amount);
+            GammaSwapLibrary.safeTransferFrom(IERC20(token), sender, to, amount);
         }
     }
 }

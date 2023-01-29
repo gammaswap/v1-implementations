@@ -95,6 +95,6 @@ abstract contract ShortStrategyERC4626 is ShortStrategy {
         GammaSwapLibrary.safeTransferFrom(IERC20(s.cfmm), caller, address(this), assets);
 
         // track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
-        depositAssets(caller, to, assets, shares);
+        depositAssets(caller, to, assets, shares, false);
     }
 }

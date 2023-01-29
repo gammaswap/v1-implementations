@@ -113,8 +113,9 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @dev Account for newly borrowed liquidity debt
     /// @param _loan - loan that incurred debt
     /// @param lpTokens - CFMM LP tokens borrowed
+    /// @return liquidityBorrowed - increase in liquidity debt
     /// @return liquidity - new loan liquidity debt
-    function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual returns(uint256 liquidity) {
+    function openLoan(LibStorage.Loan storage _loan, uint256 lpTokens) internal virtual returns(uint256 liquidityBorrowed, uint256 liquidity) {
         // Liquidity invariant in CFMM, updated at start of transaction that opens loan. Overstated after loan opening
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         // Total CFMM LP tokens in existence, updated at start of transaction that opens loan. Overstated after loan opening
@@ -128,7 +129,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         uint256 lpTokensPlusOrigFee = lpTokens + lpTokens * originationFee() / 10000;
 
         // Calculate borrowed liquidity invariant including origination fee
-        uint256 liquidityBorrowed = convertLPToInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);
+        liquidityBorrowed = convertLPToInvariant(lpTokensPlusOrigFee, lastCFMMInvariant, lastCFMMTotalSupply);
 
         // Add liquidity invariant borrowed including origination fee to total pool liquidity invariant borrowed
         uint256 borrowedInvariant = s.BORROWED_INVARIANT + liquidityBorrowed;
@@ -165,15 +166,16 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @param _loan - loan whose debt was paid
     /// @param liquidity - liquidity invariant paid
     /// @param loanLiquidity - loan liquidity debt
+    /// @return liquidityPaid - decrease in liquidity debt
     /// @return remainingLiquidity - outstanding loan liquidity debt after payment
-    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 remainingLiquidity) {
+    function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 liquidityPaid, uint256 remainingLiquidity) {
         (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) = getLpTokenBalance();
-        liquidity = paidLiquidity < liquidity ? paidLiquidity : liquidity; // Take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
+        liquidityPaid = paidLiquidity < liquidity ? paidLiquidity : liquidity; // Take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
         // If more liquidity than stated was actually paid, that goes to liquidity providers
         uint256 lpTokenPrincipal;
-        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidity, loanLiquidity, _loan);
+        (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidityPaid, loanLiquidity, _loan);
 
-        payPoolDebt(liquidity, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance, lpTokenChange);
+        payPoolDebt(liquidityPaid, lpTokenPrincipal, lastCFMMInvariant, lastCFMMTotalSupply, newLPBalance, lpTokenChange);
     }
 
     /// @dev Get CFMM LP token balance changes in GammaPool

@@ -9,10 +9,11 @@ import "hardhat/console.sol";
 contract TestLiquidationStrategy is LiquidationStrategy {
     using LibStorage for LibStorage.Storage;
     event LoanCreated(address indexed caller, uint256 tokenId);
-    event Refund(uint128[] tokensHeld);
-    event WriteDown2(uint256 loanLiquidity);
+    event Refund(uint128[] tokensHeld, uint256[] tokenIds);
+    event WriteDown2(uint256 writeDownAmt, uint256 loanLiquidity);
     event RefundOverPayment(uint256 loanLiquidity, uint256 lpDeposit);
     event RefundLiquidator(uint128[] tokensHeld, uint256[] refund);
+    event BatchLiquidations(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] tokensHeldTotal, uint256[] tokenIds);
 
     struct PoolBalances {
         // LP Tokens
@@ -92,7 +93,7 @@ contract TestLiquidationStrategy is LiquidationStrategy {
 
         uint128[] memory tokensHeld = updateCollateral(_loan);
 
-        uint256 liquidity = openLoan(_loan, lpTokens);
+        (,uint256 liquidity) = openLoan(_loan, lpTokens);
         _loan.rateIndex = s.accFeeIndex;
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
         checkMargin2(collateral, liquidity, 800);
@@ -120,9 +121,9 @@ contract TestLiquidationStrategy is LiquidationStrategy {
     }
 
     function testPayBatchLoanAndRefundLiquidator(uint256[] calldata tokenIds) external virtual {
-        (uint256 liquidityTotal, uint256 payLiquidityTotal,, uint128[] memory tokensHeldTotal) = sumLiquidity(tokenIds);
+        (uint256 liquidityTotal, uint256 payLiquidityTotal,, uint128[] memory tokensHeldTotal, uint256[] memory _tokenIds) = sumLiquidity(tokenIds);
         (tokensHeldTotal, ) = refundLiquidator(payLiquidityTotal, liquidityTotal, tokensHeldTotal);
-        emit Refund(tokensHeldTotal);
+        emit Refund(tokensHeldTotal, _tokenIds);
     }
 
     function testRefundLiquidator(uint256 tokenId, uint256 payLiquidity, uint256 loanLiquidity) external virtual {
@@ -131,7 +132,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
     }
 
     function testSumLiquidity(uint256[] calldata tokenIds) external virtual {
-        sumLiquidity(tokenIds);
+        (uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal, uint256[] memory _tokenIds) = sumLiquidity(tokenIds);
+        emit BatchLiquidations(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, _tokenIds);
     }
 
     function testCanLiquidate(uint256 collateral, uint256 liquidity) external virtual {
@@ -165,13 +167,13 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         emit RefundOverPayment(loanLiquidity, lpDeposit);
     }
 
-    function testWriteDown(uint256 tokenId, uint256 payableLiquidity, uint256 loanLiquidity) external virtual {
-        uint256 _loanLiquidity = writeDown(tokenId, payableLiquidity, loanLiquidity);
-        emit WriteDown2(_loanLiquidity);
+    function testWriteDown(uint256 payableLiquidity, uint256 loanLiquidity) external virtual {
+        (uint256 _writeDownAmt, uint256 _loanLiquidity) = writeDown(payableLiquidity, loanLiquidity);
+        emit WriteDown2(_writeDownAmt, _loanLiquidity);
     }
 
-    function payLoan(LibStorage.Loan storage, uint256, uint256) internal override virtual returns(uint256) {
-        return 0;
+    function payLoan(LibStorage.Loan storage, uint256, uint256) internal override virtual returns(uint256, uint256) {
+        return (0,0);
     }
 
     //AbstractRateModel abstract functions
