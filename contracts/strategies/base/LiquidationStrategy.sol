@@ -19,9 +19,13 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     function liquidationFeeThreshold() internal virtual view returns(uint16);
 
     /// @dev See {LiquidationStrategy-_liquidate}.
-    function _liquidate(uint256 tokenId, int256[] calldata deltas) external override lock virtual returns(uint256[] memory refund) {
+    function _liquidate(uint256 tokenId, int256[] calldata deltas) external override lock virtual returns(uint256 loanLiquidity, uint256[] memory refund) {
         // Check can liquidate loan and get loan with updated loan liquidity
-        (LibStorage.Loan storage _loan, uint256 loanLiquidity, ) = getLoanLiquidityAndCollateral(tokenId);
+        LibStorage.Loan storage _loan;
+        uint256 writeDownAmt;
+        uint256 collateral;
+        address cfmm = s.cfmm;
+        (_loan, loanLiquidity, collateral,, writeDownAmt) = getLoanLiquidityAndCollateral(cfmm, tokenId);
 
         // Update loan collateral amounts (e.g. re-balance and/or account for deposited collateral)
         // Repay liquidity debt in full and get back remaining collateral amounts
@@ -29,47 +33,74 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
 
         // Pay loan liquidity in full with collateral amounts and refund remaining collateral to liquidator
         // CFMM LP token principal paid will be calculated during function call, hence pass 0
-        (tokensHeld, refund, loanLiquidity) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, true);
+        (tokensHeld, refund,) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, true);
         _loan.tokensHeld = tokensHeld; // Clear loan collateral
 
-        emit LoanUpdated(tokenId, tokensHeld, 0, 0, 0);
+        emit Liquidation(tokenId, uint128(collateral), uint128(loanLiquidity), uint128(writeDownAmt), TX_TYPE.LIQUIDATE, new uint256[](0));
+
+        emit LoanUpdated(tokenId, tokensHeld, 0, 0, 0, 0, TX_TYPE.LIQUIDATE);
+
+        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.LIQUIDATE);
     }
 
     /// @dev See {LiquidationStrategy-_liquidateWithLP}.
-    function _liquidateWithLP(uint256 tokenId) external override lock virtual returns(uint256[] memory refund) {
+    function _liquidateWithLP(uint256 tokenId) external override lock virtual returns(uint256 loanLiquidity, uint256[] memory refund) {
         // Check can liquidate loan and get loan with updated loan liquidity and collateral
-        (LibStorage.Loan storage _loan, uint256 loanLiquidity, uint128[] memory tokensHeld) = getLoanLiquidityAndCollateral(tokenId);
+        LibStorage.Loan storage _loan;
+        uint128[] memory tokensHeld;
+        uint256 writeDownAmt;
+        uint256 collateral;
+        address cfmm = s.cfmm;
+        (_loan, loanLiquidity, collateral, tokensHeld, writeDownAmt) = getLoanLiquidityAndCollateral(cfmm, tokenId);
 
         // Pay loan liquidity in full or partially with previously deposited CFMM LP tokens and refund remaining liquidated share of collateral to liquidator
         // CFMM LP token principal paid will be calculated during function call, hence pass 0
-        (tokensHeld, refund, loanLiquidity) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, false);
+        uint256 _loanLiquidity;
+        (tokensHeld, refund, _loanLiquidity) = payLoanAndRefundLiquidator(tokenId, tokensHeld, loanLiquidity, 0, false);
         _loan.tokensHeld = tokensHeld; // Update loan collateral
+        loanLiquidity = loanLiquidity - _loanLiquidity;
 
-        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
+        emit Liquidation(tokenId, uint128(collateral - calcInvariant(cfmm, tokensHeld)), uint128(loanLiquidity), uint128(writeDownAmt), TX_TYPE.LIQUIDATE_WITH_LP, new uint256[](0));
+
+        emit LoanUpdated(tokenId, tokensHeld, uint128(_loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.LIQUIDATE_WITH_LP);
+
+        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.LIQUIDATE_WITH_LP);
     }
 
     /// @dev See {LiquidationStrategy-_batchLiquidations}.
-    function _batchLiquidations(uint256[] calldata tokenIds) external override lock virtual returns(uint256[] memory refund) {
+    function _batchLiquidations(uint256[] calldata tokenIds) external override lock virtual returns(uint256 totalLoanLiquidity, uint256 totalCollateral, uint256[] memory refund) {
         // Sum up liquidity, collateral, and LP token principal from loans that can be liquidated
-        (uint256 loanLiquidity, uint256 collateral, uint256 lpTokenPrincipalPaid, uint128[] memory tokensHeld) = sumLiquidity(tokenIds);
+        uint256 lpTokenPrincipalPaid;
+        uint128[] memory tokensHeld;
+        uint256[] memory _tokenIds;
+        (totalLoanLiquidity, totalCollateral, lpTokenPrincipalPaid, tokensHeld, _tokenIds) = sumLiquidity(tokenIds);
 
-        if(loanLiquidity == 0) { // Revert if no loans to liquidate
+        if(totalLoanLiquidity == 0) { // Revert if no loans to liquidate
             revert NoLiquidityDebt();
         }
 
+        uint256 writeDownAmt;
         // Write down bad debt if any
-        loanLiquidity = writeDown(0, collateral * liquidationFeeThreshold() / 1000, loanLiquidity);
+        (writeDownAmt, totalLoanLiquidity) = writeDown(totalCollateral * liquidationFeeThreshold() / 1000, totalLoanLiquidity);
 
         // Pay total liquidity debts in full with previously deposited CFMM LP tokens and refund remaining collateral to liquidator
-        (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, loanLiquidity, lpTokenPrincipalPaid, true);
+        (, refund,) = payLoanAndRefundLiquidator(0, tokensHeld, totalLoanLiquidity, lpTokenPrincipalPaid, true);
+
+        // Store through event tokenIds of loans liquidated in batch and amounts liquidated
+        emit Liquidation(0, uint128(totalCollateral), uint128(totalLoanLiquidity), uint128(writeDownAmt), TX_TYPE.BATCH_LIQUIDATION, _tokenIds);
+
+        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.BATCH_LIQUIDATION);
     }
 
     /// @dev Gets loan and its updated loan liquidity
+    /// @param cfmm - adress of CFMM
     /// @param tokenId - id of loan to liquidate
     /// @return _loan - loan to liquidate
     /// @return loanLiquidity - most updated loan liquidity debt
+    /// @return collateral - loan collateral liquidity invariant units
     /// @return tokensHeld - loan collateral token amounts
-    function getLoanLiquidityAndCollateral(uint256 tokenId) internal virtual returns(LibStorage.Loan storage _loan, uint256 loanLiquidity, uint128[] memory tokensHeld) {
+    /// @return writeDownAmt - collateral liquidity invariant units written down from loan's debt
+    function getLoanLiquidityAndCollateral(address cfmm, uint256 tokenId) internal virtual returns(LibStorage.Loan storage _loan, uint256 loanLiquidity, uint256 collateral, uint128[] memory tokensHeld, uint256 writeDownAmt) {
         // No need to check if msg.sender has permission
         _loan = s.loans[tokenId];
 
@@ -78,11 +109,11 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
 
         // Check if loan can be liquidated
         tokensHeld = _loan.tokensHeld; // Saves gas
-        uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
+        collateral = calcInvariant(cfmm, tokensHeld);
         checkMargin(collateral, loanLiquidity);
 
         // Write down any bad debt
-        loanLiquidity = writeDown(tokenId, collateral * liquidationFeeThreshold() / 1000, loanLiquidity);
+        (writeDownAmt, loanLiquidity) = writeDown(collateral * liquidationFeeThreshold() / 1000, loanLiquidity);
     }
 
     /// @dev Account for liquidity payments in the loan and pool
@@ -140,15 +171,15 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
                 // If isFullPayment is false then loan was paid with CFMM LP tokens (`_liquidateWithLP` function was called)
                 // Therefore no CFMM LP tokens were minted during liquidation, thus lastCFMMTotalSupply & lastCFMMInvariant did not change => don't send lpDeposit
                 payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, isFullPayment ? currLpBalance - s.LP_TOKEN_BALANCE : 0);
+                // emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, isFullPayment ? TX_TYPE.LIQUIDATE : TX_TYPE.LIQUIDATE_WITH_LP);
             } else {
                 // Liquidation was a batch liquidation
                 // Account for pool's liquidity debt paid.
                 // Batch liquidations are paid with CFMM LP tokens, therefore no need to pass lpDeposit (i.e. pass 0)
                 payPoolDebt(payLiquidity, lpTokenPrincipalPaid, lastCFMMInvariant, lastCFMMTotalSupply, currLpBalance, 0);
+                // emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.BATCH_LIQUIDATION);
             }
         }
-
-        emit PoolUpdated(currLpBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
 
         return(tokensHeld, refund, loanLiquidity);
     }
@@ -213,13 +244,13 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     }
 
     /// @dev Write down bad debt if any
-    /// @param tokenId - tokenId of loan being written down
     /// @param collateralAsLiquidity - loan collateral as liquidity invariant units
     /// @param loanLiquidity - most updated loan liquidity debt
+    /// @return writeDownAmt - liquidity debt amount written down
     /// @return adjLoanLiquidity - loan liquidity debt after write down
-    function writeDown(uint256 tokenId, uint256 collateralAsLiquidity, uint256 loanLiquidity) internal virtual returns(uint256) {
+    function writeDown(uint256 collateralAsLiquidity, uint256 loanLiquidity) internal virtual returns(uint256, uint256) {
         if(collateralAsLiquidity >= loanLiquidity) {
-            return loanLiquidity; // Enough collateral to cover liquidity debt
+            return(0,loanLiquidity); // Enough collateral to cover liquidity debt
         }
 
         // Not enough collateral to cover liquidity loan
@@ -236,10 +267,8 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
         s.LP_TOKEN_BORROWED_PLUS_INTEREST = convertInvariantToLP(borrowedInvariant, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
         s.BORROWED_INVARIANT = borrowedInvariant;
 
-        emit WriteDown(tokenId, writeDownAmt);
-
         // Loan's liquidity debt is written down to its available collateral liquidity debt
-        return collateralAsLiquidity;
+        return(writeDownAmt,collateralAsLiquidity);
     }
 
     /// @dev Aggregate liquidity, collateral amounts, and CFMM LP token principal of loans to liquidate. Skip loans not eligible to liquidate
@@ -248,13 +277,14 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
     /// @return collateralTotal - most updated loan liquidity debt
     /// @return lpTokensPrincipalTotal - loan liquidity debt after write down
     /// @return tokensHeldTotal - loan liquidity debt after write down
-    function sumLiquidity(uint256[] calldata tokenIds) internal virtual returns(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal) {
+    /// @return _tokenIds - list of tokenIds of loans that will be liquidated (excludes loans that can't be liquidated)
+    function sumLiquidity(uint256[] calldata tokenIds) internal virtual returns(uint256 liquidityTotal, uint256 collateralTotal, uint256 lpTokensPrincipalTotal, uint128[] memory tokensHeldTotal, uint256[] memory _tokenIds) {
         address[] memory tokens = s.tokens; // Save gas
         uint128[] memory tokensHeld;
         address cfmm = s.cfmm; // Save gas
         tokensHeldTotal = new uint128[](tokens.length);
         (uint256 accFeeIndex,,) = updateIndex(); // Update GammaPool state variables and get interest rate index
-        uint256[] memory _tokenIds = new uint256[](tokenIds.length); // Array of ids of loans eligible to liquidate
+        _tokenIds = new uint256[](tokenIds.length); // Array of ids of loans eligible to liquidate
         for(uint256 i; i < tokenIds.length;) {
             LibStorage.Loan storage _loan = s.loans[tokenIds[i]];
             uint256 liquidity = _loan.liquidity;
@@ -303,9 +333,6 @@ abstract contract LiquidationStrategy is ILiquidationStrategy, BaseLongStrategy 
                 ++i;
             }
         }
-
-        // Store through event tokenIds of loans liquidated in batch and amounts liquidated
-        emit BatchLiquidations(liquidityTotal, collateralTotal, lpTokensPrincipalTotal, tokensHeldTotal, _tokenIds);
     }
 
     /// @dev Re-balance and/or increase loan collateral amounts, then repay liquidity debt

@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/interfaces/strategies/base/IShortStrategy.sol";
-import "@gammaswap/v1-periphery/contracts/interfaces/ISendTokensCallback.sol";
+import "@gammaswap/v1-core/contracts/interfaces/periphery/ISendTokensCallback.sol";
 import "./BaseStrategy.sol";
 
 /// @title Short Strategy abstract contract implementation of IShortStrategy
@@ -58,12 +58,14 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     /// @dev See {IShortStrategy-_depositNoPull}.
     function _depositNoPull(address to) external virtual override lock returns(uint256 shares) {
-        shares = depositAssetsNoPull(to);
+        shares = depositAssetsNoPull(to, false);
     }
 
     /// @notice Deposit CFMM LP tokens without calling transferFrom
+    /// @param to - address of receiver of GS LP tokens that will be minted
+    /// @param isDepositReserves - true if depositing reserve tokens, false if depositing CFMM LP tokens
     /// @dev There has to be unaccounted for CFMM LP tokens before calling this function
-    function depositAssetsNoPull(address to) internal virtual returns(uint256 shares) {
+    function depositAssetsNoPull(address to, bool isDepositReserves) internal virtual returns(uint256 shares) {
         // unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
         uint256 assets = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
 
@@ -77,7 +79,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         }
 
         // track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
-        depositAssets(msg.sender, to, assets, shares);
+        depositAssets(msg.sender, to, assets, shares, isDepositReserves);
     }
 
     /// @dev See {IShortStrategy-_withdrawNoPull}.
@@ -129,7 +131,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         depositToCFMM(s.cfmm, address(this), reserves);
 
         // mint GS LP Tokens to receiver (`to`) equivalent in value to CFMM LP tokens just deposited
-        shares = depositAssetsNoPull(to);
+        shares = depositAssetsNoPull(to, true);
     }
 
     /// @dev See {IShortStrategy-_withdrawReserves}.
@@ -169,7 +171,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param to - address receiving GS LP tokens (`shares`)
     /// @param assets - amount of CFMM LP tokens deposited
     /// @param shares - amount of GS LP tokens minted to receiver
-    function depositAssets(address caller, address to, uint256 assets, uint256 shares) internal virtual {
+    /// @param isDepositReserves - true if depositing reserve tokens, false if depositing CFMM LP tokens
+    function depositAssets(address caller, address to, uint256 assets, uint256 shares, bool isDepositReserves) internal virtual {
         _mint(to, shares); // mint GS LP tokens to receiver (`to`)
 
         // update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
@@ -179,8 +182,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         s.LP_INVARIANT = lpInvariant;
 
         emit Deposit(caller, to, assets, shares);
-        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
+        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST,
+            lpInvariant, s.BORROWED_INVARIANT, isDepositReserves ? TX_TYPE.DEPOSIT_RESERVES : TX_TYPE.DEPOSIT_LIQUIDITY);
 
         afterDeposit(assets, shares);
     }
@@ -222,8 +225,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         s.LP_TOKEN_BALANCE = lpTokenBalance;
 
         emit Withdraw(caller, to, owner, assets, shares);
-        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, lpInvariant, s.BORROWED_INVARIANT);
+        emit PoolUpdated(lpTokenBalance, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex, s.LP_TOKEN_BORROWED_PLUS_INTEREST,
+            lpInvariant, s.BORROWED_INVARIANT, askForReserves ? TX_TYPE.WITHDRAW_RESERVES : TX_TYPE.WITHDRAW_LIQUIDITY);
     }
 
     /// @dev Check if `spender` has permissions to spend `amount` of GS LP tokens belonging to `owner`

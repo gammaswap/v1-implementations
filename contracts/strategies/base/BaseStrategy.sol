@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/interfaces/IGammaPoolFactory.sol";
 import "@gammaswap/v1-core/contracts/storage/AppStorage.sol";
-import "../../libraries/GammaSwapLibrary.sol";
+import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
 import "../../libraries/Math.sol";
 import "../../interfaces/rates/AbstractRateModel.sol";
 

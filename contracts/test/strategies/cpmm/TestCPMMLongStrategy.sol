@@ -81,8 +81,8 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256[] memory) {
-        return new uint256[](2);
+    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+        return (0, new uint256[](2));
     }
 
     function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {

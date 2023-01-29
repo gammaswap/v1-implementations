@@ -33,7 +33,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
         // do not check for loan undercollateralization because adding collateral always improves pool debt health
 
-        emit LoanUpdated(tokenId, tokensHeld, _loan.liquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, _loan.liquidity, _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.INCREASE_COLLATERAL);
 
         return tokensHeld;
     }
@@ -56,16 +56,16 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
         checkMargin(collateral, loanLiquidity);
 
-        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.DECREASE_COLLATERAL);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.DECREASE_COLLATERAL);
 
         return tokensHeld;
     }
 
     /// @dev See {ILongStrategy-_borrowLiquidity}.
-    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256[] memory amounts) {
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual override lock returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
         // revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= s.LP_TOKEN_BALANCE) {
             revert ExcessiveBorrowing();
@@ -84,16 +84,16 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         uint128[] memory tokensHeld = updateCollateral(_loan);
 
         // add liquidity debt to total pool debt and start tracking loan
-        loanLiquidity = openLoan(_loan, lpTokens);
+        (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
 
         // check that loan is not undercollateralized
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
         checkMargin(collateral, loanLiquidity);
 
-        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.BORROW_LIQUIDITY);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.BORROW_LIQUIDITY);
     }
 
     /// @dev See {ILongStrategy-_repayLiquidity}.
@@ -117,14 +117,14 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         uint128[] memory tokensHeld = updateCollateral(_loan);
 
         // subtract loan liquidity repaid from total liquidity debt in pool and loan
-        loanLiquidity = payLoan(_loan, liquidityPaid, loanLiquidity);
+        (liquidityPaid, loanLiquidity) = payLoan(_loan, liquidityPaid, loanLiquidity);
 
         // do not check for loan undercollateralization because repaying debt always improves pool debt health
 
-        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.REPAY_LIQUIDITY);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.REPAY_LIQUIDITY);
     }
 
     /// @dev See {ILongStrategy-_rebalanceCollateral}.
@@ -148,9 +148,9 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
         checkMargin(collateral, loanLiquidity);
 
-        emit LoanUpdated(tokenId, tokensHeld, loanLiquidity, _loan.lpTokens, _loan.rateIndex);
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.REBALANCE_COLLATERAL);
 
         emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT);
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.REBALANCE_COLLATERAL);
     }
 }
