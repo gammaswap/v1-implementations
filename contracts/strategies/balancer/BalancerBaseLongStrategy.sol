@@ -188,6 +188,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @param weightIn The normalised weight of the token entering the pool on the swap.
      */
     function getAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
+        // Revert if the sum of normalised weights is not equal to 1
+        // Error code is BAL#308
+        require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
         return WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
     }
 
@@ -200,6 +203,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @param weightIn The normalised weight of the token entering the pool on the swap.
      */
     function getAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
+        // Revert if the sum of normalised weights is not equal to 1
+        // Error code is BAL#308
+        require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
         return WeightedMath._calcOutGivenIn(reserveIn, weightIn, reserveOut, weightOut, amountIn);
     }
 }
