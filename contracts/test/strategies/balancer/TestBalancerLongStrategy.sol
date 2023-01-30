@@ -3,6 +3,8 @@ pragma solidity 0.8.4;
 
 import "../../../strategies/balancer/BalancerLongStrategy.sol";
 
+import "hardhat/console.sol";
+
 contract TestBalancerLongStrategy is BalancerLongStrategy {
 
     using LibStorage for LibStorage.Storage;
@@ -90,11 +92,6 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     // Calculating how much output required for a given input amount
     function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) external virtual view returns (uint256) {
         return getAmountOut(amountIn, reserveOut, weightOut, reserveIn, weightIn);
-    }
-
-    function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(ActualAmtOutArguments(IERC20(token), to, amount, balance, collateral));
-        emit ActualOutAmount(actualOutAmount);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {

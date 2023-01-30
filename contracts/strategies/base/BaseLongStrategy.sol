@@ -43,8 +43,13 @@ abstract contract BaseLongStrategy is BaseStrategy {
     }
 
     function repayTokens(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual returns(uint256) {
-        beforeRepay(_loan, amounts); // in balancer we do nothing here, in uni we send tokens here, definitely not going over since we check here that we have the collateral to send.
-        return depositToCFMM(s.cfmm, amounts, address(this));//in balancer pulls tokens here and mints, in Uni it just mints)
+        // In Balancer, beforeRepay is empty
+        // In Uniswap V2, beforeRepay sends tokens to the CFMM
+        beforeRepay(_loan, amounts);
+
+        // In Balancer, depositToCFMM is sends tokens to the Vault and mints Balancer LP tokens
+        // In Uniswap V2, depositToCFMM calls mint on the Uniswap V2 pair
+        return depositToCFMM(s.cfmm, amounts, address(this));
     }
 
     function updateLoan(LibStorage.Loan storage _loan) internal virtual returns(uint256) {

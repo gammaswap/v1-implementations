@@ -24,10 +24,16 @@ describe("BalancerShortStrategy", function () {
   let pool: any;
   let poolId: any;
 
+  let weightedMathFactory: any;
+  let weightedMath: any;
+
   let TOKENS: any;
   let WEIGHTS: any;
 
   beforeEach(async function () {
+    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
+    weightedMath = await weightedMathFactory.deploy();
+
     TestERC20 = await ethers.getContractFactory("TestERC20");
     [owner] = await ethers.getSigners();
 
@@ -51,7 +57,7 @@ describe("BalancerShortStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerShortStrategy");
+    TestStrategy = await ethers.getContractFactory("TestBalancerShortStrategy", {libraries: {WeightedMath: weightedMath.address}});
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -303,26 +309,6 @@ describe("BalancerShortStrategy", function () {
       expect(result.payee).to.equal(strategy.address);
     });
 
-    // TODO: I don't believe that these tests can actually occur with Balancer
-
-    // Check if Balancer expects a revert and test for it on initialisePool()
-    
-    // it("Error Calc Deposit Amounts, 0 reserve tokenA", async function () {
-    //   // await (await tokenB.transfer(cfmm, 1)).wait();
-    //   // await (await cfmm.sync()).wait();
-    //   await expect(
-    //     strategy.testCalcDeposits([1, 1], [0, 0])
-    //   ).to.be.revertedWith("ZeroReserves");
-    // });
-
-    // it("Error Calc Deposit Amounts, 0 reserve tokenB", async function () {
-    //   // await (await tokenA.transfer(cfmm, 1)).wait();
-    //   // await (await cfmm.sync()).wait();
-    //   await expect(
-    //     strategy.testCalcDeposits([1, 1], [0, 0])
-    //   ).to.be.revertedWith("ZeroReserves");
-    // });
-
     it("Error Calc Deposit Amounts, < minAmt", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const amtA = ONE.mul(20);
@@ -336,9 +322,9 @@ describe("BalancerShortStrategy", function () {
       // TODO: Test that this is reverted with the correct error message
       // What is this testing for?
 
-      // await expect(
-      //   strategy.testCalcDeposits([amtA, amtB], [amtA.mul(2), 0])
-      // ).to.be.revertedWith("NotOptimalDeposit");
+      await expect(
+        strategy.testCalcDeposits([amtA, amtB], [amtA.mul(2), 0])
+      ).to.be.revertedWith("NotOptimalDeposit");
     });
 
     it("Empty reserves", async function () {

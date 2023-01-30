@@ -115,17 +115,8 @@ describe("BalancerBaseStrategy", function () {
     );
 
     const receipt = await poolReturnData.wait();
-
-    // console.log('RECEIPT:', receipt);
-
     const events = receipt.events.filter((e) => e.event === 'PoolCreated');
-    
-    // console.log('EVENTS:', events);
-
     const poolAddress = events[0].args.pool;
-
-    console.log('POOL ADDRESS: ', poolAddress);
-
     return poolAddress
   }
 

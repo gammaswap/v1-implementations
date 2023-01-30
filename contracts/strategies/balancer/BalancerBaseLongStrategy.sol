@@ -14,13 +14,15 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
     uint16 immutable public origFee;
     uint16 immutable public LTV_THRESHOLD;
-    uint16 immutable public tradingFee;
+    uint16 immutable public tradingFee1;
+    uint16 immutable public tradingFee2;
 
     constructor(uint16 _ltvThreshold, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         BalancerBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
         LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
-        tradingFee = _tradingFee1;
+        tradingFee1 = _tradingFee1;
+        tradingFee2 = _tradingFee2;
     }
 
     function ltvThreshold() internal virtual override view returns(uint16) {
@@ -32,18 +34,16 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
-        uint256[] memory weights = getWeights(s.cfmm);
-
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
 
-        // TODO: Check whether this works as expected...
-        amounts[0] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[0]) * s.CFMM_RESERVES[0];
-        amounts[1] = FixedPoint.powDown(liquidity / lastCFMMInvariant, 1e18 / weights[1]) * s.CFMM_RESERVES[1];
+        // This has been unmodified from the Uniswap implementation
+        amounts[0] = (liquidity * s.CFMM_RESERVES[0] / lastCFMMInvariant);
+        amounts[1] = (liquidity * s.CFMM_RESERVES[1] / lastCFMMInvariant);
     }
 
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
-        sendTokens(_loan, s.cfmm, amounts);
+        // See the corresponding function in BaseLongStrategy.sol for notes on Balancer
     }
 
     function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
@@ -145,7 +145,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             uint256 amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
             uint256 reserveIn = delta0 > 0 ? reserve0 : reserve1;
             uint256 reserveOut = delta0 > 0 ? reserve1 : reserve0;
-            uint256 tokenIndex = delta0 > 0 ? 1 : 0;
+            // uint256 tokenIndex = delta0 > 0 ? 1 : 0;
 
             uint256 amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
             // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountOut, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
@@ -166,7 +166,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             uint256 amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
             uint256 reserveIn = delta0 < 0 ? reserve0 : reserve1;
             uint256 reserveOut = delta0 < 0 ? reserve1 : reserve0;
-            uint256 tokenIndex = delta0 < 0 ? 0 : 1;
+            // uint256 tokenIndex = delta0 < 0 ? 0 : 1;
 
             // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountIn, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
             uint256 amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
@@ -174,23 +174,10 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             // Assigning values to the return variables
             inAmt0 = delta0 < 0 ? 0 : amountOut;
             inAmt1 = delta0 < 0 ? amountOut : 0;
-            outAmt0 = delta0 < 0 ? actualAmountOut : 0;
-            outAmt1 = delta0 < 0 ? 0 : actualAmountOut;
+            outAmt0 = delta0 < 0 ? amountIn : 0;
+            outAmt1 = delta0 < 0 ? 0 : amountIn;
         }
     }
-
-    // LOAN UPDATE OCCURS IN THE BASE CODE
-
-    // // TODO: Add a function description for this function.
-    // // TODO: If I change the calldata for this function, will I break it elsewhere? Looks like no.
-    // function calcActualOutAmt(ActualAmtOutArguments memory _actualAmtOutArguments) internal returns(uint256) {
-    //     uint256 balanceBefore = GammaSwapLibrary.balanceOf(_actualAmtOutArguments.token, _actualAmtOutArguments.to);
-
-    //     // TODO: We don't need to use this function at all
-
-    //     // sendToken(_actualAmtOutArguments.token, _actualAmtOutArguments.to, _actualAmtOutArguments.amount, _actualAmtOutArguments.balance, _actualAmtOutArguments.collateral);
-    //     return GammaSwapLibrary.balanceOf(_actualAmtOutArguments.token, _actualAmtOutArguments.to) - balanceBefore;
-    // }
 
     /**
      * @dev Calculates the amountIn amount required for an exact amountOut value according to the Balancer invariant formula.
