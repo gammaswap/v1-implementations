@@ -8,6 +8,8 @@ import "../../libraries/Math.sol";
 import "../../libraries/weighted/FixedPoint.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 
+import "hardhat/console.sol";
+
 abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStrategy {
     error BadDelta();
     error ZeroReserves();
@@ -52,7 +54,15 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 amountIn;
         uint256 amountOut;
 
+        console.log("swapTokens: outAmts[0] = %s", outAmts[0]);
+        console.log("swapTokens: outAmts[1] = %s", outAmts[1]);
+        console.log("swapTokens: inAmts[0] = %s", inAmts[0]);
+        console.log("swapTokens: inAmts[1] = %s", inAmts[1]);
+
         address[] memory tokens = getTokens(s.cfmm);
+
+        console.log("swapTokens: tokens[0] = %s", tokens[0]);
+        console.log("swapTokens: tokens[1] = %s", tokens[1]);
 
         // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
         // outAmts is the quantity of tokens going OUT OF the GammaPool
@@ -72,13 +82,22 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             revert("The parameter outAmts is not defined correctly.");
         }
 
+        console.log("swapTokens: assetIn = %s", assetIn);
+        console.log("swapTokens: assetOut = %s", assetOut);
+        console.log("swapTokens: amountIn = %s", amountIn);
+        console.log("swapTokens: amountOut = %s", amountOut);
+
+        uint128[] memory reserves = getPoolReserves(s.cfmm);
+        console.log("swapTokens: reserves[0] = %s", reserves[0]);
+        console.log("swapTokens: reserves[1] = %s", reserves[1]);
+
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
             poolId: getPoolId(s.cfmm),
             kind: uint256(IVault.SwapKind.GIVEN_IN),
             assetIn: assetIn,
             assetOut: assetOut,
             amount: amountIn,
-            userData: abi.encode(amountOut)
+            userData: bytes("")
         });
 
         IVault.FundManagement memory fundManagement = IVault.FundManagement({
@@ -88,7 +107,13 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             toInternalBalance: false
         });
         
-        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, amountOut, block.timestamp);
+        console.log("swapTokens: calling swap");
+
+        // TODO: Is this caused by swap fees?
+
+        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
+
+        console.log("swapTokens: swap called");
     }
 
     // Determines the amounts of tokens in and out expected

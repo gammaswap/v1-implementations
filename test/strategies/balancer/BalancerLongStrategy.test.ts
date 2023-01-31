@@ -989,12 +989,14 @@ describe("BalancerLongStrategy", function () {
 
     describe("Swap Tokens", function () {
       it.only("Swap Tokens for Exact Tokens", async function () {
+        console.log('Creating a loan...')
         const res = await (await strategy.createLoan()).wait();
         const tokenId = res.events[0].args.tokenId;
 
         const ONE = BigNumber.from(10).pow(18);
 
-        const reserves = await setUpStrategyAndBalancerPool(tokenId, false);
+        console.log('Setting up the Balancer Pool...')
+        const reserves = await setUpStrategyAndBalancerPool(tokenId);
         const reserves0 = reserves.reserves0;
         const reserves1 = reserves.reserves1;
 
@@ -1003,12 +1005,15 @@ describe("BalancerLongStrategy", function () {
         const tokenABalance0 = await tokenA.balanceOf(strategy.address);
         const tokenBBalance0 = await tokenB.balanceOf(strategy.address);
 
+        console.log('Calculating amountIn required...')
         const expAmtOut0 = await strategy.testGetAmountIn(delta, reserves1, WEIGHTS[1], reserves0, WEIGHTS[0]);
 
+        console.log('Testing token swap functionality...')
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [delta, 0])
         ).wait();
 
+        console.log('Token swap tested successfully!')
         const evt0 = res0.events[res0.events.length - 1];
         expect(evt0.args.outAmts[0]).to.equal(0);
         expect(evt0.args.outAmts[1]).to.equal(expAmtOut0);
@@ -1040,7 +1045,7 @@ describe("BalancerLongStrategy", function () {
         const res1 = await (
           await strategy.testSwapTokens(tokenId, [0, delta])
         ).wait();
-        
+
         const evt1 = res1.events[res1.events.length - 1];
         expect(evt1.args.outAmts[0]).to.equal(expAmtOut1);
         expect(evt1.args.outAmts[1]).to.equal(0);
