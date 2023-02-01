@@ -141,7 +141,7 @@ interface IVault {
 
     struct SingleSwap {
         bytes32 poolId;
-        uint256 kind;
+        uint8 kind;
         address assetIn;
         address assetOut;
         uint256 amount;

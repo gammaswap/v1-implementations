@@ -93,11 +93,11 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
             poolId: getPoolId(s.cfmm),
-            kind: uint256(IVault.SwapKind.GIVEN_IN),
+            kind: uint8(IVault.SwapKind.GIVEN_IN),
             assetIn: assetIn,
             assetOut: assetOut,
             amount: amountIn,
-            userData: bytes("")
+            userData: bytes("0x")
         });
 
         IVault.FundManagement memory fundManagement = IVault.FundManagement({
@@ -108,8 +108,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         });
         
         console.log("swapTokens: calling swap");
-
-        // TODO: Is this caused by swap fees?
 
         IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
 
@@ -150,7 +148,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
      */
     function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
-        internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
+        internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
             revert BadDelta();
         }
@@ -216,7 +214,11 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // Revert if the sum of normalised weights is not equal to 1
         // Error code is BAL#308
         require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
-        return WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
+
+        uint256 amountIn = WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
+        uint256 feeAdjustedAmountIn = (amountIn * tradingFee2) / tradingFee1;
+
+        return feeAdjustedAmountIn;
     }
 
     /**
@@ -231,6 +233,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // Revert if the sum of normalised weights is not equal to 1
         // Error code is BAL#308
         require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
-        return WeightedMath._calcOutGivenIn(reserveIn, weightIn, reserveOut, weightOut, amountIn);
+
+        uint256 feeAdjustedAmountIn = (amountIn * tradingFee1) / tradingFee2;
+
+        return WeightedMath._calcOutGivenIn(reserveIn, weightIn, reserveOut, weightOut, feeAdjustedAmountIn);
     }
 }

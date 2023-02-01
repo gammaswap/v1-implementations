@@ -3,6 +3,8 @@ pragma solidity 0.8.4;
 
 import "../../../strategies/balancer/BalancerLongStrategy.sol";
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "hardhat/console.sol";
 
 contract TestBalancerLongStrategy is BalancerLongStrategy {
@@ -18,8 +20,11 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         BalancerLongStrategy(800, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
-        s.initialize(msg.sender, _cfmm, _tokens, _decimals);
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        IERC20(tokens[0]).approve(getVault(cfmm), type(uint256).max);
+        IERC20(tokens[1]).approve(getVault(cfmm), type(uint256).max);
+
+        s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
     
