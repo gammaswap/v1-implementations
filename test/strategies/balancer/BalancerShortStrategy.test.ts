@@ -116,15 +116,9 @@ describe("BalancerShortStrategy", function () {
 
     const receipt = await poolReturnData.wait();
 
-    // console.log('RECEIPT:', receipt);
-
     const events = receipt.events.filter((e) => e.event === 'PoolCreated');
     
-    // console.log('EVENTS:', events);
-
     const poolAddress = events[0].args.pool;
-
-    console.log('POOL ADDRESS: ', poolAddress);
 
     return poolAddress
   }
@@ -225,36 +219,25 @@ describe("BalancerShortStrategy", function () {
       const amtA = ONE.mul(20);
       const amtB = ONE.mul(500);
 
-      console.log("Checking that the reserves are 0 at the start");
       const res0 = await strategy.testGetReserves(cfmm);
       expect(res0.length).to.equal(2);
       expect(res0[0]).to.equal(0);
       expect(res0[1]).to.equal(0);
-      console.log("Reserves are 0 at the start");
 
-      console.log("Initialising the pool with 20 A and 500 B");
       await initialisePool([amtA, amtB]);
 
-      console.log("Checking that the reserves are 20 A and 500 B");
       const res1 = await strategy.testGetReserves(cfmm);
-      console.log(res1);
       expect(res1.length).to.equal(2);
       expect(res1[0]).to.equal(amtA);
       expect(res1[1]).to.equal(amtB);
-      console.log("Reserves are 20 A and 500 B");
-
-      console.log("Depositing 20 A and 500 B into the pool");
 
       await depositIntoPool([amtA, amtB]);
 
-      console.log("Checking that the reserves are 40 A and 1000 B")
       const res2 = await strategy.testGetReserves(cfmm);
       expect(res2.length).to.equal(2);
       expect(res2[0]).to.equal(amtA.mul(2));
       expect(res2[1]).to.equal(amtB.mul(2));
-      console.log("Reserves are 40 A and 1000 B");
 
-      console.log('Calling withdrawFromCFMM():');
       const withdrawAmt = ONE.mul(50);
 
       const res = await (
@@ -266,9 +249,6 @@ describe("BalancerShortStrategy", function () {
       ).wait();
 
       const res3 = await strategy.testGetReserves(cfmm);
-
-      console.log("Post-withdrawal reserves:")
-      console.log(res3);
       
       // const cfmmTokens = ethers.Contract(cfmm, ).attach(cfmm);
       // console.log(await cfmmTokens.balanceOf(strategy.address));
@@ -312,18 +292,15 @@ describe("BalancerShortStrategy", function () {
     it("Error Calc Deposit Amounts, < minAmt", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const amtA = ONE.mul(20);
-      const amtB = ONE.mul(20);
-      await initialisePool([amtA, amtB]);
+      const amtB = ONE.mul(30);
+      await initialisePool([amtA, amtB.mul(2)]);
 
       await expect(
-        strategy.testCalcDeposits([amtA, amtB], [0, amtB.mul(2)])
+        strategy.testCalcDeposits([amtA.div(2), amtB], [0, amtB.mul(2)])
       ).to.be.revertedWith("NotOptimalDeposit");
 
-      // TODO: Test that this is reverted with the correct error message
-      // What is this testing for?
-
       await expect(
-        strategy.testCalcDeposits([amtA, amtB], [amtA.mul(2), 0])
+        strategy.testCalcDeposits([amtA, amtB.div(2)], [amtA.mul(2), 0])
       ).to.be.revertedWith("NotOptimalDeposit");
     });
 

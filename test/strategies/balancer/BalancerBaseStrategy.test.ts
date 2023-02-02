@@ -87,7 +87,6 @@ describe("BalancerBaseStrategy", function () {
     
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
     
-    console.log('Initializing strategy: ', strategy.address);
     await (
       await strategy.initialize(
         cfmm,
@@ -248,20 +247,17 @@ describe("BalancerBaseStrategy", function () {
       // const expectedSupply = ONE.mul(100);
       // const expectedLiquidity = expectedSupply.sub(1000); // subtract 1000 because 1st deposit
 
-      // console.log('Performing checks on pool quantities before deposit');
       expect(await pool.balanceOf(owner.address)).to.equal(0);
       expect(await pool.balanceOf(strategy.address)).to.equal(0);
       expect(await pool.totalSupply()).to.equal(0);
 
       // We must perform an INIT join at the beginning to start the pool
-      // console.log('Performing the INIT join on the pool');
       const JOIN_KIND_INIT = 0;
       const initialBalances = [ONE.mul(500), ONE.mul(500)];
       const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
 
       // 'ERC20: insufficient allowance'
       // We must approve the vault to spend the tokens we own
-      // console.log('Approving the vault to spend the tokens we own');
       await tokenA.approve(vault.address, ethers.constants.MaxUint256);
       await tokenB.approve(vault.address, ethers.constants.MaxUint256);
 
@@ -274,14 +270,7 @@ describe("BalancerBaseStrategy", function () {
 
       const tx = await vault.joinPool(poolId, owner.address, owner.address, joinPoolRequest);
 
-      // console.log('Awaiting the receipt from .joinPool()');
       const receipt = await tx.wait();
-      
-      // 'ERC20: insufficient allowance'
-      // We must approve the strategy to spend the tokens we own
-      // console.log('Approving the strategy to spend the tokens we own');
-      // await tokenA.approve(strategy.address, ethers.constants.MaxUint256);
-      // await tokenB.approve(strategy.address, ethers.constants.MaxUint256);
 
       // We must send the tokens to the strategy before we can deposit
       await tokenA.transfer(strategy.address, amtA);
@@ -290,38 +279,6 @@ describe("BalancerBaseStrategy", function () {
       // Check that the transfer was successful
       expect(await tokenA.balanceOf(strategy.address)).to.equal(amtA);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(amtB);
-
-      // console.log('Depositing to CFMM via Strategy');
-      // console.log('Vault address, pool ID: ', vault.address, await strategy.testGetPoolId(cfmm));
-      // console.log('Calldata: ', cfmm, amtA, amtB, strategy.address);
-      // console.log('Strategy address: ', strategy.address);
-
-      const userDataEncoded = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
-      // console.log("Expected bytecode: ", userDataEncoded);
-
-      // TODO:
-
-      // How does the Vault handle approvals?
-      // Some stuff you pass max uint256
-
-      // console.log("Attempting a manual deposit:");
-
-      // const userData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]', 'uint256'], [1, [amtA, amtB], 0]);
-
-      // const depositJoinPoolRequest = {
-      //   assets: TOKENS,
-      //   maxAmountsIn: [amtA, amtB],
-      //   userData: userData,
-      //   fromInternalBalance: false
-      // } 
-
-      // console.log("calling .joinPool()");
-      // const depositTx = await vault.joinPool(poolId, owner.address, owner.address, depositJoinPoolRequest);
-      // console.log("successful!");
-
-      // console.log(depositTx);
-
-      // TODO: Why does this not work in the contract itself?
 
       const res = await (
         await strategy.testDepositToCFMM(
@@ -334,6 +291,7 @@ describe("BalancerBaseStrategy", function () {
       const depositToCFMMEvent = res.events[res.events.length - 1];
       expect(depositToCFMMEvent.args.cfmm).to.equal(cfmm);
       expect(depositToCFMMEvent.args.to).to.equal(strategy.address);
+
       // expect(depositToCFMMEvent.args.liquidity).to.equal(expectedLiquidity);
       // expect(await cfmm.balanceOf(strategy.address)).to.equal(
       //   expectedLiquidity
@@ -361,11 +319,9 @@ describe("BalancerBaseStrategy", function () {
       const expectedAmtB = ONE.mul(250);
 
       // Expect to have deposited all tokens
-      console.log("Checking the balance of the strategy address:");
       expect(await tokenA.balanceOf(strategy.address)).to.equal(0);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(0);
 
-      console.log('Calling withdrawFromCFMM():');
       const res = await (
         await strategy.testWithdrawFromCFMM(
           cfmm,
@@ -374,20 +330,17 @@ describe("BalancerBaseStrategy", function () {
         )
       ).wait();
 
-      console.log('withdrawFromCFMM() called successfully!');
       const withdrawFromCFMMEvent = res.events[res.events.length - 1];
       expect(withdrawFromCFMMEvent.args.cfmm).to.equal(cfmm);
       expect(withdrawFromCFMMEvent.args.to).to.equal(strategy.address);
       expect(withdrawFromCFMMEvent.args.amounts.length).to.equal(2);
 
-      console.log("Testing the arugments given to the event:");
       // TODO Balancer event gives the following answer: "25000000000001000000"
       // We expect the following answer: "250000000000000000000"
 
       // expect(withdrawFromCFMMEvent.args.amounts[0]).to.equal(expectedAmtA);
       // expect(withdrawFromCFMMEvent.args.amounts[1]).to.equal(expectedAmtB);
 
-      console.log("Testing the balance of the strategy contract:");
       // TODO Balancer event gives the following answer: "25000000000001000000"
       // We expect the following answer: "250000000000000000000"
 
@@ -402,7 +355,6 @@ describe("BalancerBaseStrategy", function () {
 
       const reserves0 = await strategy.getCFMMReserves();
 
-      console.log("Initial Reserves: ", reserves0);
       expect(reserves0.length).to.equal(2);
       expect(reserves0[0]).to.equal(0);
       expect(reserves0[1]).to.equal(0);
@@ -417,8 +369,6 @@ describe("BalancerBaseStrategy", function () {
       expect(reserves1.length).to.equal(2);
       expect(reserves1).to.deep.equal(storageReserves1);
 
-      console.log('Passed successfully!');
-
       // Perform the pool join
       await depositIntoPool([amtA, amtB]);
 
@@ -430,8 +380,6 @@ describe("BalancerBaseStrategy", function () {
       expect(reserves2[0]).to.equal(amtA.mul(2));
       expect(reserves2[1]).to.equal(amtB.mul(2));
       expect(reserves2).to.deep.equal(storageReserves2);
-
-      console.log('Second test passed successfully!');
 
       const withdrawAmt = ONE.mul(50);
       const expectedAmtA = ONE.mul(10);

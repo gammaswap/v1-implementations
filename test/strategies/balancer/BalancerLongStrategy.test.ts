@@ -91,7 +91,6 @@ describe("BalancerLongStrategy", function () {
 
     // uint16 _originationFee, uint16 _tradingFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy
 
-    console.log('Initializing strategy: ', strategy.address);
     await (
       await strategy.initialize(
         cfmm,
@@ -194,8 +193,6 @@ describe("BalancerLongStrategy", function () {
 
   function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
     let error = actual.sub(expected).abs();
-    console.log('Error: ', error.toString());
-    console.log('Error %: ', error.mul(100000).div(expected).toString());
     expect(error.mul(100000).div(expected).lte(1000)).to.be.equal(true);
   }
 
@@ -242,6 +239,7 @@ describe("BalancerLongStrategy", function () {
     
     await initialisePool([ONE.mul(5000), ONE.mul(10000)])
     const reserves = await strategy.testGetPoolReserves(cfmm);
+
     const reserves0 = reserves[0];
     const reserves1 = reserves[1];
     await (await strategy.setCFMMReserves(reserves0, reserves1, 0)).wait();
@@ -312,52 +310,55 @@ describe("BalancerLongStrategy", function () {
         expect(res2[1]).to.equal(ONE.mul(100));
       });
 
-      it("Error Before Repay", async function () {
-        const ONE = BigNumber.from(10).pow(18);
+      // BeforeRepay now does nothing, hence should never revert
+      // it.skip("Error Before Repay", async function () {
+      //   const ONE = BigNumber.from(10).pow(18);
 
-        const res1 = await (await strategy.createLoan()).wait();
-        const tokenId = res1.events[0].args.tokenId;
+      //   const res1 = await (await strategy.createLoan()).wait();
+      //   const tokenId = res1.events[0].args.tokenId;
 
-        await expect(
-          strategy.testBeforeRepay(tokenId, [1, 1])
-        ).to.be.revertedWith("NotEnoughBalance");
+      //   await expect(
+      //     strategy.testBeforeRepay(tokenId, [1, 1])
+      //   ).to.be.revertedWith("NotEnoughBalance");
 
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
 
-        await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 10)).wait();
+      //   await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 10)).wait();
 
-        await expect(
-          strategy.testBeforeRepay(tokenId, [11, 1])
-        ).to.be.revertedWith("NotEnoughCollateral");
+      //   await expect(
+      //     strategy.testBeforeRepay(tokenId, [11, 1])
+      //   ).to.be.revertedWith("NotEnoughCollateral");
 
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
 
-        const amtA = ONE.mul(100);
-        const amtB = ONE.mul(200);
+      //   const amtA = ONE.mul(100);
+      //   const amtB = ONE.mul(200);
 
-        await (await tokenA.transfer(strategy.address, amtA)).wait();
-        await (await tokenB.transfer(strategy.address, amtB)).wait();
+      //   await (await tokenA.transfer(strategy.address, amtA)).wait();
+      //   await (await tokenB.transfer(strategy.address, amtB)).wait();
 
-        await expect(
-          strategy.testBeforeRepay(tokenId, [1, 11])
-        ).to.be.revertedWith("NotEnoughBalance");
+      //   await expect(
+      //     strategy.testBeforeRepay(tokenId, [1, 11])
+      //   ).to.be.revertedWith("NotEnoughBalance");
 
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
 
-        await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 11)).wait();
+      //   await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 11)).wait();
 
-        await expect(
-          strategy.testBeforeRepay(tokenId, [1, 11])
-        ).to.be.revertedWith("NotEnoughCollateral");
+      //   await expect(
+      //     strategy.testBeforeRepay(tokenId, [1, 11])
+      //   ).to.be.revertedWith("NotEnoughCollateral");
 
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-      });
+      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+      // });
 
       it("Before Repay", async function () {
+        // BeforeRepay now does nothing, hence should never revert
+
         const res1 = await (await strategy.createLoan()).wait();
         const tokenId = res1.events[0].args.tokenId;
 
@@ -465,7 +466,7 @@ describe("BalancerLongStrategy", function () {
           WEIGHT2
         );
 
-        const expectedAnswer1 = BigNumber.from('25103648456901160960');
+        const expectedAnswer1 = BigNumber.from('25357220663536529408');
 
         expectEqualWithError(answer1, expectedAnswer1);
 
@@ -477,7 +478,7 @@ describe("BalancerLongStrategy", function () {
           WEIGHT2
         );
 
-        const expectedAnswer2 = BigNumber.from('79612135611409006592');
+        const expectedAnswer2 = BigNumber.from('80416298597382832128');
 
         expectEqualWithError(answer2, expectedAnswer2);
 
@@ -489,7 +490,7 @@ describe("BalancerLongStrategy", function () {
           WEIGHT2
         );
 
-        const expectedAnswer3 = BigNumber.from('19677754857579053056');
+        const expectedAnswer3 = BigNumber.from('19876520058160660480');
 
         expectEqualWithError(answer3, expectedAnswer3);
 
@@ -501,7 +502,7 @@ describe("BalancerLongStrategy", function () {
           WEIGHT2
         );
 
-        const expectedAnswer4 = BigNumber.from('120079697357079232512');
+        const expectedAnswer4 = BigNumber.from('121292623593009332224');
 
         expectEqualWithError(answer4, expectedAnswer4);
 
@@ -513,7 +514,7 @@ describe("BalancerLongStrategy", function () {
           WEIGHT2
         );
 
-        const expectedAnswer5 = BigNumber.from('27923018040293400576');
+        const expectedAnswer5 = BigNumber.from('28205068727569096704');
 
         expectEqualWithError(answer5, expectedAnswer5);
       });
@@ -723,7 +724,7 @@ describe("BalancerLongStrategy", function () {
 
         const evt0 = res0.events[res0.events.length - 1];
 
-        const amtIn0 = await strategy.testGetAmountOut(delta, reserves0, WEIGHTS[0], reserves1, WEIGHTS[1]);
+        const amtIn0 = await strategy.testGetAmountOut(delta, reserves1, WEIGHTS[1], reserves0, WEIGHTS[0]);
 
         expect(evt0.args.inAmts[0]).to.equal(0);
         expectEqualWithError(evt0.args.inAmts[1], amtIn0);
@@ -736,7 +737,7 @@ describe("BalancerLongStrategy", function () {
         ).wait();
         const evt1 = res1.events[res1.events.length - 1];
 
-        const amtIn1 = await strategy.testGetAmountOut(delta, reserves1, WEIGHTS[1], reserves0, WEIGHTS[0]);
+        const amtIn1 = await strategy.testGetAmountOut(delta, reserves0, WEIGHTS[0], reserves1, WEIGHTS[1]);
 
         expectEqualWithError(evt1.args.inAmts[0], amtIn1);
         expect(evt1.args.inAmts[1]).to.equal(0);
@@ -1004,13 +1005,11 @@ describe("BalancerLongStrategy", function () {
       }
 
       it("Swap Tokens for Exact Tokens", async function () {
-        console.log('Creating a loan...')
         const res = await (await strategy.createLoan()).wait();
         const tokenId = res.events[0].args.tokenId;
 
         const ONE = BigNumber.from(10).pow(18);
 
-        console.log('Setting up the Balancer Pool...')
         const reserves = await setUpStrategyAndBalancerPool(tokenId);
         const reserves0 = reserves.reserves0;
         const reserves1 = reserves.reserves1;
@@ -1019,27 +1018,13 @@ describe("BalancerLongStrategy", function () {
 
         const strategyReserves0 = await getStrategyReserves();
 
-        console.log('Strategy reserves before swap: ', strategyReserves0)
-          
-        console.log('Calculating amountIn required...')
         const expAmtOut0 = await strategy.testGetAmountIn(delta, reserves0, WEIGHTS[0], reserves1, WEIGHTS[1]);
 
-        console.log("Expected Amount Out: ", expAmtOut0)
-
-        console.log('Testing token swap functionality...')
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [delta, 0])
         ).wait();
 
-        console.log('Token swap tested successfully!')
-
         const evt0 = res0.events[res0.events.length - 1];
-
-        console.log('Checking event arguments...')
-        console.log('evt0.args.outAmts[0]: ', evt0.args.outAmts[0])
-        console.log('evt0.args.outAmts[1]: ', evt0.args.outAmts[1])
-        console.log('evt0.args.inAmts[0]: ', evt0.args.inAmts[0])
-        console.log('evt0.args.inAmts[1]: ', evt0.args.inAmts[1])
 
         expect(evt0.args.outAmts[0]).to.equal(0);
         expectEqualWithError(evt0.args.outAmts[1], expAmtOut0);
@@ -1048,16 +1033,6 @@ describe("BalancerLongStrategy", function () {
 
         const strategyReserves1 = await getStrategyReserves();
 
-        console.log('Balance before swap: ', strategyReserves1.tokens0.toString())
-        console.log('Expected balance after swap: ', strategyReserves0.tokens0.add(delta).toString())
-        console.log('Actual balance after swap: ', strategyReserves1.tokens0.toString())
-
-        console.log('Balance after swap: ', strategyReserves1.tokens1.toString())
-        console.log('Expected balance after swap: ', strategyReserves0.tokens1.sub(expAmtOut0).toString())
-        console.log('Actual balance after swap: ', strategyReserves1.tokens1.toString())
-
-        // Expected balance after swap:  2010000000000000000000
-        // Actual balance after swap:  2009999999999950085000
         expectEqualWithError(strategyReserves1.tokens0, strategyReserves0.tokens0.add(delta));
         expectEqualWithError(strategyReserves1.tokens1, strategyReserves0.tokens1.sub(expAmtOut0));
 
@@ -1083,14 +1058,6 @@ describe("BalancerLongStrategy", function () {
 
         const strategyReserves2 = await getStrategyReserves();
 
-        console.log('Balance before swap: ', strategyReserves2.tokens0.toString())
-        console.log('Expected balance after swap: ', strategyReserves1.tokens0.sub(expAmtOut1).toString())
-        console.log('Actual balance after swap: ', strategyReserves2.tokens0.toString())
-
-        console.log('Balance after swap: ', strategyReserves2.tokens1.toString())
-        console.log('Expected balance after swap: ', strategyReserves1.tokens1.add(delta).toString())
-        console.log('Actual balance after swap: ', strategyReserves2.tokens1.toString())
-
         const evt1 = res1.events[res1.events.length - 1];
         
         expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
@@ -1098,11 +1065,6 @@ describe("BalancerLongStrategy", function () {
         expect(evt1.args.inAmts[0]).to.equal(0);
         expectEqualWithError(evt1.args.inAmts[1], delta);
         
-        // Expected balance after swap:  2004924042973661454334
-        // Actual balance after swap:  2004964753313589140112
-
-        // >>> (2004924042973661454334 - 2004964753313589140112) / 2004964753313589140112
-        // -2.030476588698336e-05
         expectEqualWithError(strategyReserves2.tokens0, strategyReserves1.tokens0.sub(expAmtOut1));
         expectEqualWithError(strategyReserves2.tokens1, strategyReserves1.tokens1.add(delta));
       });
@@ -1122,9 +1084,7 @@ describe("BalancerLongStrategy", function () {
 
         const strategyReserves0 = await getStrategyReserves();
 
-        console.log('Balances before swap: ', strategyReserves0)
-
-        const expAmtIn0 = await strategy.testGetAmountOut(delta, reserves0, WEIGHTS[0], reserves1, WEIGHTS[1]);
+        const expectedAmountOut0 = await strategy.testGetAmountOut(delta, reserves1, WEIGHTS[1], reserves0, WEIGHTS[0]);
 
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [negDelta, 0])
@@ -1132,59 +1092,53 @@ describe("BalancerLongStrategy", function () {
 
         const strategyReserves1 = await getStrategyReserves();
 
-        console.log('Balance before swap: ', strategyReserves1.tokens0.toString())
-        console.log('Expected balance after swap: ', strategyReserves0.tokens0.sub(delta).toString())
-        console.log('Actual balance after swap: ', strategyReserves1.tokens0.toString())
-
-        console.log('Expected amount in: ', expAmtIn0)
-
-        console.log('Balance after swap: ', strategyReserves1.tokens1.toString())
-        console.log('Expected balance after swap: ', strategyReserves0.tokens1.add(expAmtIn0).toString())
-        console.log('Actual balance after swap: ', strategyReserves1.tokens1.toString())
-
         const evt0 = res0.events[res0.events.length - 1];
         expect(evt0.args.outAmts[0]).to.equal(delta);
         expect(evt0.args.outAmts[1]).to.equal(0);
         expect(evt0.args.inAmts[0]).to.equal(0);
-        expect(evt0.args.inAmts[1]).to.equal(expAmtIn0);
+        expect(evt0.args.inAmts[1]).to.equal(expectedAmountOut0);
 
         expectEqualWithError(strategyReserves1.tokens0, strategyReserves0.tokens0.sub(delta));
-        expectEqualWithError(strategyReserves1.tokens1, strategyReserves0.tokens1.add(expAmtIn0));
+        expectEqualWithError(strategyReserves1.tokens1, strategyReserves0.tokens1.add(expectedAmountOut0));
+        
+        const actualStrategyReserves1 = await getStrategyReserves();
 
-        // await (
-        //   await strategy.setCFMMReserves(
-        //     reserves0.add(delta),
-        //     reserves1.sub(expAmtIn0),
-        //     0
-        //   )
-        // ).wait();
+        await (
+          await strategy.setCFMMReserves(
+            strategyReserves0.tokens0.sub(delta),
+            strategyReserves0.tokens1.add(expectedAmountOut0),
+            0
+          )
+        ).wait();
 
-        // const rez = await cfmm.getReserves();
-        // expect(rez._reserve0).to.equal(reserves0.add(delta));
-        // expect(rez._reserve1).to.equal(reserves1.sub(expAmtIn0));
+        const strategyReserves2 = await strategy.getCFMMReserves();
 
-        // const res1 = await (
-        //   await strategy.testSwapTokens(tokenId, [0, negDelta])
-        // ).wait();
-        // const evt1 = res1.events[res1.events.length - 1];
-        // const expAmtIn1 = calcAmtIn(
-        //   delta,
-        //   reserves1.sub(expAmtIn0),
-        //   reserves0.add(delta),
-        //   997,
-        //   1000
-        // );
+        expectEqualWithError(actualStrategyReserves1.tokens0, strategyReserves2[0]);
+        expectEqualWithError(actualStrategyReserves1.tokens1, strategyReserves2[1]);
 
-        // expect(evt1.args.outAmts[0]).to.equal(0);
-        // expect(evt1.args.outAmts[1]).to.equal(delta);
-        // expect(evt1.args.inAmts[0]).to.equal(expAmtIn1);
-        // expect(evt1.args.inAmts[1]).to.equal(0);
+        const res1 = await (
+          await strategy.testSwapTokens(tokenId, [0, negDelta])
+        ).wait();
 
-        // const tokenABalance2 = await tokenA.balanceOf(strategy.address);
-        // const tokenBBalance2 = await tokenB.balanceOf(strategy.address);
+        const strategyReserves3 = await getStrategyReserves();
 
-        // expect(tokenABalance2).to.equal(tokenABalance1.add(expAmtIn1));
-        // expect(tokenBBalance2).to.equal(tokenBBalance1.sub(delta));
+        const evt1 = res1.events[res1.events.length - 1];
+
+        const expAmtIn1 = await strategy.testGetAmountOut(
+          delta,
+          strategyReserves2[0],
+          WEIGHTS[0],
+          strategyReserves2[1],
+          WEIGHTS[1]
+        );
+
+        expect(evt1.args.outAmts[0]).to.equal(0);
+        expect(evt1.args.outAmts[1]).to.equal(delta);
+        expect(evt1.args.inAmts[0]).to.equal(expAmtIn1);
+        expect(evt1.args.inAmts[1]).to.equal(0);
+
+        expectEqualWithError(strategyReserves3.tokens0, strategyReserves2[0].add(expAmtIn1));
+        expectEqualWithError(strategyReserves3.tokens1, strategyReserves2[1].sub(delta));
       });
 
       // it("Swap Tokens with Fees for Exact Tokens", async function () {

@@ -5,8 +5,6 @@ import "../../../strategies/balancer/BalancerBaseStrategy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "hardhat/console.sol";
-
 contract TestBalancerBaseStrategy is BalancerBaseStrategy {
 
     using LibStorage for LibStorage.Storage;

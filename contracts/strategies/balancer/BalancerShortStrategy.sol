@@ -35,17 +35,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
             revert ZeroDeposits();
         }
 
-        console.log("SC - Calling calcDepositAmounts with arguments", amountsDesired[0], amountsDesired[1]);
-
-        // TODO: Does this contract have access to s.cfmm?
         uint128[] memory reserves = getPoolReserves(s.cfmm);
-
-        console.log("SC - reserves", reserves[0], reserves[1]);
-
-        // Get normalised weights for price calculation
-        uint256[] memory weights = getWeights(s.cfmm);
-
-        console.log("SC - weights", weights[0], weights[1]);
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);
@@ -60,10 +50,8 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
 
         amounts = new uint256[](2);
 
-        console.log("Code went past the zero reserves check");
-
         // Calculates optimal amount as the amount of token1 which corresponds to an amountsDesired of token0
-        // Note: This calculation preserves price, which is almost the same as price in a UniV2 pool
+        // Note: This calculation preserves token ratios
 
         uint256 optimalAmount1 = (amountsDesired[0] * reserves[1]) / (reserves[0]);
         if (optimalAmount1 <= amountsDesired[1]) {

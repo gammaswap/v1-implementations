@@ -10,13 +10,10 @@ import "../../libraries/weighted/WeightedMath.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
-import "hardhat/console.sol";
-
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     uint256 immutable public BLOCKS_PER_YEAR;
 
     constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
-        console.log("Initializing BalancerBaseStrategy");
         BLOCKS_PER_YEAR = _blocksPerYear;
     }
 
@@ -64,7 +61,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         (_tokens, , ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
-        // TODO: Improve this handling of casting from IERC20 to address
         tokens[0] = address(_tokens[0]);
         tokens[1] = address(_tokens[1]);
 
@@ -87,18 +83,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // We need to encode userData for the joinPool call
         bytes memory userDataEncoded = abi.encode(1, amounts, 0);
 
-        console.log("User data encoded: ");
-        console.logBytes(userDataEncoded);
-
-        console.log("Calling depositToCFMM:", cfmm, amounts[0], amounts[1]);
-        console.log("Strategy address: ", address(this), to);
-        console.log("Strategy token balances: ", IERC20(getTokens(cfmm)[0]).balanceOf(address(this)), IERC20(getTokens(cfmm)[1]).balanceOf(address(this)));
-        console.log("Sender token balances: ", IERC20(getTokens(cfmm)[0]).balanceOf(msg.sender), IERC20(getTokens(cfmm)[1]).balanceOf(msg.sender));
-
         address vaultId = getVault(cfmm);
         bytes32 poolId = getPoolId(cfmm);
-
-        console.log("Vault address: ", vaultId);
 
         IVault(vaultId).joinPool(poolId, 
                 address(this), // The user is sending the tokens
@@ -134,11 +120,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // Log the initial reserves in the pool
         uint128[] memory initialReserves = getPoolReserves(cfmm);
         
-        console.log("Getting initial pool reserves:", initialReserves[0], initialReserves[1]);
-
         uint[] memory minAmountsOut = new uint[](2);
 
-        console.log("Calling .exitPool()");
         IVault(getVault(cfmm)).exitPool(getPoolId(cfmm), 
                 to, // The GammaPool is sending the Balancer LP tokens
                 payable(to), // The user is receiving the pool reserve tokens
@@ -147,8 +130,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         // Must return amounts as an array of withdrawn reserves
         uint128[] memory finalReserves = getPoolReserves(cfmm);
-        console.log("Getting final pool reserves:", finalReserves[0], finalReserves[1]);
-        console.log(initialReserves[0] - finalReserves[0], initialReserves[1] - finalReserves[1]);
 
         uint128 reserveDifference0 = initialReserves[0] - finalReserves[0];
         uint128 reserveDifference1 = initialReserves[1] - finalReserves[1];
@@ -156,7 +137,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = uint256(reserveDifference0);
         amounts[1] = uint256(reserveDifference1);
-        console.log("Change in reserves:", amounts[0], amounts[1]);
 
         return amounts;
     }
@@ -167,10 +147,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amounts The pool reserves to use in the calculation.
      */
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256 invariant) {
-        console.log("Calling calcInvariant:", cfmm, amounts[0], amounts[1]);
         uint256[] memory weights = getWeights(cfmm);
 
-        console.log("CFMM Info:", cfmm, weights[0], weights[1]);
         invariant = WeightedMath._calculateInvariant(weights, Math.convertToUint256Array(amounts));
     }
 }

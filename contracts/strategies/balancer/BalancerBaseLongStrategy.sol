@@ -54,15 +54,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 amountIn;
         uint256 amountOut;
 
-        console.log("swapTokens: outAmts[0] = %s", outAmts[0]);
-        console.log("swapTokens: outAmts[1] = %s", outAmts[1]);
-        console.log("swapTokens: inAmts[0] = %s", inAmts[0]);
-        console.log("swapTokens: inAmts[1] = %s", inAmts[1]);
-
         address[] memory tokens = getTokens(s.cfmm);
-
-        console.log("swapTokens: tokens[0] = %s", tokens[0]);
-        console.log("swapTokens: tokens[1] = %s", tokens[1]);
 
         // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
         // outAmts is the quantity of tokens going OUT OF the GammaPool
@@ -82,15 +74,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             revert("The parameter outAmts is not defined correctly.");
         }
 
-        console.log("swapTokens: assetIn = %s", assetIn);
-        console.log("swapTokens: assetOut = %s", assetOut);
-        console.log("swapTokens: amountIn = %s", amountIn);
-        console.log("swapTokens: amountOut = %s", amountOut);
-
-        uint128[] memory reserves = getPoolReserves(s.cfmm);
-        console.log("swapTokens: reserves[0] = %s", reserves[0]);
-        console.log("swapTokens: reserves[1] = %s", reserves[1]);
-
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
             poolId: getPoolId(s.cfmm),
             kind: uint8(IVault.SwapKind.GIVEN_IN),
@@ -106,12 +89,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             recipient: address(this), // address(this) is correct but GammaPool is not payable
             toInternalBalance: false
         });
-        
-        console.log("swapTokens: calling swap");
 
         IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
-
-        console.log("swapTokens: swap called");
     }
 
     // Determines the amounts of tokens in and out expected
@@ -124,14 +103,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // outAmts is the quantity of tokens going OUT OF the GammaPool
 
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
-    }
-
-    struct ActualAmtOutArguments {
-        IERC20 token;
-        address to;
-        uint256 amount;
-        uint256 balance;
-        uint256 collateral;
     }
 
     /**
@@ -168,16 +139,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             uint256 amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
             uint256 reserveIn = delta0 > 0 ? reserve0 : reserve1;
             uint256 reserveOut = delta0 > 0 ? reserve1 : reserve0;
-            // uint256 tokenIndex = delta0 > 0 ? 1 : 0;
 
             uint256 amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
-            // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountOut, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
-
-            // // If the actual amount out is less than the amount out, then we need to adjust the amount in
-            // if (actualAmountOut < amountOut) {
-            //     amountOut = actualAmountOut;
-            //     amountIn = getAmountOut(amountOut, reserveIn, weightIn, reserveOut, weightOut);
-            // }
 
             // Assigning values to the return variables
             inAmt0 = delta0 > 0 ? amountIn : 0;
@@ -187,12 +150,21 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         } else {
             // If the delta is negative, then we are selling a token to the Balancer pool
             uint256 amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
-            uint256 reserveIn = delta0 < 0 ? reserve0 : reserve1;
-            uint256 reserveOut = delta0 < 0 ? reserve1 : reserve0;
-            // uint256 tokenIndex = delta0 < 0 ? 0 : 1;
 
-            // uint256 actualAmountOut = calcActualOutAmt(ActualAmtOutArguments(IERC20(s.tokens[tokenIndex]), s.cfmm, amountIn, s.TOKEN_BALANCE[tokenIndex], _loan.tokensHeld[tokenIndex]));
+            // TODO: Check the orientation of these reserves, switching them fixed the issue
+            uint256 reserveIn = delta0 < 0 ? reserve1 : reserve0;
+            uint256 reserveOut = delta0 < 0 ? reserve0 : reserve1;
+
+            console.log('Calculating amountOut inside calcInAndOutAmounts:');
+            console.log('amountIn: %s', amountIn);
+            console.log('reserveIn: %s', reserveIn);
+            console.log('weightIn: %s', weightIn);
+            console.log('reserveOut: %s', reserveOut);
+            console.log('weightOut: %s', weightOut);
+
             uint256 amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
+
+            console.log('amountOut: %s', amountOut);
 
             // Assigning values to the return variables
             inAmt0 = delta0 < 0 ? 0 : amountOut;
