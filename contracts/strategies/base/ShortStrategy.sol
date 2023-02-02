@@ -23,6 +23,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     // ShortGamma
 
+    /// @dev Minimum number of shares issued on first deposit to avoid rounding issues
+    uint256 public constant MIN_SHARES = 1e3;
+
     /// @notice Calculate amounts to deposit in CFMM depending on the CFMM's formula
     /// @dev The user requests desired amounts to deposit and sets minimum amounts since actual amounts are unknown at time of request
     /// @param amountsDesired - desired amounts of reserve tokens to deposit in CFMM
@@ -62,23 +65,30 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     }
 
     /// @notice Deposit CFMM LP tokens without calling transferFrom
+    /// @dev There has to be unaccounted for CFMM LP tokens before calling this function
     /// @param to - address of receiver of GS LP tokens that will be minted
     /// @param isDepositReserves - true if depositing reserve tokens, false if depositing CFMM LP tokens
-    /// @dev There has to be unaccounted for CFMM LP tokens before calling this function
+    /// @return shares - amount of GS LP tokens minted
     function depositAssetsNoPull(address to, bool isDepositReserves) internal virtual returns(uint256 shares) {
-        // unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
+        // Unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
         uint256 assets = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
 
-        // update interest rate and state variables before conversion
+        // Update interest rate and state variables before conversion
         updateIndex();
 
-        // convert CFMM LP tokens (`assets`) to GS LP tokens (`shares`)
+        // Convert CFMM LP tokens (`assets`) to GS LP tokens (`shares`)
         shares = convertToShares(assets);
         if(shares == 0) { // revert if request is for 0 GS LP tokens
             revert ZeroShares();
         }
 
-        // track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
+        // To prevent rounding errors, lock min shares in first deposit
+        if(s.totalSupply == 0) {
+            shares = shares - MIN_SHARES;
+            assets = assets - MIN_SHARES;
+            depositAssets(msg.sender, address(0), MIN_SHARES, MIN_SHARES, isDepositReserves);
+        }
+        // Track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
         depositAssets(msg.sender, to, assets, shares, isDepositReserves);
     }
 
