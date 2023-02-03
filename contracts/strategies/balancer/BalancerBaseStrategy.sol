@@ -100,6 +100,20 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     /**
+     * @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
+     *      If not, approves the Vault contract to spend the required amount.
+     * @param token The address of the ERC20 token requiring approval.
+     * @param amount The amount required to approve.
+     */
+    function addVaultApproval(address token, uint256 amount) internal {
+        uint256 allowance = IERC20(token).allowance(address(this), getVault(s.cfmm));
+        if (allowance < amount) {
+            // Approve the maximum amount
+            IERC20(token).approve(getVault(s.cfmm), type(uint256).max);
+        }
+    }
+
+    /**
      * @dev Updates the storage variable CFMM_RESERVES for a given vault and Balancer pool.
      * @param cfmm The contract address of the Balancer weighted pool.
      */
@@ -123,12 +137,18 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         address vaultId = getVault(cfmm);
         bytes32 poolId = getPoolId(cfmm);
 
+        address[] memory tokens = getTokens(cfmm);
+
+        // Adding approval for the Vault to spend the tokens
+        addVaultApproval(tokens[0], amounts[0]);
+        addVaultApproval(tokens[1], amounts[1]);
+
         IVault(vaultId).joinPool(poolId, 
                 address(this), // The GammaPool is sending the reserve tokens
                 address(this), // The GammaPool is receiving the Balancer LP tokens
                 IVault.JoinPoolRequest(
                     {
-                    assets: getTokens(cfmm), 
+                    assets: tokens, 
                     maxAmountsIn: amounts, 
                     userData: userDataEncoded, 
                     fromInternalBalance: false

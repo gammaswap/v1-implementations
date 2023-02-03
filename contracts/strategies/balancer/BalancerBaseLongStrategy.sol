@@ -127,6 +127,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             toInternalBalance: false
         });
 
+        // Adding approval for the Vault to spend the assetIn tokens
+        addVaultApproval(assetIn, amountIn);
+
         IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
     }
 

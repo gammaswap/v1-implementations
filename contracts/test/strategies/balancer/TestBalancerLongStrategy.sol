@@ -21,9 +21,6 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
-        IERC20(tokens[0]).approve(getVault(cfmm), type(uint256).max);
-        IERC20(tokens[1]).approve(getVault(cfmm), type(uint256).max);
-
         s.initialize(msg.sender, cfmm, tokens, decimals);
     }
 
