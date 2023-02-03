@@ -27,12 +27,4 @@ library Math {
             z = 1;
         }
     }
-
-    function convertToUint256Array(uint128[] memory amounts) internal pure returns (uint256[] memory newAmounts) {
-        newAmounts = new uint256[](amounts.length);
-        for (uint i = 0; i < amounts.length; i++) {
-            newAmounts[i] = uint256(amounts[i]);
-    }
-}
-
 }

@@ -87,7 +87,6 @@ describe("BalancerShortStrategy", function () {
     
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
     
-    console.log('Initializing strategy: ', strategy.address);
     await (
       await strategy.initialize(
         cfmm,

@@ -8,17 +8,39 @@ import "../../libraries/Math.sol";
 import "../../libraries/weighted/FixedPoint.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 
-import "hardhat/console.sol";
-
+/**
+ * @title Base Long Strategy concrete implementation contract for Balancer Weighted Pools
+ * @author JakeXBT (https://github.com/JakeXBT)
+ * @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools that need access to loans
+ * @dev This implementation was specifically designed to work with Balancer Weighted Pools
+ */
 abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStrategy {
     error BadDelta();
     error ZeroReserves();
 
+    /**
+     * @return origFee Origination fee charged to every new loan that is issued.
+     */
     uint16 immutable public origFee;
+
+    /**
+     * @return LTV_THRESHOLD Maximum Loan-To-Value ratio acceptable before a loan is eligible for liquidation.
+     */
     uint16 immutable public LTV_THRESHOLD;
+
+    /**
+     * @return tradingFee1 Numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2).
+     */
     uint16 immutable public tradingFee1;
+
+    /**
+     * @return tradingFee2 Denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2).
+     */
     uint16 immutable public tradingFee2;
 
+    /**
+     * @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
+     */
     constructor(uint16 _ltvThreshold, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         BalancerBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
         LTV_THRESHOLD = _ltvThreshold;
@@ -27,14 +49,24 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         tradingFee2 = _tradingFee2;
     }
 
+    /**
+     * @dev See {BaseLongStrategy.ltvThreshold}.
+     */
     function ltvThreshold() internal virtual override view returns(uint16) {
         return LTV_THRESHOLD;
     }
 
+    /**
+     * @dev See {BaseLongStrategy.originationFee}.
+     */
     function originationFee() internal virtual override view returns(uint16) {
         return origFee;
     }
 
+    /**
+     * @dev Calculates the amount of tokens to repay a loan of quantity `liquidity` invariant units.
+     * @param liquidity The amount of liquidity to repay the loan with.
+     */
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
@@ -44,10 +76,18 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         amounts[1] = (liquidity * s.CFMM_RESERVES[1] / lastCFMMInvariant);
     }
 
+    /**
+     * @dev Empty implementation for Balancer. See {BaseLongStrategy.beforeRepay} for a discussion on the purpose of this function.
+     */
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
-        // See the corresponding function in BaseLongStrategy.sol for notes on Balancer
     }
 
+    /**
+     * @dev Swaps tokens with the Balancer Weighted Pool via the Vault contract.
+     * @param _loan Liquidity loan whose collateral will be used to swap tokens, unused in Balancer implementation.
+     * @param outAmts The amount of each reserve token to swap out of the GammaPool.
+     * @param inAmts The amount of each reserve token to swap into the GammaPool.
+     */
     function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
         address assetIn;
         address assetOut;
@@ -55,9 +95,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 amountOut;
 
         address[] memory tokens = getTokens(s.cfmm);
-
-        // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
-        // outAmts is the quantity of tokens going OUT OF the GammaPool
 
         // Parse the function inputs to determine which direction and outputs are expected
         if (outAmts[0] == 0) {
@@ -86,15 +123,18 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         IVault.FundManagement memory fundManagement = IVault.FundManagement({
             sender: address(this),
             fromInternalBalance: false,
-            recipient: address(this), // address(this) is correct but GammaPool is not payable
+            recipient: address(this),
             toInternalBalance: false
         });
 
         IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
     }
 
-    // Determines the amounts of tokens in and out expected
-    // TODO: Balancer has a utils contract we can use to query this
+    /**
+     * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
+     * @param _loan Liquidity loan whose collateral will be used to calculate the swap amounts.
+     * @param deltas The desired amount of collateral tokens from the loan to swap (> 0 buy, < 0 sell, 0 ignore).
+     */
     function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
@@ -155,16 +195,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             uint256 reserveIn = delta0 < 0 ? reserve1 : reserve0;
             uint256 reserveOut = delta0 < 0 ? reserve0 : reserve1;
 
-            console.log('Calculating amountOut inside calcInAndOutAmounts:');
-            console.log('amountIn: %s', amountIn);
-            console.log('reserveIn: %s', reserveIn);
-            console.log('weightIn: %s', weightIn);
-            console.log('reserveOut: %s', reserveOut);
-            console.log('weightOut: %s', weightOut);
-
             uint256 amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
-
-            console.log('amountOut: %s', amountOut);
 
             // Assigning values to the return variables
             inAmt0 = delta0 < 0 ? 0 : amountOut;
@@ -184,7 +215,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      */
     function getAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
         // Revert if the sum of normalised weights is not equal to 1
-        // Error code is BAL#308
         require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
 
         uint256 amountIn = WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
@@ -203,7 +233,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      */
     function getAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
         // Revert if the sum of normalised weights is not equal to 1
-        // Error code is BAL#308
         require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
 
         uint256 feeAdjustedAmountIn = (amountIn * tradingFee1) / tradingFee2;
