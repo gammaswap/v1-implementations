@@ -23,6 +23,9 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     // ShortGamma
 
+    /// @dev Minimum number of shares issued on first deposit to avoid rounding issues
+    uint256 public constant MIN_SHARES = 1e3;
+
     /// @notice Calculate amounts to deposit in CFMM depending on the CFMM's formula
     /// @dev The user requests desired amounts to deposit and sets minimum amounts since actual amounts are unknown at time of request
     /// @param amountsDesired - desired amounts of reserve tokens to deposit in CFMM
@@ -62,23 +65,30 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     }
 
     /// @notice Deposit CFMM LP tokens without calling transferFrom
+    /// @dev There has to be unaccounted for CFMM LP tokens before calling this function
     /// @param to - address of receiver of GS LP tokens that will be minted
     /// @param isDepositReserves - true if depositing reserve tokens, false if depositing CFMM LP tokens
-    /// @dev There has to be unaccounted for CFMM LP tokens before calling this function
+    /// @return shares - amount of GS LP tokens minted
     function depositAssetsNoPull(address to, bool isDepositReserves) internal virtual returns(uint256 shares) {
-        // unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
+        // Unaccounted for CFMM LP tokens in GammaPool, presumably deposited by user requesting GS LP tokens
         uint256 assets = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)) - s.LP_TOKEN_BALANCE;
 
-        // update interest rate and state variables before conversion
+        // Update interest rate and state variables before conversion
         updateIndex();
 
-        // convert CFMM LP tokens (`assets`) to GS LP tokens (`shares`)
+        // Convert CFMM LP tokens (`assets`) to GS LP tokens (`shares`)
         shares = convertToShares(assets);
         if(shares == 0) { // revert if request is for 0 GS LP tokens
             revert ZeroShares();
         }
 
-        // track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
+        // To prevent rounding errors, lock min shares in first deposit
+        if(s.totalSupply == 0) {
+            shares = shares - MIN_SHARES;
+            assets = assets - MIN_SHARES;
+            depositAssets(msg.sender, address(0), MIN_SHARES, MIN_SHARES, isDepositReserves);
+        }
+        // Track CFMM LP tokens (`assets`) in GammaPool and mint GS LP tokens (`shares`) to receiver (`to`)
         depositAssets(msg.sender, to, assets, shares, isDepositReserves);
     }
 
@@ -92,24 +102,32 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param amounts - amounts of reserve tokens to transfer
     /// @param to - destination address of reserve tokens
     /// @param data - information to verify transaction request in contract performing the transfer
-    function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual {
+    /// @return deposits - amounts deposited at `to`
+    function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual returns (uint256[] memory deposits) {
         address[] storage tokens = s.tokens;
-        uint256[] memory balances = new uint256[](tokens.length);
+        deposits = new uint256[](tokens.length);
         for(uint256 i; i < tokens.length;) {
-            // get current reserve token balances in destination address
-            balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
+            // Get current reserve token balances in destination address
+            deposits[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
             unchecked {
                 ++i;
             }
         }
-        // ask msg.sender to send reserve tokens to destination address
+        // Ask msg.sender to send reserve tokens to destination address
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
+        uint256 newBalance;
         for(uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
-                // check destination address received reserve tokens by comparing with previous balances
-                if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
+                newBalance = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
+                // Check destination address received reserve tokens by comparing with previous balances
+                if(deposits[i] >= newBalance) {
                     revert WrongTokenBalance(tokens[i]);
                 }
+                unchecked {
+                    deposits[i] = newBalance - deposits[i];
+                }
+            } else {
+                deposits[i] = 0;
             }
             unchecked {
                 ++i;
@@ -125,7 +143,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         (reserves, payee) = calcDepositAmounts(amountsDesired, amountsMin);
 
         // transfer reserve tokens
-        preDepositToCFMM(reserves, payee, data);
+        reserves = preDepositToCFMM(reserves, payee, data);
 
         // call deposit function requesting CFMM LP tokens from CFMM and deposit them in GammaPool
         depositToCFMM(s.cfmm, address(this), reserves);
@@ -143,24 +161,24 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param to - receiver address of CFMM LP tokens or reserve tokens
     /// @param askForReserves - send reserve tokens to receiver (`to`) if true, send CFMM LP tokens otherwise
     function withdrawAssetsNoPull(address to, bool askForReserves) internal virtual returns(uint256[] memory reserves, uint256 assets) {
-        // check is GammaPool has received GS LP tokens
+        // Check is GammaPool has received GS LP tokens
         uint256 shares = s.balanceOf[address(this)];
 
-        // update interest rate and state variables before conversion
+        // Update interest rate and state variables before conversion
         updateIndex();
 
-        // convert GS LP tokens (`shares`) to CFMM LP tokens (`assets`)
+        // Convert GS LP tokens (`shares`) to CFMM LP tokens (`assets`)
         assets = convertToAssets(shares);
         if(assets == 0) { // revert if request is for 0 CFMM LP tokens
             revert ZeroAssets();
         }
 
-        // revert if not enough CFMM LP tokens in GammaPool
+        // Revert if not enough CFMM LP tokens in GammaPool
         if(assets > s.LP_TOKEN_BALANCE) {
             revert ExcessiveWithdrawal();
         }
 
-        // send CFMM LP tokens or reserve tokens to receiver (`to`) and burn corresponding GS LP tokens from GammaPool address
+        // Send CFMM LP tokens or reserve tokens to receiver (`to`) and burn corresponding GS LP tokens from GammaPool address
         reserves = withdrawAssets(address(this), to, address(this), assets, shares, askForReserves);
     }
 
@@ -175,7 +193,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function depositAssets(address caller, address to, uint256 assets, uint256 shares, bool isDepositReserves) internal virtual {
         _mint(to, shares); // mint GS LP tokens to receiver (`to`)
 
-        // update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
+        // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
         uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
         uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         s.LP_TOKEN_BALANCE = lpTokenBalance;
@@ -197,26 +215,26 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param askForReserves - withdraw reserve tokens if true, CFMM LP tokens otherwise
     /// @return reserves - amount of reserve tokens withdrawn if `askForReserves` is true
     function withdrawAssets(address caller, address to, address owner, uint256 assets, uint256 shares, bool askForReserves) internal virtual returns(uint256[] memory reserves){
-        if (caller != owner) { // if caller does not own GS LP tokens, check if allowed to burn them
+        if (caller != owner) { // If caller does not own GS LP tokens, check if allowed to burn them
             spendAllowance(owner, caller, shares);
         }
 
-        beforeWithdraw(assets, shares); // before withdraw hook
+        beforeWithdraw(assets, shares); // Before withdraw hook
 
-        _burn(owner, shares); // burn owner's GS LP tokens
+        _burn(owner, shares); // Burn owner's GS LP tokens
 
-        address cfmm = s.cfmm; // save gas
+        address cfmm = s.cfmm; // Save gas
         uint256 lpTokenBalance;
         uint128 lpInvariant;
-        if(askForReserves) { // if withdrawing reserve tokens
-            reserves = withdrawFromCFMM(cfmm, to, assets); // changes lastCFMMTotalSupply and lastCFMMInvariant (less assets, less invariant)
+        if(askForReserves) { // If withdrawing reserve tokens
+            reserves = withdrawFromCFMM(cfmm, to, assets); // Changes lastCFMMTotalSupply and lastCFMMInvariant (less assets, less invariant)
             lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
             uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
             uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
             lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, lastCFMMInvariant, lastCFMMTotalSupply));
-            s.lastCFMMInvariant = uint128(lastCFMMInvariant); // less invariant
-            s.lastCFMMTotalSupply = lastCFMMTotalSupply; // less CFMM LP tokens in existence
-        } else { // if withdrawing CFMM LP tokens
+            s.lastCFMMInvariant = uint128(lastCFMMInvariant); // Less invariant
+            s.lastCFMMTotalSupply = lastCFMMTotalSupply; // Less CFMM LP tokens in existence
+        } else { // If withdrawing CFMM LP tokens
             GammaSwapLibrary.safeTransfer(IERC20(cfmm), to, assets); // doesn't change lastCFMMTotalSupply or lastCFMMInvariant
             lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
             lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
@@ -235,8 +253,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param amount - amount of owner's GS LP tokens that will be spent
     function spendAllowance(address owner, address spender, uint256 amount) internal virtual {
         uint256 allowed = s.allowance[owner][spender]; // Saves gas for limited approvals.
-        if (allowed != type(uint256).max) { // if limited spending
-            if(allowed < amount) { // not allowed to spend that much
+        if (allowed != type(uint256).max) { // If limited spending
+            if(allowed < amount) { // Not allowed to spend that much
                 revert ExcessiveSpend();
             }
             unchecked {
@@ -264,12 +282,12 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     // INTERNAL HOOKS LOGIC
 
-    /// @dev hook function that executes before withdrawal of CFMM LP tokens (`withdrawAssets`) but after token conversion
+    /// @dev Hook function that executes before withdrawal of CFMM LP tokens (`withdrawAssets`) but after token conversion
     /// @param assets - amount of CFMM LP tokens
     /// @param shares - amount GS LP tokens
     function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
 
-    /// @dev hook function that executes after deposit of CFMM LP tokens
+    /// @dev Hook function that executes after deposit of CFMM LP tokens
     /// @param assets - amount of CFMM LP tokens
     /// @param shares - amount GS LP tokens
     function afterDeposit(uint256 assets, uint256 shares) internal virtual {}

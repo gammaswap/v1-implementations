@@ -421,6 +421,72 @@ describe("ShortStrategyERC4626", function () {
         ).to.be.revertedWith("STF_Fail");
       });
 
+      it("< Min Shares Deposit", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const minShares = 999;
+
+        await expect(
+          strategy._deposit(minShares, owner.address)
+        ).to.be.revertedWith("0x11");
+      });
+
+      it("= Min Shares Deposit", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const minShares = 1000;
+
+        await expect(
+          strategy._deposit(minShares, owner.address)
+        ).to.be.revertedWith("ZeroAmount");
+      });
+
       it("First Deposit Assets/LP Tokens", async function () {
         await (await strategy.testUpdateIndex()).wait();
         await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
@@ -449,16 +515,43 @@ describe("ShortStrategyERC4626", function () {
           await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
         ).wait();
 
+        const minShares = 1000;
+
         const { events } = await (
           await strategy._deposit(assets, owner.address)
         ).wait();
+
+        const depositEvent0 = events[events.length - 5];
+        expect(depositEvent0.event).to.equal("Deposit");
+        expect(depositEvent0.args.caller).to.equal(owner.address);
+        expect(depositEvent0.args.to).to.equal(ethers.constants.AddressZero);
+        expect(depositEvent0.args.assets).to.equal(minShares);
+        expect(depositEvent0.args.shares).to.equal(minShares);
+
+        const poolUpdatedEvent0 = events[events.length - 4];
+        expect(poolUpdatedEvent0.event).to.equal("PoolUpdated");
+        expect(poolUpdatedEvent0.args.lpTokenBalance).to.equal(assets);
+        expect(poolUpdatedEvent0.args.lpTokenBorrowed).to.equal(0);
+        expect(poolUpdatedEvent0.args.lastBlockNumber).to.equal(
+          (await ethers.provider.getBlock("latest")).number
+        );
+        const cfmmBalance0 = await cfmm.balanceOf(strategy.address);
+        const cfmmTotalSupply0 = await cfmm.totalSupply();
+        const cfmmInvariant0 = await cfmm.invariant();
+        const lpInvariant0 = cfmmBalance0.mul(cfmmInvariant0).div(cfmmTotalSupply0);
+        expect(poolUpdatedEvent0.args.accFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent0.args.lpTokenBorrowedPlusInterest).to.equal(0);
+        expect(poolUpdatedEvent0.args.lpInvariant).to.equal(lpInvariant0);
+        expect(poolUpdatedEvent0.args.borrowedInvariant).to.equal(0);
 
         const depositEvent = events[events.length - 2];
         expect(depositEvent.event).to.equal("Deposit");
         expect(depositEvent.args.caller).to.equal(owner.address);
         expect(depositEvent.args.to).to.equal(owner.address);
-        expect(depositEvent.args.assets).to.equal(assets);
-        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+        expect(depositEvent.args.assets).to.equal(assets.sub(minShares));
+        expect(depositEvent.args.shares).to.equal(
+          expectedGSShares.sub(minShares)
+        );
 
         const poolUpdatedEvent = events[events.length - 1];
         expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
@@ -478,7 +571,7 @@ describe("ShortStrategyERC4626", function () {
 
         expect(await strategy.totalSupply()).to.equal(expectedGSShares);
         expect(await strategy.balanceOf(owner.address)).to.equal(
-          expectedGSShares
+          expectedGSShares.sub(minShares)
         );
         const params1 = await strategy.getTotalAssetsParams();
         expect(params1.lpBalance).to.equal(assets);
@@ -507,6 +600,8 @@ describe("ShortStrategyERC4626", function () {
           await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
         ).wait();
 
+        const minShares = 1000;
+
         const { events } = await (
           await strategy._deposit(assets, owner.address)
         ).wait();
@@ -515,12 +610,14 @@ describe("ShortStrategyERC4626", function () {
         expect(depositEvent.event).to.equal("Deposit");
         expect(depositEvent.args.caller).to.equal(owner.address);
         expect(depositEvent.args.to).to.equal(owner.address);
-        expect(depositEvent.args.assets).to.equal(assets);
-        expect(depositEvent.args.shares).to.equal(expectedGSShares);
+        expect(depositEvent.args.assets).to.equal(assets.sub(minShares));
+        expect(depositEvent.args.shares).to.equal(
+          expectedGSShares.sub(minShares)
+        );
 
         expect(await strategy.totalSupply()).to.equal(expectedGSShares);
         expect(await strategy.balanceOf(owner.address)).to.equal(
-          expectedGSShares
+          expectedGSShares.sub(minShares)
         );
 
         await (await cfmm.trade(tradeYield)).wait();
@@ -592,6 +689,72 @@ describe("ShortStrategyERC4626", function () {
         );
       });
 
+      it("< Min Shares Mint Shares", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const lpTokens = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(lpTokens, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(lpTokens, lpTokens.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(lpTokens);
+        expect(await cfmm.invariant()).to.equal(lpTokens.add(tradeYield));
+
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const minShares = 999;
+
+        await expect(
+          strategy._mint(minShares, owner.address)
+        ).to.be.revertedWith("0x11");
+      });
+
+      it("= Min Shares Mint Shares", async function () {
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
+
+        expect(await cfmm.totalSupply()).to.equal(0);
+        expect(await cfmm.invariant()).to.equal(0);
+
+        const ONE = BigNumber.from(10).pow(18);
+        const lpTokens = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(lpTokens, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(lpTokens, lpTokens.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(lpTokens);
+        expect(await cfmm.invariant()).to.equal(lpTokens.add(tradeYield));
+
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        const minShares = 1000;
+
+        await expect(
+          strategy._mint(minShares, owner.address)
+        ).to.be.revertedWith("ZeroAmount");
+      });
+
       it("First Mint Shares", async function () {
         await (await strategy.testUpdateIndex()).wait();
         await checkGSPoolIsEmpty(ethers.constants.Zero, ethers.constants.Zero);
@@ -620,16 +783,43 @@ describe("ShortStrategyERC4626", function () {
           await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
         ).wait();
 
+        const minShares = 1000;
+
         const { events } = await (
           await strategy._mint(shares, owner.address)
         ).wait();
+
+        const depositEvent0 = events[events.length - 5];
+        expect(depositEvent0.event).to.equal("Deposit");
+        expect(depositEvent0.args.caller).to.equal(owner.address);
+        expect(depositEvent0.args.to).to.equal(ethers.constants.AddressZero);
+        expect(depositEvent0.args.assets).to.equal(minShares);
+        expect(depositEvent0.args.shares).to.equal(minShares);
+
+        const poolUpdatedEvent0 = events[events.length - 1];
+        expect(poolUpdatedEvent0.event).to.equal("PoolUpdated");
+        expect(poolUpdatedEvent0.args.lpTokenBalance).to.equal(expectedAssets);
+        expect(poolUpdatedEvent0.args.lpTokenBorrowed).to.equal(0);
+        expect(poolUpdatedEvent0.args.lastBlockNumber).to.equal(
+          (await ethers.provider.getBlock("latest")).number
+        );
+        const cfmmBalance0 = await cfmm.balanceOf(strategy.address);
+        const cfmmTotalSupply0 = await cfmm.totalSupply();
+        const cfmmInvariant0 = await cfmm.invariant();
+        const lpInvariant0 = cfmmBalance0.mul(cfmmInvariant0).div(cfmmTotalSupply0);
+        expect(poolUpdatedEvent0.args.accFeeIndex).to.equal(ONE);
+        expect(poolUpdatedEvent0.args.lpTokenBorrowedPlusInterest).to.equal(0);
+        expect(poolUpdatedEvent0.args.lpInvariant).to.equal(lpInvariant0);
+        expect(poolUpdatedEvent0.args.borrowedInvariant).to.equal(0);
 
         const depositEvent = events[events.length - 2];
         expect(depositEvent.event).to.equal("Deposit");
         expect(depositEvent.args.caller).to.equal(owner.address);
         expect(depositEvent.args.to).to.equal(owner.address);
-        expect(depositEvent.args.assets).to.equal(expectedAssets);
-        expect(depositEvent.args.shares).to.equal(shares);
+        expect(depositEvent.args.assets).to.equal(
+          expectedAssets.sub(minShares)
+        );
+        expect(depositEvent.args.shares).to.equal(shares.sub(minShares));
 
         const poolUpdatedEvent = events[events.length - 1];
         expect(poolUpdatedEvent.event).to.equal("PoolUpdated");
@@ -648,7 +838,9 @@ describe("ShortStrategyERC4626", function () {
         expect(poolUpdatedEvent.args.borrowedInvariant).to.equal(0);
 
         expect(await strategy.totalSupply()).to.equal(shares);
-        expect(await strategy.balanceOf(owner.address)).to.equal(shares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          shares.sub(minShares)
+        );
         const params1 = await strategy.getTotalAssetsParams();
         expect(params1.lpBalance).to.equal(expectedAssets);
         expect(expectedAssets).to.equal(shares);
@@ -676,6 +868,8 @@ describe("ShortStrategyERC4626", function () {
           await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
         ).wait();
 
+        const minShares = 1000;
+
         const { events } = await (
           await strategy._mint(shares, owner.address)
         ).wait();
@@ -684,11 +878,15 @@ describe("ShortStrategyERC4626", function () {
         expect(depositEvent.event).to.equal("Deposit");
         expect(depositEvent.args.caller).to.equal(owner.address);
         expect(depositEvent.args.to).to.equal(owner.address);
-        expect(depositEvent.args.assets).to.equal(expectedAssets);
-        expect(depositEvent.args.shares).to.equal(shares);
+        expect(depositEvent.args.assets).to.equal(
+          expectedAssets.sub(minShares)
+        );
+        expect(depositEvent.args.shares).to.equal(shares.sub(minShares));
 
         expect(await strategy.totalSupply()).to.equal(shares);
-        expect(await strategy.balanceOf(owner.address)).to.equal(shares);
+        expect(await strategy.balanceOf(owner.address)).to.equal(
+          shares.sub(minShares)
+        );
 
         await (await cfmm.trade(tradeYield)).wait();
 
@@ -756,6 +954,7 @@ describe("ShortStrategyERC4626", function () {
         expect(depositEvent2.args.shares).to.equal(shares3);
       });
     });
+
     describe("ERC4626 Withdraw & Redeem", function () {
       it("Withdraw Assets Transfer Error", async function () {
         const ONE = BigNumber.from(10).pow(18);
