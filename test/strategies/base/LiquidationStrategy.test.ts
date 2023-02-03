@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
-describe.only("LiquidationStrategy", function () {
+describe("LiquidationStrategy", function () {
   let TestERC20: any;
   let TestCFMM: any;
   let TestLiquidationStrategy: any;

@@ -102,24 +102,32 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     /// @param amounts - amounts of reserve tokens to transfer
     /// @param to - destination address of reserve tokens
     /// @param data - information to verify transaction request in contract performing the transfer
-    function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual {
+    /// @return deposits - amounts deposited at `to`
+    function preDepositToCFMM(uint256[] memory amounts, address to, bytes memory data) internal virtual returns (uint256[] memory deposits) {
         address[] storage tokens = s.tokens;
-        uint256[] memory balances = new uint256[](tokens.length);
+        deposits = new uint256[](tokens.length);
         for(uint256 i; i < tokens.length;) {
             // get current reserve token balances in destination address
-            balances[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
+            deposits[i] = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
             unchecked {
                 ++i;
             }
         }
         // ask msg.sender to send reserve tokens to destination address
         ISendTokensCallback(msg.sender).sendTokensCallback(tokens, amounts, to, data);
+        uint256 newBalance;
         for(uint256 i; i < tokens.length;) {
             if(amounts[i] > 0) {
+                newBalance = GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to);
                 // check destination address received reserve tokens by comparing with previous balances
-                if(balances[i] >= GammaSwapLibrary.balanceOf(IERC20(tokens[i]), to)) {
+                if(deposits[i] >= newBalance) {
                     revert WrongTokenBalance(tokens[i]);
                 }
+                unchecked {
+                    deposits[i] = newBalance - deposits[i];
+                }
+            } else {
+                deposits[i] = 0;
             }
             unchecked {
                 ++i;
@@ -135,7 +143,7 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         (reserves, payee) = calcDepositAmounts(amountsDesired, amountsMin);
 
         // transfer reserve tokens
-        preDepositToCFMM(reserves, payee, data);
+        reserves = preDepositToCFMM(reserves, payee, data);
 
         // call deposit function requesting CFMM LP tokens from CFMM and deposit them in GammaPool
         depositToCFMM(s.cfmm, address(this), reserves);
