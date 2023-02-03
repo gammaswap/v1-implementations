@@ -281,9 +281,6 @@ describe("BalancerShortStrategy", function () {
       const amountsDesired = [BigNumber.from(1), BigNumber.from(1)];
       const result = await strategy.testCalcDeposits(amountsDesired, [0, 0]);
 
-      console.log("Amounts: ", result.amounts);
-      console.log("Payee: ", result.payee);
-
       expect(result.amounts).to.deep.equal(amountsDesired);
       expect(result.payee).to.equal(strategy.address);
     });
