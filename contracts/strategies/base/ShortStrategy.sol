@@ -41,19 +41,23 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
 
     /// @dev See {IShortStrategy-totalAssets}.
     function totalAssets(address cfmm, uint256 borrowedInvariant, uint256 lpBalance, uint256 prevCFMMInvariant, uint256 prevCFMMTotalSupply, uint256 lastBlockNum) public view virtual override returns(uint256) {
-        // get liquidity invariant from CFMM
+        // Get liquidity invariant from CFMM
         uint256 lastCFMMInvariant = calcInvariant(cfmm, getReserves(cfmm));
 
-        // get total minted LP tokens from CFMM
+        // Get total minted LP tokens from CFMM
         uint256 lastCFMMTotalSupply = GammaSwapLibrary.totalSupply(IERC20(cfmm));
 
-        // calculate liquidity invariant in CFMM from LP tokens in GammaPool
+        // Calculate liquidity invariant in CFMM from LP tokens in GammaPool
         uint256 lpInvariant = convertLPToInvariant(lpBalance, prevCFMMInvariant, prevCFMMTotalSupply);
 
-        // calculate interest that would be charged to entire pool's liquidity debt if pool were updated in this transaction
-        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpInvariant, borrowedInvariant), lastBlockNum);
+        // Get fee growth in CFMM since last update
+        uint256 blockDiff = block.number - lastBlockNum;
+        uint256 lastCFMMFeeIndex = blockDiff > 0 ? calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply) : 1e18;
 
-        // return CFMM LP tokens depositedin GammaPool plus borrowed liquidity invariant with accrued interest in terms of CFMM LP tokens
+        // Calculate interest that would be charged to entire pool's liquidity debt if pool were updated in this transaction
+        uint256 lastFeeIndex = calcFeeIndex(lastCFMMFeeIndex, calcBorrowRate(lpInvariant, borrowedInvariant), blockDiff);
+
+        // Return CFMM LP tokens depositedin GammaPool plus borrowed liquidity invariant with accrued interest in terms of CFMM LP tokens
         return lpBalance + convertInvariantToLP(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);
     }
 
@@ -139,22 +143,22 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
     function _depositReserves(address to, uint256[] calldata amountsDesired, uint256[] calldata amountsMin, bytes calldata data) external virtual override lock returns(uint256[] memory reserves, uint256 shares) {
         address payee; // address that will receive reserve tokens from depositor
 
-        // calculate amounts of reserve tokens to send and address to send them to
+        // Calculate amounts of reserve tokens to send and address to send them to
         (reserves, payee) = calcDepositAmounts(amountsDesired, amountsMin);
 
-        // transfer reserve tokens
+        // Transfer reserve tokens
         reserves = preDepositToCFMM(reserves, payee, data);
 
-        // call deposit function requesting CFMM LP tokens from CFMM and deposit them in GammaPool
+        // Call deposit function requesting CFMM LP tokens from CFMM and deposit them in GammaPool
         depositToCFMM(s.cfmm, address(this), reserves);
 
-        // mint GS LP Tokens to receiver (`to`) equivalent in value to CFMM LP tokens just deposited
+        // Mint GS LP Tokens to receiver (`to`) equivalent in value to CFMM LP tokens just deposited
         shares = depositAssetsNoPull(to, true);
     }
 
     /// @dev See {IShortStrategy-_withdrawReserves}.
     function _withdrawReserves(address to) external virtual override lock returns(uint256[] memory reserves, uint256 assets) {
-        (reserves, assets) = withdrawAssetsNoPull(to, true); // withdraw reserve tokens
+        (reserves, assets) = withdrawAssetsNoPull(to, true); // Withdraw reserve tokens
     }
 
     /// @dev Withdraw CFMM LP tokens from GammaPool or reserve tokens from CFMM and send them to receiver address (`to`)
