@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "./BaseStrategy.sol";
-import "hardhat/console.sol";
+
 /// @title Base Long Strategy abstract contract
 /// @author Daniel D. Alcarraz
 /// @notice Common functions used by all strategy implementations that need access to loans
