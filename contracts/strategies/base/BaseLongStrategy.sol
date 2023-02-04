@@ -11,6 +11,10 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
     error Forbidden();
     error Margin();
+    error MinBorrow();
+
+    /// @dev Minimum number of CFMM LP tokens borrowed to avoid rounding issues. Assumes invariant >= CFMM LP Token
+    uint256 public constant MIN_BORROW = 1e3;
 
     /// @dev Perform necessary transaction before repaying liquidity debt
     /// @param _loan - liquidity loan that will be repaid
@@ -125,6 +129,11 @@ abstract contract BaseLongStrategy is BaseStrategy {
         // Irrelevant that lastCFMMInvariant and lastCFMMInvariant are overstated since their conversion rate did not change
         uint256 liquidityBorrowedExFee = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
 
+        // Can't borrow less than minimum liquidity to avoid rounding issues
+        if (liquidityBorrowedExFee < MIN_BORROW) {
+            revert MinBorrow();
+        }
+
         // Calculate add loan origination fee to LP token debt
         uint256 lpTokensPlusOrigFee = lpTokens + lpTokens * originationFee() / 10000;
 
@@ -170,7 +179,8 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @return remainingLiquidity - outstanding loan liquidity debt after payment
     function payLoan(LibStorage.Loan storage _loan, uint256 liquidity, uint256 loanLiquidity) internal virtual returns(uint256 liquidityPaid, uint256 remainingLiquidity) {
         (uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) = getLpTokenBalance();
-        liquidityPaid = paidLiquidity < liquidity ? paidLiquidity : liquidity; // Take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
+        // Take the lowest, if actually paid less liquidity than expected. Only way is there was a transfer fee.
+        liquidityPaid = paidLiquidity < liquidity ? paidLiquidity : liquidity;
         // If more liquidity than stated was actually paid, that goes to liquidity providers
         uint256 lpTokenPrincipal;
         (lpTokenPrincipal, remainingLiquidity) = payLoanLiquidity(liquidityPaid, loanLiquidity, _loan);
@@ -185,9 +195,11 @@ abstract contract BaseLongStrategy is BaseStrategy {
     /// @return newLPBalance - current CFMM LP token balance in GammaPool
     /// @return lpTokenChange - CFMM LP tokens deposited in GammaPool since last update, presumably to pay for this liquidity debt
     function getLpTokenBalance() internal view virtual returns(uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint256 paidLiquidity, uint256 newLPBalance, uint256 lpTokenChange) {
-        newLPBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this)); // so lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
+        // So lp balance is supposed to be greater than before, no matter what since tokens were deposited into the CFMM
+        newLPBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
         uint256 lpTokenBalance = s.LP_TOKEN_BALANCE;
-        if(newLPBalance <= lpTokenBalance) { // The change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
+        // The change will always be positive, might be greater than expected, which means you paid more. If it's less it will be a small difference because of a fee
+        if(newLPBalance <= lpTokenBalance) {
             revert NotEnoughLPDeposit();
         }
         lpTokenChange = newLPBalance - lpTokenBalance;
@@ -214,7 +226,7 @@ abstract contract BaseLongStrategy is BaseStrategy {
         uint256 lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST; // saves gas
 
         // Calculate CFMM LP tokens that were intended to be repaid
-        uint256 _lpTokenPaid = convertInvariantToLP(liquidity, lpTokenBorrowedPlusInterest, borrowedInvariant);
+        uint256 _lpTokenPaid = convertInvariantToLP(liquidity, lastCFMMTotalSupply, lastCFMMInvariant);
 
         // Update lastCFMMInvariant and lastCFMMTotalSupply to account for actual repaid amounts (can be greater than what was intended to be repaid)
         lastCFMMInvariant = lastCFMMInvariant + convertLPToInvariant(lpTokenPaid, lastCFMMInvariant, lastCFMMTotalSupply);
@@ -262,6 +274,12 @@ abstract contract BaseLongStrategy is BaseStrategy {
 
         // Calculate loan's outstanding liquidity invariant after liquidity payment
         remainingLiquidity = loanLiquidity - liquidity;
+
+        // Can't be less than min liquidity to avoid rounding issues
+        if (remainingLiquidity > 0 && remainingLiquidity < MIN_BORROW) {
+            revert MinBorrow();
+        }
+
         _loan.liquidity = uint128(remainingLiquidity);
 
         // If fully paid, free memory to save gas
