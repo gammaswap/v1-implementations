@@ -125,15 +125,16 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateCFMMIndex() public virtual {
-        _lastCFMMFeeIndex = uint80(updateCFMMIndex());
+        (uint256 lastCFMMFeeIndex,,) = updateCFMMIndex(s.BORROWED_INVARIANT);
+        _lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
     }
 
     function testUpdateFeeIndex() public virtual {
-        _lastFeeIndex = uint80(updateFeeIndex(_lastCFMMFeeIndex));
+        _lastFeeIndex = uint80(updateFeeIndex(_lastCFMMFeeIndex, s.BORROWED_INVARIANT, block.number - s.LAST_BLOCK_NUMBER));
     }
 
     function testUpdateStore() public virtual {
-        updateStore(_lastFeeIndex);
+        updateStore(_lastFeeIndex, s.BORROWED_INVARIANT, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
     }
 
     function getLastFeeIndex() public virtual view returns(uint256){

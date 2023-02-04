@@ -51,7 +51,8 @@ abstract contract ShortStrategy is IShortStrategy, BaseStrategy {
         uint256 lpInvariant = convertLPToInvariant(lpBalance, prevCFMMInvariant, prevCFMMTotalSupply);
 
         // calculate interest that would be charged to entire pool's liquidity debt if pool were updated in this transaction
-        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply), calcBorrowRate(lpInvariant, borrowedInvariant), lastBlockNum);
+        uint256 lastFeeIndex = calcFeeIndex(calcCFMMFeeIndex(borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply, prevCFMMInvariant, prevCFMMTotalSupply),
+            calcBorrowRate(lpInvariant, borrowedInvariant), block.number - lastBlockNum);
 
         // return CFMM LP tokens depositedin GammaPool plus borrowed liquidity invariant with accrued interest in terms of CFMM LP tokens
         return lpBalance + convertInvariantToLP(accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex), lastCFMMTotalSupply, lastCFMMInvariant);

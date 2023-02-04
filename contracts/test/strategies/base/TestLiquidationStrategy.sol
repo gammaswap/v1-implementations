@@ -190,8 +190,8 @@ contract TestLiquidationStrategy is LiquidationStrategy {
         return 0;
     }
 
-    function updateCFMMIndex() internal override virtual returns(uint256){
-        return 0;
+    function updateCFMMIndex(uint256) internal override virtual returns(uint256, uint256, uint256){
+        return (0,0,0);
     }
 
     //BaseStrategy abstract functions
