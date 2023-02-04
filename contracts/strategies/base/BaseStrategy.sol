@@ -86,7 +86,6 @@ abstract contract BaseStrategy is AppStorage, AbstractRateModel {
     /// @param blockDiff - change in blcoks since last update
     /// @return feeIndex - (1 + total fee yield) since last update
     function calcFeeIndex(uint256 lastCFMMFeeIndex, uint256 borrowRate, uint256 blockDiff) internal virtual view returns(uint256) {
-        //uint256 blockDiff = block.number - lastBlockNum; // Time passed in blocks
         uint256 _blocksPerYear = blocksPerYear(); // Expected network blocks per year
         uint256 adjBorrowRate = blockDiff * borrowRate / _blocksPerYear; // De-annualized borrow rate
         uint256 _maxTotalApy = 1e18 + (blockDiff * maxTotalApy()) / _blocksPerYear; // De-annualized APY cap

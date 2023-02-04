@@ -715,6 +715,66 @@ describe("ShortStrategy", function () {
         expect(assets).to.equal(expectedGSShares);
       });
 
+      it("Total Assets Ignore CFMM Fee if Same Block", async function () {
+        const ONE = BigNumber.from(10).pow(18);
+        const shares = ONE.mul(200);
+        const tradeYield = ONE.mul(10);
+        await (await cfmm.mint(shares, owner.address)).wait();
+        await (await cfmm.trade(tradeYield)).wait();
+
+        await (await strategy.testUpdateIndex()).wait();
+        await checkGSPoolIsEmpty(shares, shares.add(tradeYield));
+
+        expect(await cfmm.totalSupply()).to.equal(shares);
+        expect(await cfmm.invariant()).to.equal(shares.add(tradeYield));
+
+        const assets = shares.div(2);
+        const params = await strategy.getTotalAssetsParams();
+        expect(params.lpBalance).to.equal(0);
+
+        await (
+          await cfmm.approve(strategy.address, ethers.constants.MaxUint256)
+        ).wait();
+
+        await (await cfmm.transfer(strategy.address, assets)).wait();
+
+        await (await strategy._depositNoPull(owner.address)).wait();
+
+        await borrowLPTokens(ONE.mul(10));
+
+        const params0 = await strategy.getTotalAssetsParams();
+        const totalAssets0 = await strategy.totalAssets(
+          cfmm.address,
+          params0.borrowedInvariant,
+          params0.lpBalance,
+          params0.prevCFMMInvariant,
+          params0.prevCFMMTotalSupply,
+          params0.lastBlockNum
+        );
+
+        await (await cfmm.trade(tradeYield)).wait();
+
+        const cfmmTotalSupply1 = await cfmm.totalSupply();
+        const cfmmInvariant1 = await cfmm.invariant();
+
+        const params1 = await strategy.getTotalAssetsParams();
+        const totalAssets1 = await strategy.totalAssets(
+          cfmm.address,
+          params1.borrowedInvariant,
+          params1.lpBalance,
+          params1.prevCFMMInvariant,
+          params1.prevCFMMTotalSupply,
+          params1.lastBlockNum.add(1)
+        );
+
+        const expTotAssets = params1.lpBalance.add(
+          params1.borrowedInvariant.mul(cfmmTotalSupply1).div(cfmmInvariant1)
+        );
+
+        expect(totalAssets1).to.lt(totalAssets0);
+        expect(totalAssets1).to.equal(expTotAssets);
+      });
+
       it("More Deposit Assets/LP Tokens", async function () {
         const ONE = BigNumber.from(10).pow(18);
         const shares = ONE.mul(200);
