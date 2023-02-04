@@ -752,6 +752,9 @@ describe("ShortStrategy", function () {
           params0.lastBlockNum
         );
 
+        const cfmmTotalSupply0 = await cfmm.totalSupply();
+        const cfmmInvariant0 = await cfmm.invariant();
+
         await (await cfmm.trade(tradeYield)).wait();
 
         const cfmmTotalSupply1 = await cfmm.totalSupply();
@@ -771,7 +774,9 @@ describe("ShortStrategy", function () {
           params1.borrowedInvariant.mul(cfmmTotalSupply1).div(cfmmInvariant1)
         );
 
-        expect(totalAssets1).to.lt(totalAssets0);
+        expect(cfmmTotalSupply1).to.equal(cfmmTotalSupply0);
+        expect(cfmmInvariant1).to.gt(cfmmInvariant0); // trade fees accrued
+        expect(totalAssets1).to.lt(totalAssets0); // decreased value of GS LP in CFMM in LP tokens within 1 block
         expect(totalAssets1).to.equal(expTotAssets);
       });
 
