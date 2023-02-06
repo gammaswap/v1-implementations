@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../base/LiquidationStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/LiquidationStrategy.sol";
 import "./CPMMLongStrategy.sol";
 
 /// @title Liquidation Strategy concrete implementation contract for Constant Product Market Maker

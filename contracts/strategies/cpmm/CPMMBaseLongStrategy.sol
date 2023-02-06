@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../base/BaseLongStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
 /// @title Base Long Strategy abstract contract for Constant Product Market Maker

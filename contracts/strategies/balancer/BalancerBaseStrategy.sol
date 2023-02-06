@@ -2,13 +2,12 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import "../../interfaces/external/IVault.sol";
-import "../../interfaces/external/IWeightedPool.sol";
-import "../../libraries/Math.sol";
+import "@gammaswap/v1-core/contracts/rates/LogDerivativeRateModel.sol";
+import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
+import "@gammaswap/v1-core/contracts/libraries/Math.sol";
+import "../../interfaces/external/balancer/IVault.sol";
+import "../../interfaces/external/balancer/IWeightedPool.sol";
 import "../../libraries/weighted/WeightedMath.sol";
-import "../../rates/LogDerivativeRateModel.sol";
-import "../base/BaseStrategy.sol";
 
 /**
  * @title Base Strategy abstract contract for Balancer Weighted Pools
@@ -125,10 +124,11 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amount The amount required to approve.
      */
     function addVaultApproval(address token, uint256 amount) internal {
-        uint256 allowance = IERC20(token).allowance(address(this), getVault(s.cfmm));
+        address cfmm = s.cfmm;
+        uint256 allowance = IERC20(token).allowance(address(this), getVault(cfmm));
         if (allowance < amount) {
             // Approve the maximum amount
-            IERC20(token).approve(getVault(s.cfmm), type(uint256).max);
+            IERC20(token).approve(getVault(cfmm), type(uint256).max);
         }
     }
 
@@ -155,16 +155,16 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         addVaultApproval(tokens[1], amounts[1]);
 
         IVault(vaultId).joinPool(poolId,
-                address(this), // The GammaPool is sending the reserve tokens
-                to,
-                IVault.JoinPoolRequest(
-                    {
-                    assets: tokens,
-                    maxAmountsIn: amounts,
-                    userData: userDataEncoded,
-                    fromInternalBalance: false
-                    })
-                );
+            address(this), // The GammaPool is sending the reserve tokens
+            to,
+            IVault.JoinPoolRequest(
+                {
+                assets: tokens,
+                maxAmountsIn: amounts,
+                userData: userDataEncoded,
+                fromInternalBalance: false
+                })
+            );
 
         return 1;
     }

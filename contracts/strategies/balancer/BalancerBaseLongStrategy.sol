@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../base/BaseLongStrategy.sol";
-import "./BalancerBaseStrategy.sol";
-
-import "../../libraries/Math.sol";
+import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
+import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../libraries/weighted/FixedPoint.sol";
 import "../../libraries/weighted/WeightedMath.sol";
+import "./BalancerBaseStrategy.sol";
 
 /**
  * @title Base Long Strategy concrete implementation contract for Balancer Weighted Pools
