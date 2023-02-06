@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
@@ -45,10 +45,13 @@ library InputHelpers {
         }
 
         address previous = array[0];
-        for (uint256 i = 1; i < array.length; ++i) {
+        for (uint256 i = 1; i < array.length;) {
             address current = array[i];
             _require(previous < current, Errors.UNSORTED_ARRAY);
             previous = current;
+            unchecked {
+                i++;
+            }
         }
     }
 }

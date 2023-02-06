@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "./InputHelpers.sol";
 import "./FixedPoint.sol";
@@ -160,9 +160,12 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
 
         uint256 invariantRatioWithFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length;) {
             balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
             invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
+            unchecked {
+                i++;
+            }
         }
 
         uint256 invariantRatio = _computeJoinExactTokensInInvariantRatio(
@@ -244,7 +247,7 @@ library WeightedMath {
         // increase.
         invariantRatio = FixedPoint.ONE;
 
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length;) {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
@@ -270,6 +273,9 @@ library WeightedMath {
             uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
+            unchecked {
+                i++;
+            }
         }
     }
 
@@ -321,11 +327,14 @@ library WeightedMath {
 
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 invariantRatioWithoutFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length;) {
             balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
             invariantRatioWithoutFees = invariantRatioWithoutFees.add(
                 balanceRatiosWithoutFee[i].mulUp(normalizedWeights[i])
             );
+            unchecked {
+                i++;
+            }
         }
 
         uint256 invariantRatio = _computeExitExactTokensOutInvariantRatio(
@@ -394,7 +403,7 @@ library WeightedMath {
     ) private pure returns (uint256 invariantRatio) {
         invariantRatio = FixedPoint.ONE;
 
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length;) {
             // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
             // 'token out'. This results in slightly larger price impact.
 
@@ -419,6 +428,9 @@ library WeightedMath {
             uint256 balanceRatio = balances[i].sub(amountOutWithFee).divDown(balances[i]);
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
+            unchecked {
+                i++;
+            }
         }
     }
 

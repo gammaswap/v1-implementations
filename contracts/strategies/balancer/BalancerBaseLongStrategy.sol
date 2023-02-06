@@ -79,22 +79,21 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /**
      * @dev Empty implementation for Balancer. See {BaseLongStrategy.beforeRepay} for a discussion on the purpose of this function.
      */
-    function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory amounts) internal virtual override {
+    function beforeRepay(LibStorage.Loan storage, uint256[] memory) internal virtual override {
     }
 
     /**
      * @dev Swaps tokens with the Balancer Weighted Pool via the Vault contract.
-     * @param _loan Liquidity loan whose collateral will be used to swap tokens, unused in Balancer implementation.
      * @param outAmts The amount of each reserve token to swap out of the GammaPool.
      * @param inAmts The amount of each reserve token to swap into the GammaPool.
      */
-    function swapTokens(LibStorage.Loan storage _loan, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
+    function swapTokens(LibStorage.Loan storage, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
         address assetIn;
         address assetOut;
         uint256 amountIn;
         uint256 amountOut;
-
-        address[] memory tokens = getTokens(s.cfmm);
+        address _cfmm = s.cfmm;
+        address[] memory tokens = getTokens(_cfmm);
 
         // Parse the function inputs to determine which direction and outputs are expected
         if (outAmts[0] == 0) {
@@ -112,7 +111,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         }
 
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
-            poolId: getPoolId(s.cfmm),
+            poolId: getPoolId(_cfmm),
             kind: uint8(IVault.SwapKind.GIVEN_IN),
             assetIn: assetIn,
             assetOut: assetOut,
@@ -130,7 +129,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // Adding approval for the Vault to spend the assetIn tokens
         addVaultApproval(assetIn, amountIn);
 
-        IVault(getVault(s.cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
+        IVault(getVault(_cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
     }
 
     /**
