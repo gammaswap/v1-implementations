@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-strategies",
-  "version": "0.2.6",
+  "version": "0.2.15",
   "description": "Strategies contracts for the v1-core",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
@@ -13,8 +13,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "chain": "./scripts/startChain.sh",
-    "deploy": "./scripts/deployContracts.sh"
+    "chain": "./scripts/startChain.sh"
   },
   "engines": {
     "node": ">=16"
@@ -67,8 +66,7 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^3.0.1",
     "@balancer-labs/v2-vault": "^3.0.1",
-    "@gammaswap/v1-core": "^0.2.4",
-    "@gammaswap/v1-periphery": "^0.2.1",
+    "@gammaswap/v1-core": "^0.2.15",
     "@openzeppelin/contracts": "^4.7.0",
     "@prb/math": "^3.1.0",
     "@uniswap/v2-core": "^1.0.1"

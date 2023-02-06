@@ -12,7 +12,7 @@ contract TestBaseStrategy is BaseStrategy {
     using LibStorage for LibStorage.Storage;
 
     uint16 public _protocolId;
-    uint256 public borrowRate = 10**18;
+    uint256 public borrowRate = 1e18;
     uint256 public invariant;
     address public _factory;
     uint80 public _lastFeeIndex;
@@ -25,6 +25,10 @@ contract TestBaseStrategy is BaseStrategy {
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
         s.initialize(_factory, cfmm, tokens, decimals);
+    }
+
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
     }
 
     function blocksPerYear() internal virtual override pure returns(uint256) {
@@ -121,15 +125,16 @@ contract TestBaseStrategy is BaseStrategy {
     }
 
     function testUpdateCFMMIndex() public virtual {
-        _lastCFMMFeeIndex = uint80(updateCFMMIndex());
+        (uint256 lastCFMMFeeIndex,,) = updateCFMMIndex(s.BORROWED_INVARIANT);
+        _lastCFMMFeeIndex = uint80(lastCFMMFeeIndex);
     }
 
     function testUpdateFeeIndex() public virtual {
-        _lastFeeIndex = uint80(updateFeeIndex(_lastCFMMFeeIndex));
+        _lastFeeIndex = uint80(updateFeeIndex(_lastCFMMFeeIndex, s.BORROWED_INVARIANT, block.number - s.LAST_BLOCK_NUMBER));
     }
 
     function testUpdateStore() public virtual {
-        updateStore(_lastFeeIndex);
+        updateStore(_lastFeeIndex, s.BORROWED_INVARIANT, s.lastCFMMInvariant, s.lastCFMMTotalSupply);
     }
 
     function getLastFeeIndex() public virtual view returns(uint256){
@@ -182,7 +187,7 @@ contract TestBaseStrategy is BaseStrategy {
         return invariant;
     }
 
-    function depositToCFMM(address, uint256[] memory, address) internal virtual override returns(uint256) { return 0; }
+    function depositToCFMM(address, address, uint256[] memory) internal virtual override returns(uint256) { return 0; }
 
     function withdrawFromCFMM(address, address, uint256) internal virtual override returns(uint256[] memory amounts) { return amounts; }
 }

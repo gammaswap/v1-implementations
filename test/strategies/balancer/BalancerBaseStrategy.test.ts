@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { IERC20 } from "../../../typechain";
 
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
 const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPoolFactory.json");
@@ -26,7 +25,7 @@ describe("BalancerBaseStrategy", function () {
   let poolId: any;
   let weightedMathFactory: any;
   let weightedMath: any;
-  
+
   let TOKENS: any;
   let WEIGHTS: any;
 
@@ -57,23 +56,28 @@ describe("BalancerBaseStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy", {libraries: {WeightedMath: weightedMath.address}});
+    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy", {
+      libraries: { WeightedMath: weightedMath.address },
+    });
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
-    
+
     const HOUR = 60 * 60;
     const DAY = HOUR * 24;
     const MONTH = DAY * 30;
 
     // Deploy the Vault contract
-    vault = await BalancerVault.deploy(owner.address, tokenA.address, MONTH, MONTH);
-    
-    // Deploy the WeightedPoolFactory contract
-    factory = await WeightedPoolFactory.deploy(
-        vault.address,
+    vault = await BalancerVault.deploy(
+      owner.address,
+      tokenA.address,
+      MONTH,
+      MONTH
     );
-    
+
+    // Deploy the WeightedPoolFactory contract
+    factory = await WeightedPoolFactory.deploy(vault.address);
+
     // Create a WeightedPool using the WeightedPoolFactory
     cfmm = await createPair(tokenA, tokenB);
 
@@ -84,9 +88,9 @@ describe("BalancerBaseStrategy", function () {
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
-    
+
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
-    
+
     await (
       await strategy.initialize(
         cfmm,
@@ -97,32 +101,39 @@ describe("BalancerBaseStrategy", function () {
   });
 
   async function createPair(token1: any, token2: any) {
-    const NAME = 'TESTPOOL';
-    const SYMBOL = 'TP';
+    const NAME = "TESTPOOL";
+    const SYMBOL = "TP";
     if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
       TOKENS = [token2.address, token1.address];
-    }
-    else {
+    } else {
       TOKENS = [token1.address, token2.address];
     }
     const HUNDRETH = BigNumber.from(10).pow(16);
-    WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+    WEIGHTS = [
+      BigNumber.from(50).mul(HUNDRETH),
+      BigNumber.from(50).mul(HUNDRETH),
+    ];
     const FEE_PERCENTAGE = HUNDRETH;
 
     const poolReturnData = await factory.create(
-      NAME, SYMBOL, TOKENS, WEIGHTS, FEE_PERCENTAGE, owner.address
+      NAME,
+      SYMBOL,
+      TOKENS,
+      WEIGHTS,
+      FEE_PERCENTAGE,
+      owner.address
     );
 
     const receipt = await poolReturnData.wait();
-    const events = receipt.events.filter((e) => e.event === 'PoolCreated');
+    const events = receipt.events.filter((e: any) => e.event === "PoolCreated");
     const poolAddress = events[0].args.pool;
-    return poolAddress
+    return poolAddress;
   }
 
   function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
     const MAX_ERROR = BigNumber.from(10).pow(15); // Max error
 
-    let error = actual.sub(expected).abs();
+    const error = actual.sub(expected).abs();
     expect(error.lte(MAX_ERROR));
   }
 
@@ -140,11 +151,17 @@ describe("BalancerBaseStrategy", function () {
 
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
-      const WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+      const WEIGHTS = [
+        BigNumber.from(50).mul(HUNDRETH),
+        BigNumber.from(50).mul(HUNDRETH),
+      ];
 
       expect(pool.address).to.equal(cfmm);
       expect(await strategy.getCFMM()).to.equal(cfmm);
-      expect(await strategy.getCFMMReserves()).to.deep.equal([BigNumber.from(0), BigNumber.from(0)]);
+      expect(await strategy.getCFMMReserves()).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
       expect(await strategy.testGetVault(cfmm)).to.equal(await pool.getVault());
       expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
@@ -196,12 +213,15 @@ describe("BalancerBaseStrategy", function () {
       );
     });
   });
-  
+
   describe("Check Write Functions", function () {
     async function initialisePool(initialBalances: any) {
       // We must perform an INIT join at the beginning to start the pool
       const JOIN_KIND_INIT = 0;
-      const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
+      const initUserData = ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256[]"],
+        [JOIN_KIND_INIT, initialBalances]
+      );
 
       // 'ERC20: insufficient allowance'
       // We must approve the vault to spend the tokens we own
@@ -212,33 +232,35 @@ describe("BalancerBaseStrategy", function () {
         assets: TOKENS,
         maxAmountsIn: initialBalances,
         userData: initUserData,
-        fromInternalBalance: false
-      } 
+        fromInternalBalance: false,
+      };
 
-      const tx = await vault.joinPool(poolId, owner.address, owner.address, joinPoolRequest);
+      await (
+        await vault.joinPool(
+          poolId,
+          owner.address,
+          owner.address,
+          joinPoolRequest
+        )
+      ).wait();
     }
 
     async function depositIntoPool(amounts: any) {
-        // We must send the tokens to the strategy before we can deposit
-        if (tokenA.address === TOKENS[0]) {
-          await tokenA.transfer(strategy.address, amounts[0]);
-          await tokenB.transfer(strategy.address, amounts[1]);
-        } else {
-          await tokenA.transfer(strategy.address, amounts[1]);
-          await tokenB.transfer(strategy.address, amounts[0]);
-        }
+      // We must send the tokens to the strategy before we can deposit
+      if (tokenA.address === TOKENS[0]) {
+        await tokenA.transfer(strategy.address, amounts[0]);
+        await tokenB.transfer(strategy.address, amounts[1]);
+      } else {
+        await tokenA.transfer(strategy.address, amounts[1]);
+        await tokenB.transfer(strategy.address, amounts[0]);
+      }
 
-        const res = await (
-          await strategy.testDepositToCFMM(
-            cfmm,
-            amounts,
-            strategy.address
-          )
-        ).wait();
+      await (
+        await strategy.testDepositToCFMM(cfmm, amounts, strategy.address)
+      ).wait();
 
-      return 1
+      return 1;
     }
-
 
     it("Deposit to CFMM", async function () {
       const ONE = BigNumber.from(10).pow(18);
@@ -254,7 +276,10 @@ describe("BalancerBaseStrategy", function () {
       // We must perform an INIT join at the beginning to start the pool
       const JOIN_KIND_INIT = 0;
       const initialBalances = [ONE.mul(500), ONE.mul(500)];
-      const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
+      const initUserData = ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256[]"],
+        [JOIN_KIND_INIT, initialBalances]
+      );
 
       // 'ERC20: insufficient allowance'
       // We must approve the vault to spend the tokens we own
@@ -265,29 +290,30 @@ describe("BalancerBaseStrategy", function () {
         assets: TOKENS,
         maxAmountsIn: initialBalances,
         userData: initUserData,
-        fromInternalBalance: false
-      } 
+        fromInternalBalance: false,
+      };
 
-      const tx = await vault.joinPool(poolId, owner.address, owner.address, joinPoolRequest);
-
-      const receipt = await tx.wait();
+      await (
+        await vault.joinPool(
+          poolId,
+          owner.address,
+          owner.address,
+          joinPoolRequest
+        )
+      ).wait();
 
       // We must send the tokens to the strategy before we can deposit
-      await tokenA.transfer(strategy.address, amtA);
-      await tokenB.transfer(strategy.address, amtB);
+      await (await tokenA.transfer(strategy.address, amtA)).wait();
+      await (await tokenB.transfer(strategy.address, amtB)).wait();
 
       // Check that the transfer was successful
       expect(await tokenA.balanceOf(strategy.address)).to.equal(amtA);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(amtB);
 
       const res = await (
-        await strategy.testDepositToCFMM(
-          cfmm,
-          [amtA, amtB],
-          strategy.address
-        )
+        await strategy.testDepositToCFMM(cfmm, [amtA, amtB], strategy.address)
       ).wait();
-      
+
       const depositToCFMMEvent = res.events[res.events.length - 1];
       expect(depositToCFMMEvent.args.cfmm).to.equal(cfmm);
       expect(depositToCFMMEvent.args.to).to.equal(strategy.address);
@@ -314,20 +340,18 @@ describe("BalancerBaseStrategy", function () {
       // Perform the pool join
       await depositIntoPool([amtA, amtB]);
 
-      const withdrawAmt = ONE.mul(50);
-      const expectedAmtA = ONE.mul(250);
-      const expectedAmtB = ONE.mul(250);
+      const withdrawAmt = (await pool.balanceOf(strategy.address)).div(2);
+      const totalSupply = await pool.totalSupply();
+
+      const expectedAmtA = withdrawAmt.mul(amtA.mul(2)).div(totalSupply);
+      const expectedAmtB = withdrawAmt.mul(amtB.mul(2)).div(totalSupply);
 
       // Expect to have deposited all tokens
       expect(await tokenA.balanceOf(strategy.address)).to.equal(0);
       expect(await tokenB.balanceOf(strategy.address)).to.equal(0);
 
       const res = await (
-        await strategy.testWithdrawFromCFMM(
-          cfmm,
-          withdrawAmt,
-          strategy.address
-        )
+        await strategy.testWithdrawFromCFMM(cfmm, withdrawAmt, strategy.address)
       ).wait();
 
       const withdrawFromCFMMEvent = res.events[res.events.length - 1];
@@ -337,15 +361,24 @@ describe("BalancerBaseStrategy", function () {
 
       // TODO Balancer event gives the following answer: "25000000000001000000"
       // We expect the following answer: "250000000000000000000"
+      // Rounding differences issues is because balancer has a loss of precision in their calculations
 
-      // expect(withdrawFromCFMMEvent.args.amounts[0]).to.equal(expectedAmtA);
-      // expect(withdrawFromCFMMEvent.args.amounts[1]).to.equal(expectedAmtB);
+      expect(withdrawFromCFMMEvent.args.amounts[0].div(1000)).to.equal(
+        expectedAmtA.div(1000)
+      );
+      expect(withdrawFromCFMMEvent.args.amounts[1].div(1000)).to.equal(
+        expectedAmtB.div(1000)
+      );
 
       // TODO Balancer event gives the following answer: "25000000000001000000"
       // We expect the following answer: "250000000000000000000"
 
-      // expect(await tokenA.balanceOf(strategy.address)).to.equal(expectedAmtA);
-      // expect(await tokenB.balanceOf(strategy.address)).to.equal(expectedAmtB);
+      expect((await tokenA.balanceOf(strategy.address)).div(1000)).to.equal(
+        expectedAmtA.div(1000)
+      );
+      expect((await tokenB.balanceOf(strategy.address)).div(1000)).to.equal(
+        expectedAmtB.div(1000)
+      );
     });
 
     it("Update Reserves", async function () {
@@ -381,16 +414,14 @@ describe("BalancerBaseStrategy", function () {
       expect(reserves2[1]).to.equal(amtB.mul(2));
       expect(reserves2).to.deep.equal(storageReserves2);
 
-      const withdrawAmt = ONE.mul(50);
-      const expectedAmtA = ONE.mul(10);
-      const expectedAmtB = ONE.mul(250);
+      const withdrawAmt = (await pool.balanceOf(strategy.address)).div(2);
+      const totalSupply = await pool.totalSupply();
+
+      const expectedAmtA = withdrawAmt.mul(amtA.mul(2)).div(totalSupply);
+      const expectedAmtB = withdrawAmt.mul(amtB.mul(2)).div(totalSupply);
 
       await (
-        await strategy.testWithdrawFromCFMM(
-          cfmm,
-          withdrawAmt,
-          strategy.address
-        )
+        await strategy.testWithdrawFromCFMM(cfmm, withdrawAmt, strategy.address)
       ).wait();
 
       const reserves3 = await strategy.testGetPoolReserves(cfmm);
@@ -399,7 +430,6 @@ describe("BalancerBaseStrategy", function () {
 
       expect(reserves3.length).to.equal(2);
       expect(reserves3).to.deep.equal(storageReserves3);
-
     });
   });
 });

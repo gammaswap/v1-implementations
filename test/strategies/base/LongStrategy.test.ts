@@ -1257,6 +1257,47 @@ describe("LongStrategy", function () {
       ).to.be.revertedWith("Margin");
     });
 
+    it("Error Borrow Liquidity, Min Borrow", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const startLiquidity = ONE.mul(800);
+      const startLpTokens = ONE.mul(400);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (
+        await strategy.setLPTokenBalance(
+          startLiquidity,
+          startLpTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
+
+      await (await cfmm.mint(startLpTokens, strategy.address)).wait();
+
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
+
+      await strategy.getLoan(tokenId);
+
+      await strategy.getLoanChangeData(tokenId);
+
+      const lpTokens = 499;
+
+      const amtA = ONE.mul(2);
+      const amtB = ONE.mul(4);
+
+      await tokenA.transfer(strategy.address, amtA);
+      await tokenB.transfer(strategy.address, amtB);
+
+      await (await cfmm.burn(lpTokens, strategy.address)).wait();
+
+      await expect(
+        strategy._borrowLiquidity(tokenId, lpTokens)
+      ).to.be.revertedWith("MinBorrow");
+
+      await strategy._borrowLiquidity(tokenId, lpTokens + 1);
+    });
+
     it("Borrow Liquidity success", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const startLiquidity = ONE.mul(800);
@@ -1335,7 +1376,54 @@ describe("LongStrategy", function () {
   });
 
   describe("Repay Liquidity", function () {
-    it("Partial Payment", async function () {
+    it("Error Payment, Min Borrow", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const startLiquidity = ONE.mul(800);
+      const startLpTokens = ONE.mul(400);
+      const lastCFMMInvariant = startLiquidity.mul(2);
+      const lastCFMMTotalSupply = startLpTokens.mul(2);
+      await (
+        await strategy.setLPTokenBalance(
+          startLiquidity,
+          startLpTokens,
+          lastCFMMInvariant,
+          lastCFMMTotalSupply
+        )
+      ).wait();
+
+      await (await cfmm.mint(startLpTokens, strategy.address)).wait();
+
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
+
+      await strategy.getLoan(tokenId);
+
+      await strategy.getLoanChangeData(tokenId);
+
+      const lpTokens = 500;
+
+      const amtA = ONE.mul(2);
+      const amtB = ONE.mul(4);
+
+      await tokenA.transfer(strategy.address, amtA);
+      await tokenB.transfer(strategy.address, amtB);
+
+      await (await cfmm.burn(lpTokens, strategy.address)).wait();
+
+      await strategy._borrowLiquidity(tokenId, lpTokens);
+
+      await expect(strategy._repayLiquidity(tokenId, 2)).to.be.revertedWith(
+        "MinBorrow"
+      );
+
+      await expect(strategy._repayLiquidity(tokenId, 999)).to.be.revertedWith(
+        "MinBorrow"
+      );
+
+      await (await strategy._repayLiquidity(tokenId, 1000)).wait();
+    });
+
+    it("Error Partial Payment, Min Borrow", async function () {
       const ONE = BigNumber.from(10).pow(18);
 
       const res1 = await (await strategy.createLoan()).wait();

@@ -21,8 +21,8 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
     /**
      * @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
      */
-    constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
     }
 
     /**

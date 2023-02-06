@@ -57,23 +57,29 @@ describe("BalancerShortStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerShortStrategy", {libraries: {WeightedMath: weightedMath.address}});
+    TestStrategy = await ethers.getContractFactory(
+      "TestBalancerShortStrategy",
+      { libraries: { WeightedMath: weightedMath.address } }
+    );
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
-    
+
     const HOUR = 60 * 60;
     const DAY = HOUR * 24;
     const MONTH = DAY * 30;
 
     // Deploy the Vault contract
-    vault = await BalancerVault.deploy(owner.address, tokenA.address, MONTH, MONTH);
-    
-    // Deploy the WeightedPoolFactory contract
-    factory = await WeightedPoolFactory.deploy(
-        vault.address,
+    vault = await BalancerVault.deploy(
+      owner.address,
+      tokenA.address,
+      MONTH,
+      MONTH
     );
-    
+
+    // Deploy the WeightedPoolFactory contract
+    factory = await WeightedPoolFactory.deploy(vault.address);
+
     // Create a WeightedPool using the WeightedPoolFactory
     cfmm = await createPair(tokenA, tokenB);
 
@@ -84,9 +90,9 @@ describe("BalancerShortStrategy", function () {
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
-    
+
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
-    
+
     await (
       await strategy.initialize(
         cfmm,
@@ -97,29 +103,36 @@ describe("BalancerShortStrategy", function () {
   });
 
   async function createPair(token1: any, token2: any) {
-    const NAME = 'TESTPOOL';
-    const SYMBOL = 'TP';
+    const NAME = "TESTPOOL";
+    const SYMBOL = "TP";
     if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
       TOKENS = [token2.address, token1.address];
-    }
-    else {
+    } else {
       TOKENS = [token1.address, token2.address];
     }
     const HUNDRETH = BigNumber.from(10).pow(16);
-    WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+    WEIGHTS = [
+      BigNumber.from(50).mul(HUNDRETH),
+      BigNumber.from(50).mul(HUNDRETH),
+    ];
     const FEE_PERCENTAGE = HUNDRETH;
 
     const poolReturnData = await factory.create(
-      NAME, SYMBOL, TOKENS, WEIGHTS, FEE_PERCENTAGE, owner.address
+      NAME,
+      SYMBOL,
+      TOKENS,
+      WEIGHTS,
+      FEE_PERCENTAGE,
+      owner.address
     );
 
     const receipt = await poolReturnData.wait();
 
-    const events = receipt.events.filter((e) => e.event === 'PoolCreated');
-    
+    const events = receipt.events.filter((e: any) => e.event === "PoolCreated");
+
     const poolAddress = events[0].args.pool;
 
-    return poolAddress
+    return poolAddress;
   }
 
   // You can nest describe calls to create subsections.
@@ -137,11 +150,17 @@ describe("BalancerShortStrategy", function () {
 
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
-      const WEIGHTS = [BigNumber.from(50).mul(HUNDRETH), BigNumber.from(50).mul(HUNDRETH)];
+      const WEIGHTS = [
+        BigNumber.from(50).mul(HUNDRETH),
+        BigNumber.from(50).mul(HUNDRETH),
+      ];
 
       expect(pool.address).to.equal(cfmm);
       expect(await strategy.getCFMM()).to.equal(cfmm);
-      expect(await strategy.getCFMMReserves()).to.deep.equal([BigNumber.from(0), BigNumber.from(0)]);
+      expect(await strategy.getCFMMReserves()).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
       expect(await strategy.testGetVault(cfmm)).to.equal(await pool.getVault());
       expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
@@ -154,44 +173,54 @@ describe("BalancerShortStrategy", function () {
     async function initialisePool(initialBalances: any) {
       // We must perform an INIT join at the beginning to start the pool
       const JOIN_KIND_INIT = 0;
-      const initUserData = ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'], [JOIN_KIND_INIT, initialBalances]);
+      const initUserData = ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256[]"],
+        [JOIN_KIND_INIT, initialBalances]
+      );
 
       // 'ERC20: insufficient allowance'
       // We must approve the vault to spend the tokens we own
-      await tokenA.approve(vault.address, ethers.constants.MaxUint256);
-      await tokenB.approve(vault.address, ethers.constants.MaxUint256);
+      await (
+        await tokenA.approve(vault.address, ethers.constants.MaxUint256)
+      ).wait();
+      await (
+        await tokenB.approve(vault.address, ethers.constants.MaxUint256)
+      ).wait();
 
       const joinPoolRequest = {
         assets: TOKENS,
         maxAmountsIn: initialBalances,
         userData: initUserData,
-        fromInternalBalance: false
-      } 
+        fromInternalBalance: false,
+      };
 
-      const tx = await vault.joinPool(poolId, owner.address, owner.address, joinPoolRequest);
-    } 
-
-  async function depositIntoPool(amounts: any) {
-      // We must send the tokens to the strategy before we can deposit
-      // We must send tokens in the correct orientation
-      if (TOKENS[0] == tokenA.address) {
-      await tokenA.transfer(strategy.address, amounts[0]);
-      await tokenB.transfer(strategy.address, amounts[1]);
-      } else {
-      await tokenA.transfer(strategy.address, amounts[1]);
-      await tokenB.transfer(strategy.address, amounts[0]);
-      }
-
-      const res = await (
-        await strategy.testDepositToCFMM(
-          cfmm,
-          amounts,
-          strategy.address
+      await (
+        await vault.joinPool(
+          poolId,
+          owner.address,
+          owner.address,
+          joinPoolRequest
         )
       ).wait();
+    }
 
-    return 1
-  }
+    async function depositIntoPool(amounts: any) {
+      // We must send the tokens to the strategy before we can deposit
+      // We must send tokens in the correct orientation
+      if (TOKENS[0] === tokenA.address) {
+        await (await tokenA.transfer(strategy.address, amounts[0])).wait();
+        await (await tokenB.transfer(strategy.address, amounts[1])).wait();
+      } else {
+        await (await tokenA.transfer(strategy.address, amounts[1])).wait();
+        await (await tokenB.transfer(strategy.address, amounts[0])).wait();
+      }
+
+      await (
+        await strategy.testDepositToCFMM(cfmm, amounts, strategy.address)
+      ).wait();
+
+      return 1;
+    }
 
     it("Check Optimal Amt", async function () {
       const ONE = BigNumber.from(10).pow(18);
@@ -237,32 +266,20 @@ describe("BalancerShortStrategy", function () {
       expect(res2[0]).to.equal(amtA.mul(2));
       expect(res2[1]).to.equal(amtB.mul(2));
 
-      const withdrawAmt = ONE.mul(50);
+      const totalSupply = await pool.totalSupply();
+      const withdrawAmt = (await pool.balanceOf(strategy.address)).div(2);
 
-      const res = await (
-        await strategy.testWithdrawFromCFMM(
-          cfmm,
-          withdrawAmt,
-          strategy.address
-        )
+      const expAmtA = amtA.mul(2).mul(withdrawAmt).div(totalSupply);
+      const expAmtB = amtB.mul(2).mul(withdrawAmt).div(totalSupply);
+
+      await (
+        await strategy.testWithdrawFromCFMM(cfmm, withdrawAmt, strategy.address)
       ).wait();
 
       const res3 = await strategy.testGetReserves(cfmm);
-      
-      // const cfmmTokens = ethers.Contract(cfmm, ).attach(cfmm);
-      // console.log(await cfmmTokens.balanceOf(strategy.address));
-
-      expect(res2.length).to.equal(2);
-      expect(res2[0]).to.equal(amtA.mul(2));
-      expect(res2[1]).to.equal(amtB.mul(2));
-
-      // await (await cfmm.transfer(cfmm.address, ONE.mul(50))).wait();
-      // await (await cfmm.burn(owner.address)).wait();
-
-      // const res3 = await strategy.testGetReserves(cfmm.address);
-      // expect(res3.length).to.equal(2);
-      // expect(res3[0]).to.equal(amtA.mul(2).sub(amtA.div(2)));
-      // expect(res3[1]).to.equal(amtB.mul(2).sub(amtB.div(2)));
+      expect(res3.length).to.equal(2);
+      expect(res3[0].div(10000)).to.equal(amtA.mul(2).sub(expAmtA).div(10000));
+      expect(res3[1].div(10000)).to.equal(amtB.mul(2).sub(expAmtB).div(10000));
     });
 
     it("Error Calc Deposit Amounts, 0 amt", async function () {
@@ -352,6 +369,5 @@ describe("BalancerShortStrategy", function () {
       expect(res.amounts[1]).to.equal(ONE.mul(50));
       expect(res.payee).to.equal(strategy.address);
     });
-
   });
 });

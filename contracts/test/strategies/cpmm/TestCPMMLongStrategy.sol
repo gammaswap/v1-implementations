@@ -13,7 +13,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLongStrategy(800, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+        CPMMLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
@@ -81,8 +81,8 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256[] memory) {
-        return new uint256[](2);
+    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+        return (0, new uint256[](2));
     }
 
     function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {

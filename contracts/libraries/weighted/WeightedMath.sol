@@ -18,8 +18,6 @@ import "./InputHelpers.sol";
 import "./FixedPoint.sol";
 import "./BalancerMath.sol";
 
-import "hardhat/console.sol";
-
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
 // should be fixed.
 // solhint-disable private-vars-leading-underscore
@@ -57,7 +55,7 @@ library WeightedMath {
     // and, because there is a minimum BPT, we round down the invariant.
     function _calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         external
-        view
+        pure
         returns (uint256 invariant)
     {
         /**********************************************************************************************
@@ -67,8 +65,11 @@ library WeightedMath {
         // i = invariant                                                                             //
         **********************************************************************************************/
         invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+        for (uint256 i = 0; i < normalizedWeights.length;) {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
+            unchecked {
+                i++;
+            }
         }
         
         _require(invariant > 0, Errors.ZERO_INVARIANT);
@@ -82,7 +83,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountIn
-    ) external view returns (uint256) {
+    ) external pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = amountOut                                                                            //
@@ -117,7 +118,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountOut
-    ) external view returns (uint256) {
+    ) external pure returns (uint256) {
         /**********************************************************************************************
         // inGivenOut                                                                                //
         // aO = amountOut                                                                            //

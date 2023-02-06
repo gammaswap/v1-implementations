@@ -25,6 +25,10 @@ contract TestLongStrategy is LongStrategy {
         s.initialize(msg.sender, _cfmm, _tokens, _decimals);
     }
 
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return 1e19;
+    }
+
     function blocksPerYear() internal virtual override pure returns(uint256) {
         return 2252571;
     }
@@ -93,7 +97,7 @@ contract TestLongStrategy is LongStrategy {
         _loan.tokensHeld[1] -= uint128(amounts[1]);
     }
 
-    function depositToCFMM(address cfmm, uint256[] memory amounts, address) internal virtual override returns(uint256 liquidity) {
+    function depositToCFMM(address cfmm, address, uint256[] memory amounts) internal virtual override returns(uint256 liquidity) {
         liquidity = uint128(amounts[0]);
         TestCFMM(cfmm).mint(liquidity / 2, address(this));
     }
@@ -105,7 +109,7 @@ contract TestLongStrategy is LongStrategy {
     }
 
     function squareRoot(uint256 num) public virtual pure returns(uint256) {
-        return Math.sqrt(num * (10**18));
+        return Math.sqrt(num * 1e18);
     }
 
     function beforeSwapTokens(LibStorage.Loan storage, int256[] calldata deltas) internal virtual override view returns(uint256[] memory outAmts, uint256[] memory inAmts){
@@ -214,7 +218,7 @@ contract TestLongStrategy is LongStrategy {
             (s.LP_TOKEN_BALANCE + s.LP_TOKEN_BORROWED_PLUS_INTEREST), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
     }
 
-    function _getLatestCFMMReserves() external override pure returns(uint256[] memory reserves) {
+    function _getLatestCFMMReserves(address) external override pure returns(uint256[] memory reserves) {
         reserves = new uint256[](2);
         reserves[0] = 1;
         reserves[1] = 2;

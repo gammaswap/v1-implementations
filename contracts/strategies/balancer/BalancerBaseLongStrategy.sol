@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "../base/BaseLongStrategy.sol";
 import "./BalancerBaseStrategy.sol";
@@ -41,8 +41,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /**
      * @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
      */
-    constructor(uint16 _ltvThreshold, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_blocksPerYear, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
         LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
         tradingFee1 = _tradingFee1;
@@ -134,6 +134,23 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     /**
+     * @dev Check that there's enough collateral (`amount`) in the pool and the loan. If not revert
+     * @param amount - amount to check
+     * @param balance - total pool balance
+     * @param collateral - total collateral in loan
+     * @return _amount - same as `amount` if transaction did not revert
+     */
+    function checkAvailableCollateral(uint256 amount, uint256 balance, uint256 collateral) internal virtual pure returns(uint256){
+        if(amount > balance) { // Check enough in pool's accounted balance
+            revert NotEnoughBalance();
+        }
+        if(amount > collateral) { // Check enough collateral in loan
+            revert NotEnoughCollateral();
+        }
+        return amount;
+    }
+
+    /**
      * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
      * @param _loan Liquidity loan whose collateral will be used to calculate the swap amounts.
      * @param deltas The desired amount of collateral tokens from the loan to swap (> 0 buy, < 0 sell, 0 ignore).
@@ -145,13 +162,14 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
         // outAmts is the quantity of tokens going OUT OF the GammaPool
 
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        outAmts[0] = outAmts[0] > 0 ? checkAvailableCollateral(outAmts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]) : 0;
+        outAmts[1] = outAmts[1] > 0 ? checkAvailableCollateral(outAmts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]) : 0;
     }
 
     /**
      * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
      *      This calculation depends on the reserves existing in the Balancer pool.
-     * @param _loan Liquidity loan whose collateral will be used to calculate the swap amounts
      * @param reserve0 The amount of reserve token0 in the Balancer pool
      * @param reserve1 The amount of reserve token1 in the Balancer pool
      * @param delta0 The desired amount of collateral token0 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
@@ -161,7 +179,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
      * @return outAmt0 The expected amount of token0 to send to the Balancer pool (corresponding to a sell)
      * @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
      */
-    function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
+    function calcInAndOutAmounts(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
         internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
             revert BadDelta();

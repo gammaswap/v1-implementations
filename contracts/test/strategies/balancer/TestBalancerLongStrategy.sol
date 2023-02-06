@@ -5,8 +5,6 @@ import "../../../strategies/balancer/BalancerLongStrategy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "hardhat/console.sol";
-
 contract TestBalancerLongStrategy is BalancerLongStrategy {
 
     using LibStorage for LibStorage.Storage;
@@ -17,11 +15,11 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerLongStrategy(800, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
-        s.initialize(msg.sender, cfmm, tokens, decimals);
+    function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+        s.initialize(msg.sender, _cfmm, tokens, decimals);
     }
 
     
@@ -33,24 +31,24 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         return s.CFMM_RESERVES;
     }
 
-    function testGetPoolId(address cfmm) public virtual view returns(bytes32) {
-        return getPoolId(cfmm);
+    function testGetPoolId(address _cfmm) public virtual view returns(bytes32) {
+        return getPoolId(_cfmm);
     }
 
-    function testGetVault(address cfmm) public virtual view returns(address) {
-        return getVault(cfmm);
+    function testGetVault(address _cfmm) public virtual view returns(address) {
+        return getVault(_cfmm);
     }
 
-    function testGetPoolReserves(address cfmm) public view returns(uint128[] memory) {
-        return getPoolReserves(cfmm);
+    function testGetPoolReserves(address _cfmm) public view returns(uint128[] memory) {
+        return getPoolReserves(_cfmm);
     }
 
-    function testGetWeights(address cfmm) public virtual view returns(uint256[] memory) {
-        return getWeights(cfmm);
+    function testGetWeights(address _cfmm) public virtual view returns(uint256[] memory) {
+        return getWeights(_cfmm);
     }
 
-    function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
-        return getTokens(cfmm);
+    function testGetTokens(address _cfmm) public virtual view returns(address[] memory) {
+        return getTokens(_cfmm);
     }
 
     function cfmm() public view returns(address) {
@@ -109,8 +107,8 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256[] memory) {
-        return new uint256[](2);
+    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+        return (0, new uint256[](2));
     }
 
     function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
