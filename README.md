@@ -17,8 +17,4 @@
 
 # Steps to Deploy To Contracts To Local Live Network
 
-1. Fill in the details in [scripts/deploy.ts](scripts/deploy.ts) 
-from deploying v1-periphery deployPreCore logs.
-2. Run ```npx hardhat --network localhost run scripts/deploy.ts``` to deploy.
-
-Don't commit the secrets file.
+Use v1-deployment scripts
