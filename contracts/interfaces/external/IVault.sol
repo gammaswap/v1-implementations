@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IAsset {}
 
 interface IVault {
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+
     /**
      * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
      * the tokens' `balances` changed.
@@ -126,4 +128,36 @@ interface IVault {
         bytes userData;
         bool toInternalBalance;
     }
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256 amountCalculated);
+
+    struct SingleSwap {
+        bytes32 poolId;
+        uint8 kind;
+        address assetIn;
+        address assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+
+    // How is the vault working when doing a swap?
+    // If they are sending Ether, we need payable address
+    // At the moment we expect WETH
+
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address recipient; // Changed to not payable, originally 'address payable recipient'
+        bool toInternalBalance;
+    }
+
+
 }

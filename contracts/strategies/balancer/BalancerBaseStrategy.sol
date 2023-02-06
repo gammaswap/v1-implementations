@@ -4,55 +4,76 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/external/IVault.sol";
-import "../../interfaces/external/IWeightedPool2Tokens.sol";
+import "../../interfaces/external/IWeightedPool.sol";
 import "../../libraries/Math.sol";
+import "../../libraries/weighted/WeightedMath.sol";
 import "../../rates/LogDerivativeRateModel.sol";
 import "../base/BaseStrategy.sol";
 
+/**
+ * @title Base Strategy abstract contract for Balancer Weighted Pools
+ * @author JakeXBT (https://github.com/JakeXBT)
+ * @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
+ * @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
+ */
 abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
-    uint256 immutable public BLOCKS_PER_YEAR;
+
+    error MaxTotalApy();
+
+    /// @dev Number of blocks network will issue within a ear. Currently expected
+    uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
+
+    /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
-    constructor(uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
-        MAX_TOTAL_APY = 1e19;
+    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+        if(_maxTotalApy < _maxApy) { // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
+            revert MaxTotalApy();
+        }
+        MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
     }
 
-    function getVault(address cfmm) internal virtual view returns(address) {
-        return IWeightedPool2Tokens(cfmm).getVault();
-    }
-
-    function getPoolId(address cfmm) internal virtual view returns(bytes32) {
-        bytes32 poolId = IWeightedPool2Tokens(cfmm).getPoolId();
-        return poolId;
-    }
-
-    function maxTotalApy() internal virtual override view returns(uint256) {
-        return MAX_TOTAL_APY;
-    }
-
+    /**
+     * @dev See {BaseStrategy-blocksPerYear}.
+     */
     function blocksPerYear() internal virtual override view returns(uint256) {
         return BLOCKS_PER_YEAR;
     }
 
     /**
-     * @dev Updates the storage variable CFMM_RESERVES for a given vault and Balancer pool.
-     * @param cfmm The contract address of the Balancer weighted pool.
+     * @dev See {BaseStrategy-maxTotalApy}.
      */
-    function updateReserves(address cfmm) internal virtual override {
-        uint[] memory reserves = new uint[](2);
-        (, reserves, ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
-
-        // TODO: Is this casting safe?
-        s.CFMM_RESERVES[0] = uint128(reserves[0]);
-        s.CFMM_RESERVES[1] = uint128(reserves[1]);
+    function maxTotalApy() internal virtual override view returns(uint256) {
+        return MAX_TOTAL_APY;
     }
 
+    /**
+     * @dev Returns the address of the Balancer Vault contract attached to a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
+    function getVault(address cfmm) internal virtual view returns(address) {
+        return IWeightedPool(cfmm).getVault();
+    }
+
+    /**
+     * @dev Returns the pool ID of a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
+    function getPoolId(address cfmm) internal virtual view returns(bytes32) {
+        bytes32 poolId = IWeightedPool(cfmm).getPoolId();
+        return poolId;
+    }
+
+    /**
+     * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
     function getPoolReserves(address cfmm) internal virtual view returns(uint128[] memory) {
         uint[] memory poolReserves = new uint[](2);
         (, poolReserves, ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
-        // TODO: Do I need to cast reserves to uint128[]?
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(poolReserves[0]);
         reserves[1] = uint128(poolReserves[1]);
@@ -60,87 +81,134 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         return reserves;
     }
 
+    /**
+     * @dev Returns the reserve token addresses of a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
     function getTokens(address cfmm) internal virtual view returns(address[] memory) {
         address[] memory tokens = new address[](2);
         IERC20[] memory _tokens = new IERC20[](2);
 
         (_tokens, , ) = IVault(getVault(cfmm)).getPoolTokens(getPoolId(cfmm));
 
-        // TODO: Improve this handling of casting from IERC20 to address
         tokens[0] = address(_tokens[0]);
         tokens[1] = address(_tokens[1]);
 
         return tokens;
     }
 
+    /**
+     * @dev Returns the normalized weights of a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
     function getWeights(address cfmm) internal virtual view returns(uint256[] memory) {
-        uint256[] memory weights = new uint256[](2);
-        (weights[0], weights[1]) = IWeightedPool2Tokens(cfmm).getNormalizedWeights();
+        uint256[] memory weights = IWeightedPool(cfmm).getNormalizedWeights();
         return weights;
     }
 
     /**
-     * @dev Deposits reserves into the Balancer Vault contract.
-     *      Calls joinPool on the Vault contract and mints the BPT token to the GammaPool.
-     * @param cfmm The address of the Balancer pool/LP token.
-     * @param amounts The amounts of each pool token to deposit.
-     * @param to The address to mint the Balancer LP tokens to.
+     * @dev Returns the quantities of reserve tokens held by the GammaPool contract.
      */
+    function getStrategyReserves() internal virtual view returns(uint256[] memory) {
+        address[] memory tokens = getTokens(s.cfmm);
+
+        uint256[] memory reserves = new uint256[](2);
+        reserves[0] = IERC20(tokens[0]).balanceOf(address(this));
+        reserves[1] = IERC20(tokens[1]).balanceOf(address(this));
+        return reserves;
+    }
+
+    /**
+     * @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
+     *      If not, approves the Vault contract to spend the required amount.
+     * @param token The address of the ERC20 token requiring approval.
+     * @param amount The amount required to approve.
+     */
+    function addVaultApproval(address token, uint256 amount) internal {
+        uint256 allowance = IERC20(token).allowance(address(this), getVault(s.cfmm));
+        if (allowance < amount) {
+            // Approve the maximum amount
+            IERC20(token).approve(getVault(s.cfmm), type(uint256).max);
+        }
+    }
+
+
+    /// @dev See {BaseStrategy-updateReserves}.
+    function updateReserves(address cfmm) internal virtual override {
+        uint128[] memory reserves = getPoolReserves(cfmm);
+        s.CFMM_RESERVES[0] = reserves[0];
+        s.CFMM_RESERVES[1] = reserves[1];
+    }
+
+    /// @dev See {BaseStrategy-depositToCFMM}.
     function depositToCFMM(address cfmm, address to, uint256[] memory amounts) internal virtual override returns(uint256) {
         // We need to encode userData for the joinPool call
-        uint256 minimumBPT = 0; // TODO: Do I need to estimate this?
-        bytes memory userDataEncoded = abi.encode(1, amounts, minimumBPT);
+        bytes memory userDataEncoded = abi.encode(1, amounts, 0);
 
-        IVault(getVault(cfmm)).joinPool(getPoolId(cfmm), 
-                to, // The GammaPool is sending the tokens
-                to, // The GammaPool is receiving the Balancer LP tokens
-                IVault.JoinPoolRequest({assets: getTokens(cfmm), maxAmountsIn: amounts, userData: userDataEncoded, fromInternalBalance: false}) // JoinPoolRequest is a struct, and is expected as input for the joinPool function
+        address vaultId = getVault(cfmm);
+        bytes32 poolId = getPoolId(cfmm);
+
+        address[] memory tokens = getTokens(cfmm);
+
+        // Adding approval for the Vault to spend the tokens
+        addVaultApproval(tokens[0], amounts[0]);
+        addVaultApproval(tokens[1], amounts[1]);
+
+        IVault(vaultId).joinPool(poolId,
+                address(this), // The GammaPool is sending the reserve tokens
+                to,
+                IVault.JoinPoolRequest(
+                    {
+                    assets: tokens,
+                    maxAmountsIn: amounts,
+                    userData: userDataEncoded,
+                    fromInternalBalance: false
+                    })
                 );
 
         return 1;
     }
 
-    /**
-     * @dev Withdraws reserves from the Balancer Vault contract.
-     *      Sends the Vault contract the BPT tokens and receives the pool reserve tokens.
-     * @param cfmm The address of the Balancer pool/LP token.
-     * @param to The address to return the pool reserve tokens to.
-     * @param amount The amount of Balancer LP token to burn.
-     */    
-    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
+
+    /// @dev See {BaseStrategy-withdrawFromCFMM}.
+    function withdrawFromCFMM(address cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory) {
         // We need to encode userData for the exitPool call
         bytes memory userDataEncoded = abi.encode(1, amount);
 
-        // Notes from Balancer Documentation:
-        // When providing your assets, you must ensure that the tokens are sorted numerically by token address. 
-        // It's also important to note that the values in minAmountsOut correspond to the same index value in assets, 
-        // so these arrays must be made in parallel after sorting.
-
-        // Log the initial reserves in the pool
-        uint128[] memory initialReserves = getPoolReserves(cfmm);
+        // Log the initial reserves in the GammaPool
+        uint256[] memory initialReserves = getStrategyReserves();
 
         uint[] memory minAmountsOut = new uint[](2);
 
         IVault(getVault(cfmm)).exitPool(getPoolId(cfmm), 
-                to, // The GammaPool is sending the Balancer LP tokens
-                payable(to), // The user is receiving the pool reserve tokens
-                IVault.ExitPoolRequest({assets: getTokens(cfmm), minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
-                );
+            address(this), // The GammaPool is sending the Balancer LP tokens
+            payable(to), // Recipient of pool reserve tokens
+            IVault.ExitPoolRequest({assets: getTokens(cfmm), minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
+            );
 
-        // Must return amounts as an array of withdrawn reserves
-        uint128[] memory finalReserves = getPoolReserves(cfmm);
+        // Log the final reserves in the GammaPool
+        uint256[] memory finalReserves = getStrategyReserves();
 
-        amounts[0] = uint256(finalReserves[0] - initialReserves[0]);
-        amounts[1] = uint256(finalReserves[1] - initialReserves[1]);
+        uint256[] memory amounts = new uint256[](2);
+
+        // Note: We are logging differences in reserves of the GammaPool (instead of the Vault) to account for transfer tax on the underlying tokens
+
+        // The difference between the initial and final reserves is the amount of reserve tokens withdrawn
+        amounts[0] = finalReserves[0] - initialReserves[0];
+        amounts[1] = finalReserves[1] - initialReserves[1];
+
+        return amounts;
     }
 
-    /**
-     * @dev Calculates the Balancer invariant for a given Balancer pool and reserve amounts.
-     * @param cfmm The contract address of the Balancer weighted pool.
-     * @param amounts The pool reserves to use in the calculation.
-     */
+
+    /// @dev See {BaseStrategy-calcInvariant}.
     function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256 invariant) {
         uint256[] memory weights = getWeights(cfmm);
-        invariant = Math.power(amounts[0], weights[0]) * Math.power(amounts[1], weights[1]);
+
+        uint256[] memory uint256Amounts = new uint256[](2);
+        uint256Amounts[0] = uint256(amounts[0]);
+        uint256Amounts[1] = uint256(amounts[1]);
+
+        invariant = WeightedMath._calculateInvariant(weights, uint256Amounts);
     }
 }

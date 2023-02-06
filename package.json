@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-strategies",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "description": "Strategies contracts for the v1-core",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
@@ -68,6 +68,7 @@
     "@balancer-labs/v2-vault": "^3.0.1",
     "@gammaswap/v1-core": "^0.2.15",
     "@openzeppelin/contracts": "^4.7.0",
+    "@prb/math": "^3.1.0",
     "@uniswap/v2-core": "^1.0.1"
   }
 }

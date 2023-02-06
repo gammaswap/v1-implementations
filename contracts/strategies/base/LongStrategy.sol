@@ -13,7 +13,7 @@ abstract contract LongStrategy is ILongStrategy, BaseLongStrategy {
 
     error ExcessiveBorrowing();
 
-    // LongGamma
+    // Long Gamma
 
     /// @dev See {BaseLongStrategy-checkMargin}.
     function checkMargin(uint256 collateral, uint256 liquidity) internal virtual override view {
