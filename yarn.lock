@@ -33,7 +33,7 @@
 
 "@balancer-labs/v2-deployments@^3.1.1":
   version "3.1.1"
-  resolved "https://registry.npmjs.org/@balancer-labs/v2-deployments/-/v2-deployments-3.1.1.tgz"
+  resolved "https://registry.yarnpkg.com/@balancer-labs/v2-deployments/-/v2-deployments-3.1.1.tgz#34d17df60f26d49bafd77a587ef29646690ac079"
   integrity sha512-Jk9QjG88UjyBF8XOsehPOHFaYxh4og98AztXe4dQ1FLCSnlRc2vQWEAXIRw8Yw7M8M+CXsW11uLGypMftxGNcw==
 
 "@balancer-labs/v2-interfaces@0.2.0":
@@ -568,10 +568,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@gammaswap/v1-core@^0.2.15":
-  version "0.2.15"
-  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.2.15/e9bbc238d6728b7f9b05fe9086868739f3af2527#e9bbc238d6728b7f9b05fe9086868739f3af2527"
-  integrity sha512-uDspLes6IIF85VAED3exxWMJ/c9LkRLFytQueOvkxXMR5nfwfxGVLd0sijF2uwf7hSrXTrvd/UA71UEGVsqTNA==
+"@gammaswap/v1-core@^0.2.16":
+  version "0.2.16"
+  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.2.16/c25fde6feaa1f06a622f3a321d54956468c65617#c25fde6feaa1f06a622f3a321d54956468c65617"
+  integrity sha512-d1pG3AXkh70zKVLhzoZ09yEjvb3erFG4YK12aPZS6J4QBKezi7e+Rx5GFwCKojETq2BygkBs/8/whkiCe5x1xQ==
   dependencies:
     "@openzeppelin/contracts" "^4.7.0"
 

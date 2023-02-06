@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../../interfaces/external/ICPMM.sol";
-import "../base/ShortStrategyERC4626.sol";
+import "@gammaswap/v1-core/contracts/strategies/ShortStrategyERC4626.sol";
+import "../../interfaces/external/cpmm/ICPMM.sol";
 import "./CPMMBaseStrategy.sol";
 
 /// @title Short Strategy concrete implementation contract for Constant Product Market Maker

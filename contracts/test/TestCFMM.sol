@@ -47,4 +47,14 @@ contract TestCFMM is ERC20 {
         _burn(to, shares);
         sync();
     }
+
+    function withdrawReserves(uint256 shares) public virtual returns(uint128[] memory reserves) {
+        uint256 _totalSupply = totalSupply();
+        reserves = new uint128[](2);
+        reserves[0] = uint128(reserves0 * shares / _totalSupply);
+        reserves[1] = uint128(reserves1 * shares / _totalSupply);
+        IERC20(token0).transfer(msg.sender, reserves[0]);
+        IERC20(token1).transfer(msg.sender, reserves[1]);
+        burn(shares, msg.sender);
+    }
 }
