@@ -1,7 +1,7 @@
 {
   "name": "@gammaswap/v1-implementations",
   "version": "0.2.18",
-  "description": "Implementation contracts for the v1-core",
+  "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
   "publishConfig": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gammaswap/v1-strategies"
+    "url": "https://github.com/gammaswap/v1-implementations"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
