@@ -292,6 +292,7 @@ library LogExpMath {
 
         // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
         // upscaling.
+
         int256 logBase;
         if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
             logBase = _ln_36(base);

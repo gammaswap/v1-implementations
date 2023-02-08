@@ -32,7 +32,7 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Fixed Point addition is the same as regular checked additionSS
+        // Fixed Point addition is the same as regular checked addition
         unchecked {
             uint256 c = a + b;
             _require(c >= a, Errors.ADD_OVERFLOW);
@@ -115,7 +115,7 @@ library FixedPoint {
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
-        unchecked { // saves gas
+        unchecked { // reduces contract size
             if (y == ONE) {
                 return x;
             } else if (y == TWO) {
@@ -143,7 +143,7 @@ library FixedPoint {
     function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
-        unchecked {
+        unchecked { // reduces contract size
             if (y == ONE) {
                 return x;
             } else if (y == TWO) {
