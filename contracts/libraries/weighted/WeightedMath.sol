@@ -54,7 +54,7 @@ library WeightedMath {
     // So we can round always to the same direction. It is also used to initiate the BPT amount
     // and, because there is a minimum BPT, we round down the invariant.
     function _calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
-        external
+        internal
         pure
         returns (uint256 invariant)
     {
@@ -83,7 +83,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountIn
-    ) external pure returns (uint256) {
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = amountOut                                                                            //
@@ -118,7 +118,7 @@ library WeightedMath {
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountOut
-    ) external pure returns (uint256) {
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // inGivenOut                                                                                //
         // aO = amountOut                                                                            //

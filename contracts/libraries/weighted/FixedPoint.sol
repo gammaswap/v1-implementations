@@ -33,69 +33,78 @@ library FixedPoint {
 
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
-
-        uint256 c = a + b;
-        _require(c >= a, Errors.ADD_OVERFLOW);
-        return c;
+        unchecked {
+            uint256 c = a + b;
+            _require(c >= a, Errors.ADD_OVERFLOW);
+            return c;
+        }
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
-
-        _require(b <= a, Errors.SUB_OVERFLOW);
-        uint256 c = a - b;
-        return c;
+        unchecked {
+            _require(b <= a, Errors.SUB_OVERFLOW);
+            return a - b;
+        }
     }
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 product = a * b;
-        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
+        unchecked {
+            uint256 product = a * b;
+            _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
-        return product / ONE;
+            return product / ONE;
+        }
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        uint256 product = a * b;
-        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
+        unchecked {
+            uint256 product = a * b;
+            _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
-        // The traditional divUp formula is:
-        // divUp(x, y) := (x + y - 1) / y
-        // To avoid intermediate overflow in the addition, we distribute the division and get:
-        // divUp(x, y) := (x - 1) / y + 1
-        // Note that this requires x != 0, if x == 0 then the result is zero
-        //
-        // Equivalent to:
-        // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
-        assembly {
-            result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
+            // The traditional divUp formula is:
+            // divUp(x, y) := (x + y - 1) / y
+            // To avoid intermediate overflow in the addition, we distribute the division and get:
+            // divUp(x, y) := (x - 1) / y + 1
+            // Note that this requires x != 0, if x == 0 then the result is zero
+            //
+            // Equivalent to:
+            // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
+            assembly {
+                result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
+            }
         }
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        _require(b != 0, Errors.ZERO_DIVISION);
+        unchecked {
+            _require(b != 0, Errors.ZERO_DIVISION);
 
-        uint256 aInflated = a * ONE;
-        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+            uint256 aInflated = a * ONE;
+            _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
-        return aInflated / b;
+            return aInflated / b;
+        }
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        _require(b != 0, Errors.ZERO_DIVISION);
+        unchecked {
+            _require(b != 0, Errors.ZERO_DIVISION);
 
-        uint256 aInflated = a * ONE;
-        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+            uint256 aInflated = a * ONE;
+            _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
-        // The traditional divUp formula is:
-        // divUp(x, y) := (x + y - 1) / y
-        // To avoid intermediate overflow in the addition, we distribute the division and get:
-        // divUp(x, y) := (x - 1) / y + 1
-        // Note that this requires x != 0, if x == 0 then the result is zero
-        //
-        // Equivalent to:
-        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
-        assembly {
-            result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
+            // The traditional divUp formula is:
+            // divUp(x, y) := (x + y - 1) / y
+            // To avoid intermediate overflow in the addition, we distribute the division and get:
+            // divUp(x, y) := (x - 1) / y + 1
+            // Note that this requires x != 0, if x == 0 then the result is zero
+            //
+            // Equivalent to:
+            // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
+            assembly {
+                result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
+            }
         }
     }
 
@@ -106,21 +115,23 @@ library FixedPoint {
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
-        if (y == ONE) {
-            return x;
-        } else if (y == TWO) {
-            return mulDown(x, x);
-        } else if (y == FOUR) {
-            uint256 square = mulDown(x, x);
-            return mulDown(square, square);
-        } else {
-            uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
-
-            if (raw < maxError) {
-                return 0;
+        unchecked { // reduces contract size
+            if (y == ONE) {
+                return x;
+            } else if (y == TWO) {
+                return mulDown(x, x);
+            } else if (y == FOUR) {
+                uint256 square = mulDown(x, x);
+                return mulDown(square, square);
             } else {
-                return sub(raw, maxError);
+                uint256 raw = LogExpMath.pow(x, y);
+                uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+
+                if (raw < maxError) {
+                    return 0;
+                } else {
+                    return sub(raw, maxError);
+                }
             }
         }
     }
@@ -132,18 +143,20 @@ library FixedPoint {
     function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
-        if (y == ONE) {
-            return x;
-        } else if (y == TWO) {
-            return mulUp(x, x);
-        } else if (y == FOUR) {
-            uint256 square = mulUp(x, x);
-            return mulUp(square, square);
-        } else {
-            uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+        unchecked { // reduces contract size
+            if (y == ONE) {
+                return x;
+            } else if (y == TWO) {
+                return mulUp(x, x);
+            } else if (y == FOUR) {
+                uint256 square = mulUp(x, x);
+                return mulUp(square, square);
+            } else {
+                uint256 raw = LogExpMath.pow(x, y);
+                uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
 
-            return add(raw, maxError);
+                return add(raw, maxError);
+            }
         }
     }
 

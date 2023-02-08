@@ -56,9 +56,7 @@ describe("BalancerBaseStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy", {
-      libraries: { WeightedMath: weightedMath.address },
-    });
+    TestStrategy = await ethers.getContractFactory("TestBalancerBaseStrategy");
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");

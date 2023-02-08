@@ -56,9 +56,7 @@ describe("BalancerLongStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerLongStrategy", {
-      libraries: { WeightedMath: weightedMath.address },
-    });
+    TestStrategy = await ethers.getContractFactory("TestBalancerLongStrategy");
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
@@ -580,7 +578,7 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(answer5, expectedAnswer5);
       });
 
-      it.skip("Calculate GetAmountOut", async function () {
+      /* it.skip("Calculate GetAmountOut", async function () {
         const ONE = BigNumber.from(10).pow(18);
         const amountIn = ONE.mul(100);
         const reserveOut = ONE.mul(500);
@@ -649,7 +647,7 @@ describe("BalancerLongStrategy", function () {
           1000
         );
         expect(amtIn5a).lt(amtIn5b);
-      });
+      }); /**/
 
       // it.skip("Error Calc Actual Out Amount", async function () {
       //   const ONE = BigNumber.from(10).pow(18);
