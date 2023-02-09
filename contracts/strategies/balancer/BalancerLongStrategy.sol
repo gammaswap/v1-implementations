@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
+import "../../libraries/weighted/InputHelpers.sol";
+
 import "@gammaswap/v1-core/contracts/strategies/LongStrategy.sol";
 import "./BalancerBaseLongStrategy.sol";
 
@@ -23,23 +25,23 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
      * @dev Get the price associated with the Balancer pool.
      * @param cfmm The address of the Balancer pool.
      */
-    function _getCFMMPrice(address cfmm) public virtual view returns(uint256 price) {
-        uint128[] memory reserves = getPoolReserves(cfmm);
+    function _getCFMMPrice(address cfmm) public virtual view returns(uint256) {
+        uint256[] memory reserves = InputHelpers.castToUint256Array(getPoolReserves(cfmm));
+
+        // Re-scale reserves to account for the difference in decimals between the two tokens
+        uint256[] memory scalingFactors = InputHelpers.getScalingFactors(getTokens(cfmm));
+        uint256[] memory scaledReserves = InputHelpers.upscaleArray(reserves, scalingFactors);
+
         uint256[] memory weights = getWeights(cfmm);
-        price = (reserves[1] * weights[0]) / (reserves[0] * weights[1]);
+
+        return (scaledReserves[1] * weights[0]) / (scaledReserves[0] * weights[1]);
     }
 
     /**
      * @dev Get latest reserve quantities in Balancer pool through public function.
      */
     function _getLatestCFMMReserves(address cfmm) public virtual override view returns(uint256[] memory reserves) {
-        reserves = new uint256[](2);
-
-        uint128[] memory poolReserves = new uint128[](2);
-        poolReserves = getPoolReserves(cfmm);
-
-        reserves[0] = uint256(poolReserves[0]);
-        reserves[1] = uint256(poolReserves[1]);
+        return InputHelpers.castToUint256Array(getPoolReserves(cfmm));
     }
 
 }
