@@ -85,13 +85,13 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     // Calculating how much input required for a given output amount
-    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) external virtual view returns (uint256) {
-        return getAmountIn(amountOut, reserveOut, weightOut, reserveIn, weightIn);
+    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
+        return getAmountIn(amountOut, reserveOut, weightOut, tokenOut, reserveIn, weightIn, tokenIn);
     }
 
     // Calculating how much output required for a given input amount
-    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) external virtual view returns (uint256) {
-        return getAmountOut(amountIn, reserveOut, weightOut, reserveIn, weightIn);
+    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
+        return getAmountOut(amountIn, reserveOut, weightOut, tokenOut, reserveIn, weightIn, tokenIn);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
