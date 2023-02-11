@@ -16,8 +16,8 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         CPMMLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
-        s.initialize(msg.sender, _cfmm, _tokens, _decimals);
+    function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
+        s.initialize(_factory, _cfmm, _tokens, _decimals);
     }
 
     function cfmm() public view returns(address) {
@@ -27,6 +27,10 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     function createLoan() external virtual returns(uint256 tokenId) {
         tokenId = s.createLoan(s.tokens.length);
         emit LoanCreated(msg.sender, tokenId);
+    }
+
+    function getLoan(uint256 tokenId) external virtual view returns(LibStorage.Loan memory _loan) {
+        _loan = s.loans[tokenId];
     }
 
     function setTokenBalances(uint256 tokenId, uint128 collateral0, uint128 collateral1, uint128 balance0, uint128 balance1) external virtual {
@@ -81,12 +85,19 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
-        return (0, new uint256[](2));
+    function depositLPTokens(uint256 tokenId) external virtual {
+        // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
+        updateIndex();
+        updateCollateral(s.loans[tokenId]);
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
+        s.LP_INVARIANT = lpInvariant;
     }
 
-    function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
-        return (0, new uint256[](2));
+    function getBalances() external virtual view returns(uint256 lpTokenBalance, uint256 lpInvariant) {
+        lpTokenBalance = s.LP_TOKEN_BALANCE;
+        lpInvariant = s.LP_INVARIANT;
     }
 
     function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override returns(uint128[] memory) {

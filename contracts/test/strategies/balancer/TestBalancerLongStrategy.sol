@@ -21,7 +21,6 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
         s.initialize(msg.sender, _cfmm, tokens, decimals);
     }
-
     
     function getCFMM() public virtual view returns(address) {
         return s.cfmm;
@@ -111,7 +110,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         return (0, new uint256[](2));
     }
 
-    function _repayLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+    function _repayLiquidity(uint256, uint256, uint256[] calldata) external virtual override returns(uint256, uint256[] memory) {
         return (0, new uint256[](2));
     }
 
