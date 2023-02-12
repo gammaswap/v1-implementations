@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "../../../strategies/cpmm/CPMMLongStrategy.sol";
+import "../../../strategies/cpmm/CPMMLiquidationStrategy.sol";
 
-contract TestCPMMLongStrategy is CPMMLongStrategy {
+contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
+    error ExcessiveBorrowing();
 
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+        CPMMLiquidationStrategy(_liquidationThreshold, _liquidationFeeThreshold, _maxTotalApy, _blocksPerYear, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
@@ -100,15 +101,50 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         lpInvariant = s.LP_INVARIANT;
     }
 
-    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override returns(uint128[] memory) {
-        return new uint128[](2);
+    function updateLoanData(uint256 tokenId) external virtual {
+        updateLoan(s.loans[tokenId]);
     }
 
-    function _increaseCollateral(uint256) external virtual override returns(uint128[] memory) {
-        return new uint128[](2);
+    function calcBorrowRate(uint256, uint256) internal override virtual view returns(uint256) {
+        return 1e19;
     }
 
-    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override returns(uint128[] memory) {
-        return new uint128[](2);
+    function canLiquidate(uint256 tokenId) external virtual view returns(bool) {
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+        uint256 collateral = calcInvariant(s.cfmm, _loan.tokensHeld);
+        return !hasMargin(collateral, _loan.liquidity, ltvThreshold());
+    }
+
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
+        // Revert if borrowing all CFMM LP tokens in pool
+        if(lpTokens >= s.LP_TOKEN_BALANCE) {
+            revert ExcessiveBorrowing();
+        }
+
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        // Update liquidity debt to include accrued interest since last update
+        uint256 loanLiquidity = updateLoan(_loan);
+
+        // Withdraw reserve tokens from CFMM that lpTokens represent
+        amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
+
+        // Add withdrawn tokens as part of loan collateral
+        uint128[] memory tokensHeld = updateCollateral(_loan);
+
+        // Add liquidity debt to total pool debt and start tracking loan
+        (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
+
+        // Check that loan is not undercollateralized
+        uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
+        checkLoanMargin(collateral, loanLiquidity);
+    }
+
+    function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {
+        if(!hasMargin(collateral, liquidity, ltvThreshold())) { // Revert if loan does not have enough collateral
+            revert HasMargin();
+        }
     }
 }

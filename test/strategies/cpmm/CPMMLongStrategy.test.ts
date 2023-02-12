@@ -9,6 +9,7 @@ describe("CPMMLongStrategy", function () {
   let TestERC20: any;
   let TestERC20WithFee: any;
   let TestStrategy: any;
+  let TestGammaPoolFactory: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -18,10 +19,12 @@ describe("CPMMLongStrategy", function () {
   let cfmm: any;
   let cfmmFee: any;
   let uniFactory: any;
+  let gsFactory: any;
   let strategy: any;
   let strategyFee: any;
   let owner: any;
   let addr1: any;
+  let addr2: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -29,7 +32,7 @@ describe("CPMMLongStrategy", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1] = await ethers.getSigners();
+    [owner, addr1, addr2] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -39,6 +42,9 @@ describe("CPMMLongStrategy", function () {
       UniswapV2PairJSON.abi,
       UniswapV2PairJSON.bytecode,
       owner
+    );
+    TestGammaPoolFactory = await ethers.getContractFactory(
+      "TestGammaPoolFactory"
     );
     TestStrategy = await ethers.getContractFactory("TestCPMMLongStrategy");
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
@@ -73,8 +79,12 @@ describe("CPMMLongStrategy", function () {
       maxApy
     );
 
+    // address _feeToSetter, uint16 _fee
+    gsFactory = await TestGammaPoolFactory.deploy(owner.address, 10000);
+
     await (
       await strategy.initialize(
+        gsFactory.address,
         cfmm.address,
         [tokenA.address, tokenB.address],
         [18, 18]
@@ -134,6 +144,7 @@ describe("CPMMLongStrategy", function () {
 
     await (
       await strategyFee.initialize(
+        gsFactory.address,
         cfmmFee.address,
         [tokenAFee.address, tokenBFee.address],
         [18, 18]
@@ -207,7 +218,7 @@ describe("CPMMLongStrategy", function () {
 
     await (await tokenA.transfer(cfmm.address, ONE.mul(5000))).wait();
     await (await tokenB.transfer(cfmm.address, ONE.mul(10000))).wait();
-    await (await cfmm.sync()).wait();
+    await (await cfmm.mint(addr2.address)).wait();
 
     const rez = await cfmm.getReserves();
     const reserves0 = rez._reserve0;
@@ -216,6 +227,74 @@ describe("CPMMLongStrategy", function () {
     await (await strategy.setCFMMReserves(reserves0, reserves1, 0)).wait();
 
     return { res0: reserves0, res1: reserves1 };
+  }
+
+  async function setUpLoanableLiquidity(tokenId: any, hasFee: any) {
+    const ONE = BigNumber.from(10).pow(18);
+
+    if (hasFee) {
+      strategy = strategyFee;
+      tokenA = tokenAFee;
+      tokenB = tokenBFee;
+      cfmm = cfmmFee;
+    }
+
+    await (await tokenA.transfer(cfmm.address, ONE.mul(5))).wait();
+    await (await tokenB.transfer(cfmm.address, ONE.mul(10))).wait();
+    await (await cfmm.mint(strategy.address)).wait();
+
+    await (await strategy.depositLPTokens(tokenId)).wait();
+  }
+
+  const sqrt = (y: BigNumber): BigNumber => {
+    let z = BigNumber.from(0);
+    if (y.gt(3)) {
+      z = y;
+      let x = y.div(2).add(1);
+      while (x.lt(z)) {
+        z = x;
+        x = y.div(x).add(x).div(2);
+      }
+    } else if (!y.isZero()) {
+      z = BigNumber.from(1);
+    }
+    return z;
+  };
+
+  async function getBalanceChanges(
+    lpTokensBorrowed: BigNumber,
+    feeA: any,
+    feeB: any
+  ) {
+    const rezerves = await cfmmFee.getReserves();
+    const cfmmTotalInvariant = sqrt(rezerves._reserve0.mul(rezerves._reserve1));
+    const cfmmTotalSupply = await cfmmFee.totalSupply();
+    const liquidityBorrowed = lpTokensBorrowed
+      .mul(cfmmTotalInvariant)
+      .div(cfmmTotalSupply);
+    const tokenAChange = lpTokensBorrowed
+      .mul(rezerves._reserve0)
+      .div(cfmmTotalSupply);
+    const tokenBChange = lpTokensBorrowed
+      .mul(rezerves._reserve1)
+      .div(cfmmTotalSupply);
+
+    const ONE = BigNumber.from(10).pow(18);
+    const feeAmt0 = tokenAChange.mul(feeA).div(ONE);
+    const feeAmt1 = tokenBChange.mul(feeB).div(ONE);
+
+    return {
+      liquidityBorrowed: liquidityBorrowed,
+      tokenAChange: tokenAChange.sub(feeAmt0),
+      tokenBChange: tokenBChange.sub(feeAmt1),
+    };
+  }
+
+  function getTokensHeld(amt0: any, amt1: any, fee0: any, fee1: any) {
+    const ONE = BigNumber.from(10).pow(18);
+    const feeAmt0 = amt0.mul(fee0).div(ONE);
+    const feeAmt1 = amt1.mul(fee1).div(ONE);
+    return { tokensHeld0: amt0.sub(feeAmt0), tokensHeld1: amt1.sub(feeAmt1) };
   }
 
   // You can nest describe calls to create subsections.
@@ -364,6 +443,294 @@ describe("CPMMLongStrategy", function () {
       expect(await tokenB.balanceOf(strategy.address)).to.equal(0);
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(400);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(340);
+    });
+  });
+
+  describe("Repay Loans", function () {
+    it("Repay Tokens without Fees", async function () {
+      await createStrategy(false, false);
+
+      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
+        .args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const tokensHeld0 = ONE.mul(100);
+      const tokensHeld1 = ONE.mul(200);
+
+      await setUpStrategyAndCFMM(tokenId, true);
+      await setUpLoanableLiquidity(tokenId, true);
+
+      const loan0 = await strategyFee.getLoan(tokenId);
+      expect(loan0.initLiquidity).to.equal(0);
+      expect(loan0.liquidity).to.equal(0);
+      expect(loan0.lpTokens).to.equal(0);
+      expect(loan0.tokensHeld.length).to.equal(2);
+      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
+
+      const lpTokensBorrowed = ONE;
+      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      await (
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+      ).wait();
+      const loan1 = await strategyFee.getLoan(tokenId);
+      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan1.tokensHeld.length).to.equal(2);
+      expect(loan1.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
+      expect(loan1.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
+
+      const payLiquidity = res.liquidityBorrowed;
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan2 = await strategyFee.getLoan(tokenId);
+      expect(loan2.initLiquidity).gt(0);
+      expect(loan2.liquidity).gt(0);
+      expect(loan2.lpTokens).gt(0);
+      expect(loan2.tokensHeld.length).to.equal(2);
+      expect(loan2.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan2.tokensHeld[1]).to.equal(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan3 = await strategyFee.getLoan(tokenId);
+      expect(loan3.initLiquidity).to.equal(0);
+      expect(loan3.liquidity).to.equal(0);
+      expect(loan3.lpTokens).to.equal(0);
+      expect(loan3.tokensHeld.length).to.equal(2);
+      expect(loan3.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan3.tokensHeld[1]).lt(tokensHeld1);
+    });
+
+    it("Repay Tokens with Fees", async function () {
+      await createStrategy(true, true);
+
+      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
+        .args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const fee = ONE.div(10);
+      const _held = getTokensHeld(ONE.mul(100), ONE.mul(200), fee, fee);
+      const tokensHeld0 = _held.tokensHeld0;
+      const tokensHeld1 = _held.tokensHeld1;
+
+      await setUpStrategyAndCFMM(tokenId, true);
+      await setUpLoanableLiquidity(tokenId, true);
+
+      const loan0 = await strategyFee.getLoan(tokenId);
+      expect(loan0.initLiquidity).to.equal(0);
+      expect(loan0.liquidity).to.equal(0);
+      expect(loan0.lpTokens).to.equal(0);
+      expect(loan0.tokensHeld.length).to.equal(2);
+      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
+
+      const lpTokensBorrowed = ONE;
+      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      await (
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+      ).wait();
+      const loan1 = await strategyFee.getLoan(tokenId);
+      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan1.tokensHeld.length).to.equal(2);
+      expect(loan1.tokensHeld[0]).lt(tokensHeld0.add(res.tokenAChange));
+      expect(loan1.tokensHeld[1]).lt(tokensHeld1.add(res.tokenBChange));
+
+      const payLiquidity = res.liquidityBorrowed;
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan2 = await strategyFee.getLoan(tokenId);
+      expect(loan2.initLiquidity).gt(0);
+      expect(loan2.liquidity).gt(0);
+      expect(loan2.lpTokens).gt(0);
+      expect(loan2.tokensHeld.length).to.equal(2);
+      expect(loan2.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan2.tokensHeld[1]).lt(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan3 = await strategyFee.getLoan(tokenId);
+      expect(loan3.initLiquidity).gt(0);
+      expect(loan3.liquidity).gt(0);
+      expect(loan3.lpTokens).gt(0);
+      expect(loan3.tokensHeld.length).to.equal(2);
+      expect(loan3.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan3.tokensHeld[1]).lt(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [1000, 1000])
+      ).wait();
+
+      const loan4 = await strategyFee.getLoan(tokenId);
+      expect(loan4.initLiquidity).to.equal(0);
+      expect(loan4.liquidity).to.equal(0);
+      expect(loan4.lpTokens).to.equal(0);
+      expect(loan4.tokensHeld.length).to.equal(2);
+      expect(loan4.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan4.tokensHeld[1]).lt(tokensHeld1);
+    });
+
+    it("Repay Tokens with only TokenA Fees", async function () {
+      await createStrategy(true, false);
+
+      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
+        .args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const fee = ONE.div(10);
+      const _held = getTokensHeld(ONE.mul(100), ONE.mul(200), fee, 0);
+      const tokensHeld0 = _held.tokensHeld0;
+      const tokensHeld1 = _held.tokensHeld1;
+
+      await setUpStrategyAndCFMM(tokenId, true);
+      await setUpLoanableLiquidity(tokenId, true);
+
+      const loan0 = await strategyFee.getLoan(tokenId);
+      expect(loan0.initLiquidity).to.equal(0);
+      expect(loan0.liquidity).to.equal(0);
+      expect(loan0.lpTokens).to.equal(0);
+      expect(loan0.tokensHeld.length).to.equal(2);
+      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
+
+      const lpTokensBorrowed = ONE;
+      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      await (
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+      ).wait();
+      const loan1 = await strategyFee.getLoan(tokenId);
+      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan1.tokensHeld.length).to.equal(2);
+      expect(loan1.tokensHeld[0]).lt(tokensHeld0.add(res.tokenAChange));
+      expect(loan1.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
+
+      const payLiquidity = res.liquidityBorrowed;
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan2 = await strategyFee.getLoan(tokenId);
+      expect(loan2.initLiquidity).gt(0);
+      expect(loan2.liquidity).gt(0);
+      expect(loan2.lpTokens).gt(0);
+      expect(loan2.tokensHeld.length).to.equal(2);
+      expect(loan2.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan2.tokensHeld[1]).to.equal(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan3 = await strategyFee.getLoan(tokenId);
+      expect(loan3.initLiquidity).gt(0);
+      expect(loan3.liquidity).gt(0);
+      expect(loan3.lpTokens).gt(0);
+      expect(loan3.tokensHeld.length).to.equal(2);
+      expect(loan3.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan3.tokensHeld[1]).lt(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [1000, 0])
+      ).wait();
+
+      const loan4 = await strategyFee.getLoan(tokenId);
+      expect(loan4.initLiquidity).to.equal(0);
+      expect(loan4.liquidity).to.equal(0);
+      expect(loan4.lpTokens).to.equal(0);
+      expect(loan4.tokensHeld.length).to.equal(2);
+      expect(loan4.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan4.tokensHeld[1]).lt(tokensHeld1);
+    });
+
+    it("Repay Tokens with only TokenB Fees", async function () {
+      await createStrategy(false, true);
+
+      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
+        .args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const fee = ONE.div(10);
+      const _held = getTokensHeld(ONE.mul(100), ONE.mul(200), 0, fee);
+      const tokensHeld0 = _held.tokensHeld0;
+      const tokensHeld1 = _held.tokensHeld1;
+
+      await setUpStrategyAndCFMM(tokenId, true);
+      await setUpLoanableLiquidity(tokenId, true);
+
+      const loan0 = await strategyFee.getLoan(tokenId);
+      expect(loan0.initLiquidity).to.equal(0);
+      expect(loan0.liquidity).to.equal(0);
+      expect(loan0.lpTokens).to.equal(0);
+      expect(loan0.tokensHeld.length).to.equal(2);
+      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
+
+      const lpTokensBorrowed = ONE;
+      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      await (
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+      ).wait();
+      const loan1 = await strategyFee.getLoan(tokenId);
+      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan1.tokensHeld.length).to.equal(2);
+      expect(loan1.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
+      expect(loan1.tokensHeld[1]).lt(tokensHeld1.add(res.tokenBChange));
+
+      const payLiquidity = res.liquidityBorrowed;
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan2 = await strategyFee.getLoan(tokenId);
+      expect(loan2.initLiquidity).gt(0);
+      expect(loan2.liquidity).gt(0);
+      expect(loan2.lpTokens).gt(0);
+      expect(loan2.tokensHeld.length).to.equal(2);
+      expect(loan2.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan2.tokensHeld[1]).lt(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+      ).wait();
+
+      const loan3 = await strategyFee.getLoan(tokenId);
+      expect(loan3.initLiquidity).gt(0);
+      expect(loan3.liquidity).gt(0);
+      expect(loan3.lpTokens).gt(0);
+      expect(loan3.tokensHeld.length).to.equal(2);
+      expect(loan3.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan3.tokensHeld[1]).lt(tokensHeld1);
+
+      await (
+        await strategyFee._repayLiquidity(tokenId, payLiquidity, [0, 1000])
+      ).wait();
+
+      const loan4 = await strategyFee.getLoan(tokenId);
+      expect(loan4.initLiquidity).to.equal(0);
+      expect(loan4.liquidity).to.equal(0);
+      expect(loan4.lpTokens).to.equal(0);
+      expect(loan4.tokensHeld.length).to.equal(2);
+      expect(loan4.tokensHeld[0]).lt(tokensHeld0);
+      expect(loan4.tokensHeld[1]).lt(tokensHeld1);
     });
   });
 
