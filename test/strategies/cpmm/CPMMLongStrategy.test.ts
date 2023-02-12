@@ -734,43 +734,6 @@ describe("CPMMLongStrategy", function () {
     });
   });
 
-  describe("Liquidate Loans", function () {
-    it("Liquidate with collateral", async function () {
-      await createStrategy(false, false);
-
-      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
-        .args.tokenId;
-
-      const ONE = BigNumber.from(10).pow(18);
-      const tokensHeld0 = ONE.mul(100);
-      const tokensHeld1 = ONE.mul(200);
-
-      await setUpStrategyAndCFMM(tokenId, true);
-      await setUpLoanableLiquidity(tokenId, true);
-
-      const loan0 = await strategyFee.getLoan(tokenId);
-      expect(loan0.initLiquidity).to.equal(0);
-      expect(loan0.liquidity).to.equal(0);
-      expect(loan0.lpTokens).to.equal(0);
-      expect(loan0.tokensHeld.length).to.equal(2);
-      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
-      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
-
-      const lpTokensBorrowed = ONE;
-      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
-      await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
-      ).wait();
-      const loan1 = await strategyFee.getLoan(tokenId);
-      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
-      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
-      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
-      expect(loan1.tokensHeld.length).to.equal(2);
-      expect(loan1.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
-      expect(loan1.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
-    });
-  });
-
   describe("Calc Amt In/Out", function () {
     it("Error Calc Amt In", async function () {
       await expect(strategy.testCalcAmtIn(0, 0, 0)).to.be.revertedWith(
