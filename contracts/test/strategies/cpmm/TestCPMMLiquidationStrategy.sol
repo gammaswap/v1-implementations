@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 import "../../../strategies/cpmm/CPMMLiquidationStrategy.sol";
-import "hardhat/console.sol";
 
 contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
 
@@ -13,6 +12,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
+
     constructor(uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         CPMMLiquidationStrategy(_liquidationThreshold, _liquidationFeeThreshold, _maxTotalApy, _blocksPerYear, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
@@ -102,7 +102,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
     }
 
     function updateLoanData(uint256 tokenId) external virtual {
-        uint256 loanLiquidity = updateLoan(s.loans[tokenId]);
+        updateLoan(s.loans[tokenId]);
     }
 
     function calcBorrowRate(uint256, uint256) internal override virtual view returns(uint256) {
@@ -139,14 +139,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
 
         // Check that loan is not undercollateralized
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
-        console.log(collateral);
-        console.log(loanLiquidity);
         checkLoanMargin(collateral, loanLiquidity);
-
-        /*emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.BORROW_LIQUIDITY);
-
-        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, TX_TYPE.BORROW_LIQUIDITY);/**/
     }
 
     function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {
