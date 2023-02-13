@@ -154,6 +154,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         addVaultApproval(tokens[0], amounts[0]);
         addVaultApproval(tokens[1], amounts[1]);
 
+        // Log the LP token balance of the GammaPool
+        uint256 initialBalance = GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this));
+
         IVault(vaultId).joinPool(poolId,
             address(this), // The GammaPool is sending the reserve tokens
             to,
@@ -166,7 +169,8 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
                 })
             );
 
-        return 1;
+        // Return the difference in LP token balance of the GammaPool
+        return GammaSwapLibrary.balanceOf(IERC20(cfmm), address(this)) - initialBalance;
     }
 
 
