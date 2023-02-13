@@ -8,6 +8,7 @@ import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
 import "../../libraries/weighted/WeightedMath.sol";
+import "../../libraries/weighted/InputHelpers.sol";
 
 /**
  * @title Base Strategy abstract contract for Balancer Weighted Pools
@@ -202,13 +203,13 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
 
     /// @dev See {BaseStrategy-calcInvariant}.
-    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256 invariant) {
+    function calcInvariant(address cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
         uint256[] memory weights = getWeights(cfmm);
 
-        uint256[] memory uint256Amounts = new uint256[](2);
-        uint256Amounts[0] = uint256(amounts[0]);
-        uint256Amounts[1] = uint256(amounts[1]);
+        uint256[] memory scalingFactors = InputHelpers.getScalingFactors(getTokens(cfmm));
+        uint256[] memory scaledAmounts = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), scalingFactors);
 
-        invariant = WeightedMath._calculateInvariant(weights, uint256Amounts);
+        return WeightedMath._calculateInvariant(weights, scaledAmounts);
     }
+
 }
