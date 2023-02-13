@@ -22,19 +22,6 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
     }
 
     /**
-     * @dev Get the price associated with the Balancer pool.
-     * @param cfmm The address of the Balancer pool.
-     */
-    function _getCFMMPrice(address cfmm) public virtual view returns(uint256) {
-        uint256[] memory reserves = InputHelpers.castToUint256Array(getPoolReserves(cfmm));
-
-        uint256[] memory weights = getWeights(cfmm);
-        
-        // Add re-scaling by denominator decimals
-        return (reserves[1] * weights[0] * (10 ** s.decimals[0])) / (reserves[0] * weights[1]);
-    }
-
-    /**
      * @dev Get latest reserve quantities in Balancer pool through public function.
      */
     function _getLatestCFMMReserves(address cfmm) public virtual override view returns(uint256[] memory reserves) {
