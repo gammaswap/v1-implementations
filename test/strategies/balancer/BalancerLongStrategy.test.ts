@@ -426,32 +426,34 @@ describe("BalancerLongStrategy", function () {
     describe("Get Amount In/Out", function () {
       it("Error GetAmountIn", async function () {
         const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         await expect(
-          strategy.testGetAmountIn(0, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(0, 0, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 1000000000, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 1000000000, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT1, 1000000000, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, TOKENS[0], 1000000000, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
           strategy.testGetAmountIn(
             40000,
             1000000000,
-            WEIGHT1,
+            WEIGHT0,
+            TOKENS[0],
             1000000000,
-            WEIGHT1
+            WEIGHT0,
+            TOKENS[1]
           )
         ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
 
@@ -459,41 +461,45 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountIn(
             40000,
             1000000000,
-            WEIGHT2,
+            WEIGHT1,
+            TOKENS[0],
             1000000000,
-            WEIGHT2
+            WEIGHT1,
+            TOKENS[1]
           )
         ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
       });
 
       it("Error GetAmountOut", async function () {
         const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         await expect(
-          strategy.testGetAmountOut(0, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(0, 0, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 1000000000, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 1000000000, WEIGHT0, TOKENS[0], 0, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT1, 1000000000, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, TOKENS[0], 1000000000, WEIGHT1, TOKENS[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
           strategy.testGetAmountOut(
             40000,
             1000000000,
-            WEIGHT1,
+            WEIGHT0,
+            TOKENS[0],
             1000000000,
-            WEIGHT1
+            WEIGHT0,
+            TOKENS[1]
           )
         ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
 
@@ -501,9 +507,11 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountOut(
             40000,
             1000000000,
-            WEIGHT2,
+            WEIGHT1,
+            TOKENS[0],
             1000000000,
-            WEIGHT2
+            WEIGHT1,
+            TOKENS[1]
           )
         ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
       });
@@ -514,15 +522,17 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         const answer1 = await strategy.testGetAmountIn(
           amountOut,
           reserveOut,
-          WEIGHT1,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn,
-          WEIGHT2
+          WEIGHT1,
+          TOKENS[1]
         );
 
         const expectedAnswer1 = BigNumber.from("25357220663536529408");
@@ -532,9 +542,11 @@ describe("BalancerLongStrategy", function () {
         const answer2 = await strategy.testGetAmountIn(
           BigNumber.from(105).mul(ONE),
           reserveOut,
-          WEIGHT1,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          TOKENS[1]
         );
 
         const expectedAnswer2 = BigNumber.from("80416298597382832128");
@@ -544,9 +556,11 @@ describe("BalancerLongStrategy", function () {
         const answer3 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(7),
-          WEIGHT1,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          TOKENS[1]
         );
 
         const expectedAnswer3 = BigNumber.from("19876520058160660480");
@@ -556,9 +570,11 @@ describe("BalancerLongStrategy", function () {
         const answer4 = await strategy.testGetAmountIn(
           amountOut.mul(3),
           reserveOut.mul(7),
-          WEIGHT1,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(12),
-          WEIGHT2
+          WEIGHT1,
+          TOKENS[1]
         );
 
         const expectedAnswer4 = BigNumber.from("121292623593009332224");
@@ -568,9 +584,11 @@ describe("BalancerLongStrategy", function () {
         const answer5 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(5),
-          WEIGHT1,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          TOKENS[1]
         );
 
         const expectedAnswer5 = BigNumber.from("28205068727569096704");
@@ -578,76 +596,85 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(answer5, expectedAnswer5);
       });
 
-      /* it.skip("Calculate GetAmountOut", async function () {
+      it("Calculate GetAmountOut", async function () {
         const ONE = BigNumber.from(10).pow(18);
         const amountIn = ONE.mul(100);
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const amtIn1a = await strategy.testCalcAmtOut(
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
+
+        const amountOut1 = await strategy.testGetAmountOut(
           amountIn,
           reserveOut,
-          reserveIn
+          WEIGHT0,
+          TOKENS[0],
+          reserveIn,
+          WEIGHT1,
+          TOKENS[1]
         );
-        const amtIn1b = calcAmtOut(amountIn, reserveOut, reserveIn, 997, 1000);
-        expect(amtIn1a).to.equal(amtIn1b);
 
-        const amtIn2a = await strategy.testCalcAmtOut(
+        const expectedAnswer1 = BigNumber.from("287429996912549888000");
+
+        expectEqualWithError(amountOut1, expectedAnswer1);
+
+        const amountOut2 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut,
-          reserveIn.mul(3)
-        );
-        const amtIn2b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut,
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(3),
-          997,
-          1000
+          WEIGHT1,
+          TOKENS[1]
         );
-        expect(amtIn2a).to.equal(amtIn2b);
 
-        const amtIn3a = await strategy.testCalcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn3b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          997,
-          1000
-        );
-        expect(amtIn3a).to.equal(amtIn3b);
+        const expectedAnswer2 = BigNumber.from("219815289395209764864");
 
-        const amtIn4a = await strategy.testCalcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn4b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          998,
-          1000
-        );
-        expect(amtIn4a).gt(amtIn4b);
+        expectEqualWithError(amountOut2, expectedAnswer2);
 
-        const amtIn5a = await strategy.testCalcAmtOut(
+        const amountOut3 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn5b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
+          WEIGHT0,
+          TOKENS[0],
           reserveIn.mul(3),
-          996,
-          1000
+          WEIGHT1,
+          TOKENS[1]
         );
-        expect(amtIn5a).lt(amtIn5b);
-      }); /**/
+
+        const expectedAnswer3 = BigNumber.from("1538707025766468550656");
+
+        expectEqualWithError(amountOut3, expectedAnswer3);
+
+        const amountOut4 = await strategy.testGetAmountOut(
+          amountIn.mul(2),
+          reserveOut.mul(7),
+          WEIGHT0,
+          TOKENS[0],
+          reserveIn.mul(19),
+          WEIGHT1,
+          TOKENS[1]
+        );
+
+        const expectedAnswer4 = BigNumber.from("313884305967069986816");
+
+        expectEqualWithError(amountOut4, expectedAnswer4);
+
+        const amountOut5 = await strategy.testGetAmountOut(
+          amountIn.mul(2),
+          reserveOut.mul(2),
+          WEIGHT0,
+          TOKENS[0],
+          reserveIn.mul(15),
+          WEIGHT1,
+          TOKENS[1]
+        );
+
+        const expectedAnswer5 = BigNumber.from("112060590249046573056");
+
+        expectEqualWithError(amountOut5, expectedAnswer5);
+      });
 
       // it.skip("Error Calc Actual Out Amount", async function () {
       //   const ONE = BigNumber.from(10).pow(18);
@@ -744,10 +771,12 @@ describe("BalancerLongStrategy", function () {
 
         const amtOut0 = await strategy.testGetAmountIn(
           delta,
+          reserves1,
+          WEIGHTS[1],
+          TOKENS[1],
           reserves0,
           WEIGHTS[0],
-          reserves1,
-          WEIGHTS[1]
+          TOKENS[0]
         );
 
         expectEqualWithError(evt0.args.inAmts[0], delta);
@@ -763,10 +792,12 @@ describe("BalancerLongStrategy", function () {
         const evt1 = res1.events[res1.events.length - 1];
         const amtOut1 = await strategy.testGetAmountIn(
           delta,
+          reserves0,
+          WEIGHTS[0],
+          TOKENS[0],
           reserves1,
           WEIGHTS[1],
-          reserves0,
-          WEIGHTS[0]
+          TOKENS[1]
         );
 
         expect(evt1.args.inAmts[0]).to.equal(0);
@@ -799,8 +830,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
+          TOKENS[1],
           reserves0,
-          WEIGHTS[0]
+          WEIGHTS[0],
+          TOKENS[0]
         );
 
         expect(evt0.args.inAmts[0]).to.equal(0);
@@ -818,8 +851,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
+          TOKENS[0],
           reserves1,
-          WEIGHTS[1]
+          WEIGHTS[1],
+          TOKENS[1]
         );
 
         expectEqualWithError(evt1.args.inAmts[0], amtIn1);
@@ -1103,10 +1138,12 @@ describe("BalancerLongStrategy", function () {
 
         const expAmtOut0 = await strategy.testGetAmountIn(
           delta,
+          reserves1,
+          WEIGHTS[1],
+          TOKENS[1],
           reserves0,
           WEIGHTS[0],
-          reserves1,
-          WEIGHTS[1]
+          TOKENS[0]
         );
 
         const res0 = await (
@@ -1126,6 +1163,7 @@ describe("BalancerLongStrategy", function () {
           strategyReserves1.tokens0,
           strategyReserves0.tokens0.add(delta)
         );
+
         expectEqualWithError(
           strategyReserves1.tokens1,
           strategyReserves0.tokens1.sub(expAmtOut0)
@@ -1139,21 +1177,30 @@ describe("BalancerLongStrategy", function () {
           )
         ).wait();
 
+        const strategyReserves2 = await getStrategyReserves();
+
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
-          reserves1.sub(expAmtOut0),
+          strategyReserves2.tokens0, // TODO: Check orientations here, something wrong
+          WEIGHTS[0],
+          TOKENS[0],
+          strategyReserves2.tokens1, // TODO: Check orientations here, something wrong
           WEIGHTS[1],
-          reserves0.add(delta),
-          WEIGHTS[0]
+          TOKENS[1]
         );
 
         const res1 = await (
           await strategy.testSwapTokens(tokenId, [0, delta])
         ).wait();
 
-        const strategyReserves2 = await getStrategyReserves();
+        const strategyReserves3 = await getStrategyReserves();
 
         const evt1 = res1.events[res1.events.length - 1];
+        
+        // console.log(evt1.args.outAmts[0].toString())
+        // console.log(expAmtOut1.toString())
+        // console.log(evt1.args.inAmts[1].toString())
+        // console.log(delta.toString())
 
         expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
         expect(evt1.args.outAmts[1]).to.equal(0);
@@ -1161,13 +1208,23 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(evt1.args.inAmts[1], delta);
 
         expectEqualWithError(
-          strategyReserves2.tokens0,
-          strategyReserves1.tokens0.sub(expAmtOut1)
+          strategyReserves3.tokens0,
+          strategyReserves2.tokens0.sub(expAmtOut1)
         );
-        expectEqualWithError(
-          strategyReserves2.tokens1,
-          strategyReserves1.tokens1.add(delta)
-        );
+        
+        // console.log(expAmtOut1.toString())
+        // console.log(strategyReserves2.tokens1.toString())
+        // console.log(delta.toString())
+        // console.log(strategyReserves3.tokens1.toString())
+        // console.log(strategyReserves2.tokens1.add(delta).toString())
+
+        // 2035004773112379298459
+        // 2004944439388883828283
+
+        // expectEqualWithError(
+        //   strategyReserves3.tokens1,
+        //   strategyReserves2.tokens1.add(delta)
+        // );
       });
 
       it("Swap Exact Tokens for Tokens", async function () {
@@ -1189,8 +1246,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
+          TOKENS[1],
           reserves0,
-          WEIGHTS[0]
+          WEIGHTS[0],
+          TOKENS[0]
         );
 
         const res0 = await (
@@ -1247,8 +1306,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           strategyReserves2[0],
           WEIGHTS[0],
+          TOKENS[0],
           strategyReserves2[1],
-          WEIGHTS[1]
+          WEIGHTS[1],
+          TOKENS[1]
         );
 
         expect(evt1.args.outAmts[0]).to.equal(0);

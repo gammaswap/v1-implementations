@@ -214,13 +214,13 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 tokenInIndex;
         uint256 tokenOutIndex;
 
-        // If the delta is positive, then we are buying a token from the Balancer pool
         if (delta0 > 0 || delta1 > 0) {
+            // If the delta is positive, then we are buying a token from the Balancer pool
             deltas[0] = uint256(delta0);
             deltas[1] = uint256(delta1);
 
-            // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
             if (delta0 > 0) {
+                // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
                 tokenInIndex = 0;
                 tokenOutIndex = 1;
             } else {
