@@ -330,6 +330,8 @@ describe("CPMMLiquidationStrategy", function () {
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
+      expect(await strategy.LIQUIDATION_FEE_THRESHOLD()).to.equal(975);
+      expect(await strategy.LTV_THRESHOLD()).to.equal(950);
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
@@ -339,7 +341,7 @@ describe("CPMMLiquidationStrategy", function () {
   });
 
   describe("Liquidate Loans", function () {
-    it("Liquidate with collateral", async function () {
+    it("Liquidate with collateral, no write down", async function () {
       await createStrategy(false, false, null);
 
       const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
@@ -362,6 +364,18 @@ describe("CPMMLiquidationStrategy", function () {
 
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      const bal0 = await strategyFee.getPoolData();
+      expect(bal0.lpTokenBalance).gt(0);
+      expect(bal0.lpTokenBorrowed).to.equal(0);
+      expect(bal0.lpTokenBorrowedPlusInterest).to.equal(0);
+      expect(bal0.borrowedInvariant).to.equal(0);
+      expect(bal0.lpInvariant).gt(0);
+      expect(bal0.lastCFMMInvariant).gt(0);
+      expect(bal0.lastCFMMTotalSupply).gt(0);
+      expect(bal0.tokenBalance.length).to.equal(2);
+      expect(bal0.tokenBalance[0]).to.equal(ONE.mul(10));
+      expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
+
       await (
         await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
       ).wait();
@@ -373,12 +387,57 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan1.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan1.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
 
-      // about a month and a half
-      await ethers.provider.send("hardhat_mine", ["0x4CFE0"]);
+      // Pool balances changes after borrowing liquidity
+      const bal1 = await strategyFee.getPoolData();
+
+      expect(bal1.borrowedInvariant).gt(bal0.borrowedInvariant);
+      expect(bal1.borrowedInvariant).to.equal(
+        bal0.borrowedInvariant.add(loan1.liquidity)
+      );
+      expect(bal1.lpTokenBorrowedPlusInterest).to.equal(
+        bal0.lpTokenBorrowedPlusInterest.add(lpTokensBorrowed)
+      );
+      expect(bal1.lpTokenBorrowed).to.equal(
+        bal0.lpTokenBorrowed.add(lpTokensBorrowed)
+      );
+      expect(bal1.lpInvariant).to.equal(bal0.lpInvariant.sub(loan1.liquidity));
+      expect(bal1.lpTokenBalance).to.equal(
+        bal0.lpTokenBalance.sub(lpTokensBorrowed)
+      );
+      expect(bal1.tokenBalance[0]).to.equal(
+        bal0.tokenBalance[0].add(res.tokenAChange)
+      );
+      expect(bal1.tokenBalance[1]).to.equal(
+        bal0.tokenBalance[1].add(res.tokenBChange)
+      );
+      expect(bal1.lastCFMMTotalSupply).to.equal(
+        bal0.lastCFMMTotalSupply.sub(lpTokensBorrowed)
+      );
+      expect(bal1.lastCFMMInvariant).to.equal(
+        bal0.lastCFMMInvariant.sub(loan1.liquidity)
+      );
+
+      // about a month and a half 0x4CFE0, 0x4BAF0
+      await ethers.provider.send("hardhat_mine", ["0x493E0"]);
 
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
+      // Pool balances changes after rate upate
+      const bal2 = await strategyFee.getPoolData();
       const loan2 = await strategyFee.getLoan(tokenId);
+      expect(bal2.borrowedInvariant).gt(bal1.borrowedInvariant);
+      expect(bal2.lpTokenBorrowedPlusInterest).gt(
+        bal1.lpTokenBorrowedPlusInterest
+      );
+      expect(bal2.lpTokenBorrowed).to.equal(bal1.lpTokenBorrowed);
+      expect(bal2.lpInvariant).to.equal(bal1.lpInvariant);
+      expect(bal2.lpTokenBalance).to.equal(bal1.lpTokenBalance);
+      expect(bal2.tokenBalance[0]).to.equal(bal1.tokenBalance[0]);
+      expect(bal2.tokenBalance[1]).to.equal(bal1.tokenBalance[1]);
+      expect(bal2.lastCFMMTotalSupply).to.equal(bal1.lastCFMMTotalSupply);
+      expect(bal2.lastCFMMInvariant).to.equal(bal1.lastCFMMInvariant.add(1)); // add 1 because loss of precision
+
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -390,12 +449,37 @@ describe("CPMMLiquidationStrategy", function () {
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
 
-      await (await strategyFee._liquidate(tokenId, [], [])).wait();
+      const resp = await (await strategyFee._liquidate(tokenId, [], [])).wait();
+
+      const len = resp.events.length;
+      const liquidationEvent = resp.events[len - 3];
+      expect(liquidationEvent.event).to.equal("Liquidation");
+      expect(liquidationEvent.args.writeDownAmt).to.equal(0);
+      expect(liquidationEvent.args.tokenId).to.equal(tokenId);
+      expect(liquidationEvent.args.liquidity.div(ONE.div(10000))).to.equal(
+        loan2.liquidity.div(ONE.div(10000))
+      );
+      expect(liquidationEvent.args.collateral).to.equal(collateral);
+      expect(liquidationEvent.args.txType).to.equal(9);
+      expect(liquidationEvent.args.tokenIds.length).to.equal(0);
+
+      const loanUpdateEvent = resp.events[len - 2];
+      expect(loanUpdateEvent.event).to.equal("LoanUpdated");
+      expect(loanUpdateEvent.args.tokenId).to.equal(tokenId);
+      expect(loanUpdateEvent.args.tokensHeld.length).to.equal(2);
+      expect(loanUpdateEvent.args.tokensHeld[0]).to.equal(0);
+      expect(loanUpdateEvent.args.tokensHeld[1]).to.equal(0);
+      expect(loanUpdateEvent.args.liquidity).to.equal(0);
+      expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
+      expect(loanUpdateEvent.args.lpTokens).to.equal(0);
+      expect(loanUpdateEvent.args.rateIndex).to.equal(0);
+      expect(loanUpdateEvent.args.txType).to.equal(9);
 
       const loan3 = await strategyFee.getLoan(tokenId);
       expect(loan3.initLiquidity).to.equal(0);
       expect(loan3.liquidity).to.equal(0);
       expect(loan3.lpTokens).to.equal(0);
+      expect(loan3.rateIndex).to.equal(0);
       expect(loan3.tokensHeld.length).to.equal(2);
       expect(loan3.tokensHeld[0]).to.equal(0);
       expect(loan3.tokensHeld[1]).to.equal(0);
@@ -404,6 +488,266 @@ describe("CPMMLiquidationStrategy", function () {
       const token1bal1 = await tokenBFee.balanceOf(owner.address);
       expect(token0bal1).gt(token0bal0);
       expect(token1bal1).gt(token1bal0);
+
+      // Pool balances changes after rate upate
+      const bal3 = await strategyFee.getPoolData();
+      expect(bal3.borrowedInvariant).to.equal(1); // 1 because loss of precision
+      expect(bal3.borrowedInvariant).lt(bal2.borrowedInvariant);
+      expect(bal3.lpTokenBorrowedPlusInterest).to.equal(1); // 1 because loss of precision
+      expect(bal3.lpTokenBorrowedPlusInterest).lt(
+        bal2.lpTokenBorrowedPlusInterest
+      );
+      expect(bal3.lpTokenBorrowed).to.equal(0);
+      expect(bal3.lpTokenBorrowed).to.equal(bal0.lpTokenBorrowed);
+      expect(bal3.lpTokenBorrowed).lt(bal2.lpTokenBorrowed);
+      expect(bal3.lpInvariant).gt(bal0.lpInvariant);
+      expect(bal3.lpInvariant).gt(bal1.lpInvariant);
+      expect(bal3.lpInvariant).gt(bal2.lpInvariant);
+      expect(bal3.lpTokenBalance).gt(bal0.lpTokenBalance);
+      expect(bal3.lpTokenBalance).gt(bal1.lpTokenBalance);
+      expect(bal3.lpTokenBalance).gt(bal2.lpTokenBalance);
+      expect(bal3.tokenBalance[0]).lt(bal2.tokenBalance[0]);
+      expect(bal3.tokenBalance[1]).lt(bal2.tokenBalance[1]);
+      expect(bal3.tokenBalance[0]).to.equal(
+        bal2.tokenBalance[0].sub(loan2.tokensHeld[0])
+      );
+      expect(bal3.tokenBalance[1]).to.equal(
+        bal2.tokenBalance[1].sub(loan2.tokensHeld[1])
+      );
+      expect(bal3.lastCFMMTotalSupply).gt(bal0.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMTotalSupply).gt(bal1.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMTotalSupply).gt(bal2.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMInvariant).gt(bal0.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).gt(bal1.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).gt(bal2.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).to.equal(
+        bal2.lastCFMMInvariant.add(liquidationEvent.args.liquidity).add(1)
+      );
+
+      const poolUpdateEvent = resp.events[len - 1];
+      expect(poolUpdateEvent.event).to.equal("PoolUpdated");
+      expect(poolUpdateEvent.args.lpTokenBalance).to.equal(bal3.lpTokenBalance);
+      expect(poolUpdateEvent.args.lpTokenBorrowed).to.equal(
+        bal3.lpTokenBorrowed
+      );
+      expect(poolUpdateEvent.args.lastBlockNumber).to.equal(
+        bal3.lastBlockNumber
+      );
+      expect(poolUpdateEvent.args.accFeeIndex).to.equal(bal3.accFeeIndex);
+      expect(poolUpdateEvent.args.lpTokenBorrowedPlusInterest).to.equal(
+        bal3.lpTokenBorrowedPlusInterest
+      );
+      expect(poolUpdateEvent.args.lpInvariant).to.equal(bal3.lpInvariant);
+      expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
+        bal3.borrowedInvariant
+      );
+      expect(poolUpdateEvent.args.txType).to.equal(9);
+    });
+
+    it("Liquidate with collateral, write down", async function () {
+      await createStrategy(false, false, null);
+
+      const tokenId = (await (await strategyFee.createLoan()).wait()).events[0]
+        .args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+      const tokensHeld0 = ONE.mul(1);
+      const tokensHeld1 = ONE.mul(2);
+
+      await setUpStrategyAndCFMM(tokenId, true);
+      await setUpLoanableLiquidity(tokenId, true);
+
+      const loan0 = await strategyFee.getLoan(tokenId);
+      expect(loan0.initLiquidity).to.equal(0);
+      expect(loan0.liquidity).to.equal(0);
+      expect(loan0.lpTokens).to.equal(0);
+      expect(loan0.tokensHeld.length).to.equal(2);
+      expect(loan0.tokensHeld[0]).to.equal(tokensHeld0);
+      expect(loan0.tokensHeld[1]).to.equal(tokensHeld1);
+
+      const lpTokensBorrowed = ONE;
+      const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
+      const bal0 = await strategyFee.getPoolData();
+      expect(bal0.lpTokenBalance).gt(0);
+      expect(bal0.lpTokenBorrowed).to.equal(0);
+      expect(bal0.lpTokenBorrowedPlusInterest).to.equal(0);
+      expect(bal0.borrowedInvariant).to.equal(0);
+      expect(bal0.lpInvariant).gt(0);
+      expect(bal0.lastCFMMInvariant).gt(0);
+      expect(bal0.lastCFMMTotalSupply).gt(0);
+      expect(bal0.tokenBalance.length).to.equal(2);
+      expect(bal0.tokenBalance[0]).to.equal(ONE.mul(10));
+      expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
+
+      await (
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+      ).wait();
+      const loan1 = await strategyFee.getLoan(tokenId);
+      expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.liquidity).to.equal(res.liquidityBorrowed);
+      expect(loan1.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan1.tokensHeld.length).to.equal(2);
+      expect(loan1.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
+      expect(loan1.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
+
+      // Pool balances changes after borrowing liquidity
+      const bal1 = await strategyFee.getPoolData();
+
+      expect(bal1.borrowedInvariant).gt(bal0.borrowedInvariant);
+      expect(bal1.borrowedInvariant).to.equal(
+        bal0.borrowedInvariant.add(loan1.liquidity)
+      );
+      expect(bal1.lpTokenBorrowedPlusInterest).to.equal(
+        bal0.lpTokenBorrowedPlusInterest.add(lpTokensBorrowed)
+      );
+      expect(bal1.lpTokenBorrowed).to.equal(
+        bal0.lpTokenBorrowed.add(lpTokensBorrowed)
+      );
+      expect(bal1.lpInvariant).to.equal(bal0.lpInvariant.sub(loan1.liquidity));
+      expect(bal1.lpTokenBalance).to.equal(
+        bal0.lpTokenBalance.sub(lpTokensBorrowed)
+      );
+      expect(bal1.tokenBalance[0]).to.equal(
+        bal0.tokenBalance[0].add(res.tokenAChange)
+      );
+      expect(bal1.tokenBalance[1]).to.equal(
+        bal0.tokenBalance[1].add(res.tokenBChange)
+      );
+      expect(bal1.lastCFMMTotalSupply).to.equal(
+        bal0.lastCFMMTotalSupply.sub(lpTokensBorrowed)
+      );
+      expect(bal1.lastCFMMInvariant).to.equal(
+        bal0.lastCFMMInvariant.sub(loan1.liquidity)
+      );
+
+      // about a month and a half
+      await ethers.provider.send("hardhat_mine", ["0x4CFE0"]);
+
+      await (await strategyFee.updateLoanData(tokenId)).wait();
+
+      // Pool balances changes after rate upate
+      const bal2 = await strategyFee.getPoolData();
+      const loan2 = await strategyFee.getLoan(tokenId);
+      expect(bal2.borrowedInvariant).gt(bal1.borrowedInvariant);
+      expect(bal2.lpTokenBorrowedPlusInterest).gt(
+        bal1.lpTokenBorrowedPlusInterest
+      );
+      expect(bal2.lpTokenBorrowed).to.equal(bal1.lpTokenBorrowed);
+      expect(bal2.lpInvariant).to.equal(bal1.lpInvariant);
+      expect(bal2.lpTokenBalance).to.equal(bal1.lpTokenBalance);
+      expect(bal2.tokenBalance[0]).to.equal(bal1.tokenBalance[0]);
+      expect(bal2.tokenBalance[1]).to.equal(bal1.tokenBalance[1]);
+      expect(bal2.lastCFMMTotalSupply).to.equal(bal1.lastCFMMTotalSupply);
+      expect(bal2.lastCFMMInvariant).to.equal(bal1.lastCFMMInvariant.add(1)); // add 1 because loss of precision
+
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
+      expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
+      expect(loan2.liquidity).gt(res.liquidityBorrowed);
+      expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
+      expect(loan2.tokensHeld.length).to.equal(2);
+      expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
+      expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
+      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+
+      const token0bal0 = await tokenAFee.balanceOf(owner.address);
+      const token1bal0 = await tokenBFee.balanceOf(owner.address);
+
+      const resp = await (await strategyFee._liquidate(tokenId, [], [])).wait();
+      const writeDownAmt = BigNumber.from("46157136933282181");
+      const len = resp.events.length;
+      const liquidationEvent = resp.events[len - 3]; // 46157136933282181
+      expect(liquidationEvent.event).to.equal("Liquidation");
+      expect(liquidationEvent.args.writeDownAmt).to.equal(writeDownAmt);
+      expect(liquidationEvent.args.tokenId).to.equal(tokenId);
+      expect(liquidationEvent.args.liquidity.div(ONE.div(10000))).to.equal(
+        loan2.liquidity.sub(writeDownAmt).div(ONE.div(10000))
+      );
+      expect(liquidationEvent.args.collateral).to.equal(collateral);
+      expect(liquidationEvent.args.txType).to.equal(9);
+      expect(liquidationEvent.args.tokenIds.length).to.equal(0);
+
+      const loanUpdateEvent = resp.events[len - 2];
+      expect(loanUpdateEvent.event).to.equal("LoanUpdated");
+      expect(loanUpdateEvent.args.tokenId).to.equal(tokenId);
+      expect(loanUpdateEvent.args.tokensHeld.length).to.equal(2);
+      expect(loanUpdateEvent.args.tokensHeld[0]).to.equal(0);
+      expect(loanUpdateEvent.args.tokensHeld[1]).to.equal(0);
+      expect(loanUpdateEvent.args.liquidity).to.equal(0);
+      expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
+      expect(loanUpdateEvent.args.lpTokens).to.equal(0);
+      expect(loanUpdateEvent.args.rateIndex).to.equal(0);
+      expect(loanUpdateEvent.args.txType).to.equal(9);
+
+      const loan3 = await strategyFee.getLoan(tokenId);
+      expect(loan3.initLiquidity).to.equal(0);
+      expect(loan3.liquidity).to.equal(0);
+      expect(loan3.lpTokens).to.equal(0);
+      expect(loan3.rateIndex).to.equal(0);
+      expect(loan3.tokensHeld.length).to.equal(2);
+      expect(loan3.tokensHeld[0]).to.equal(0);
+      expect(loan3.tokensHeld[1]).to.equal(0);
+
+      const token0bal1 = await tokenAFee.balanceOf(owner.address);
+      const token1bal1 = await tokenBFee.balanceOf(owner.address);
+      expect(token0bal1).gt(token0bal0);
+      expect(token1bal1).gt(token1bal0);
+
+      // Pool balances changes after rate upate
+      const bal3 = await strategyFee.getPoolData();
+      expect(bal3.borrowedInvariant).to.equal(1); // 1 because loss of precision
+      expect(bal3.borrowedInvariant).lt(bal2.borrowedInvariant);
+      expect(
+        bal2.borrowedInvariant.sub(writeDownAmt).div(ONE.div(10000))
+      ).to.equal(liquidationEvent.args.liquidity.div(ONE.div(10000)));
+      expect(bal3.lpTokenBorrowedPlusInterest).to.equal(1); // 1 because loss of precision
+      expect(bal3.lpTokenBorrowedPlusInterest).lt(
+        bal2.lpTokenBorrowedPlusInterest
+      );
+      expect(bal3.lpTokenBorrowed).to.equal(0);
+      expect(bal3.lpTokenBorrowed).to.equal(bal0.lpTokenBorrowed);
+      expect(bal3.lpTokenBorrowed).lt(bal2.lpTokenBorrowed);
+      expect(bal3.lpInvariant).gt(bal0.lpInvariant);
+      expect(bal3.lpInvariant).gt(bal1.lpInvariant);
+      expect(bal3.lpInvariant).gt(bal2.lpInvariant);
+      expect(bal3.lpTokenBalance).gt(bal0.lpTokenBalance);
+      expect(bal3.lpTokenBalance).gt(bal1.lpTokenBalance);
+      expect(bal3.lpTokenBalance).gt(bal2.lpTokenBalance);
+      expect(bal3.tokenBalance[0]).lt(bal2.tokenBalance[0]);
+      expect(bal3.tokenBalance[1]).lt(bal2.tokenBalance[1]);
+      expect(bal3.tokenBalance[0]).to.equal(
+        bal2.tokenBalance[0].sub(loan2.tokensHeld[0])
+      );
+      expect(bal3.tokenBalance[1]).to.equal(
+        bal2.tokenBalance[1].sub(loan2.tokensHeld[1])
+      );
+      expect(bal3.lastCFMMTotalSupply).gt(bal0.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMTotalSupply).gt(bal1.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMTotalSupply).gt(bal2.lastCFMMTotalSupply);
+      expect(bal3.lastCFMMInvariant).gt(bal0.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).gt(bal1.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).gt(bal2.lastCFMMInvariant);
+      expect(bal3.lastCFMMInvariant).to.equal(
+        bal2.lastCFMMInvariant.add(liquidationEvent.args.liquidity).add(1)
+      );
+
+      const poolUpdateEvent = resp.events[len - 1];
+      expect(poolUpdateEvent.event).to.equal("PoolUpdated");
+      expect(poolUpdateEvent.args.lpTokenBalance).to.equal(bal3.lpTokenBalance);
+      expect(poolUpdateEvent.args.lpTokenBorrowed).to.equal(
+        bal3.lpTokenBorrowed
+      );
+      expect(poolUpdateEvent.args.lastBlockNumber).to.equal(
+        bal3.lastBlockNumber
+      );
+      expect(poolUpdateEvent.args.accFeeIndex).to.equal(bal3.accFeeIndex);
+      expect(poolUpdateEvent.args.lpTokenBorrowedPlusInterest).to.equal(
+        bal3.lpTokenBorrowedPlusInterest
+      );
+      expect(poolUpdateEvent.args.lpInvariant).to.equal(bal3.lpInvariant);
+      expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
+        bal3.borrowedInvariant
+      );
+      expect(poolUpdateEvent.args.txType).to.equal(9);
     });
 
     it("Liquidate with collateral with fees", async function () {
