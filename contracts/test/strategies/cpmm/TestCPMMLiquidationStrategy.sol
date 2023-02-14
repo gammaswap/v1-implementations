@@ -34,6 +34,21 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
         _loan = s.loans[tokenId];
     }
 
+    function getPoolData() external virtual view returns(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lpTokenBorrowedPlusInterest,
+        uint128 borrowedInvariant, uint128 lpInvariant, uint128 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint128[] memory tokenBalance,
+        uint48 lastBlockNumber, uint96 accFeeIndex) {
+        lpTokenBalance = s.LP_TOKEN_BALANCE;
+        lpTokenBorrowed = s.LP_TOKEN_BORROWED;
+        lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
+        borrowedInvariant = s.BORROWED_INVARIANT;
+        lpInvariant = s.LP_INVARIANT;
+        lastCFMMInvariant = s.lastCFMMInvariant;
+        lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        tokenBalance = s.TOKEN_BALANCE;
+        lastBlockNumber = s.LAST_BLOCK_NUMBER;
+        accFeeIndex = s.accFeeIndex;
+    }
+
     function setTokenBalances(uint256 tokenId, uint128 collateral0, uint128 collateral1, uint128 balance0, uint128 balance1) external virtual {
         LibStorage.Loan storage loan = s.loans[tokenId];
         loan.tokensHeld[0] = collateral0;
