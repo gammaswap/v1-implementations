@@ -6,7 +6,7 @@ import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
 
 /// @title GammaPool implementation for Constant Product Market Maker
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev This implementation is specifically for validating UniswapV2Pair and clone contracts
 contract CPMMGammaPool is GammaPool {
 
@@ -38,7 +38,7 @@ contract CPMMGammaPool is GammaPool {
     }
 
     /// @dev See {IGammaPool-validateCFMM}
-    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata _data) external virtual override view returns(address[] memory _tokensOrdered, uint8[] memory _decimals) {
+    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered, uint8[] memory _decimals) {
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
             revert NotContract();
         }
