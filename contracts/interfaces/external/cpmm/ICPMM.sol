@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 /// @title Interface for UniswapV2Pair contract and its clones
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Interface to get reserve tokens, deposit liquidity, withdraw liquidity, and swap tokens
 /// @dev Interface assumes an UniswapV2 implementation. Function mint() is used to deposit and burn() to withdraw
 interface ICPMM {

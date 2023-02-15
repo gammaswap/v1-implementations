@@ -5,7 +5,7 @@ import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
 
 /// @title Base Long Strategy abstract contract for Constant Product Market Maker
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker that need access to loans
 /// @dev This implementation was specifically designed to work with UniswapV2.
 abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {

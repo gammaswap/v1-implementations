@@ -7,7 +7,7 @@ import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
 import "../../interfaces/external/cpmm/ICPMM.sol";
 
 /// @title Base Strategy abstract contract for Constant Product Market Maker
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker
 /// @dev This implementation was specifically designed to work with UniswapV2. Inherits Rate Model
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
