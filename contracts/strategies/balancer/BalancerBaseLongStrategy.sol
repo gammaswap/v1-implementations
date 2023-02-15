@@ -174,7 +174,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
         // outAmts is the quantity of tokens going OUT OF the GammaPool
 
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        uint128[] memory reserves = s.CFMM_RESERVES;
+
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(reserves, deltas);
         outAmts[0] = outAmts[0] > 0 ? checkAvailableCollateral(outAmts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]) : 0;
         outAmts[1] = outAmts[1] > 0 ? checkAvailableCollateral(outAmts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]) : 0;
     }
@@ -182,79 +184,59 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /**
      * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
      *      This calculation depends on the reserves existing in the Balancer pool.
-     * @param reserve0 The amount of reserve token0 in the Balancer pool
-     * @param reserve1 The amount of reserve token1 in the Balancer pool
-     * @param delta0 The desired amount of collateral token0 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
-     * @param delta1 The desired amount of collateral token1 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
+     * @param reserves The amount of reserve tokens in the Balancer pool
+     * @param deltas The desired amount of collateral tokens from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
      * @return inAmt0 The expected amount of token0 to receive from the Balancer pool (corresponding to a buy)
      * @return inAmt1 The expected amount of token1 to receive from the Balancer pool (corresponding to a buy)
      * @return outAmt0 The expected amount of token0 to send to the Balancer pool (corresponding to a sell)
      * @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
      */
-    function calcInAndOutAmounts(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
+    function calcInAndOutAmounts(uint128[] memory reserves, int256[] calldata deltas)
         internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
-        if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
+        if(!((deltas[0] != 0 && deltas[1] == 0) || (deltas[0] == 0 && deltas[1] != 0))) {
             revert BadDelta();
         }
 
-        if(reserve0 == 0 || reserve1 == 0) {
+        if(reserves[0] == 0 || reserves[1] == 0) {
             revert ZeroReserves();
         }
 
-        // Get the Balancer weights and re-org them to represent in and out weights
-        uint256[] memory reserves = new uint256[](2);
-        reserves[0] = reserve0;
-        reserves[1] = reserve1;
+        uint256[] memory weights;
+        
+        {
+            address cfmm = s.cfmm;
+            weights = getWeights(cfmm);
+        }
 
-        uint256[] memory deltas = new uint256[](2);
+        address[] memory tokens = s.tokens;
 
-        uint256[] memory weights = getWeights(s.cfmm);
-        address[] memory tokens = getTokens(s.cfmm);
-
-        uint256 tokenInIndex;
-        uint256 tokenOutIndex;
-
-        if (delta0 > 0 || delta1 > 0) {
+        if (deltas[0] > 0 || deltas[1] > 0) {
             // If the delta is positive, then we are buying a token from the Balancer pool
-            deltas[0] = uint256(delta0);
-            deltas[1] = uint256(delta1);
-
-            if (delta0 > 0) {
+            if (deltas[0] > 0) {
                 // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
-                tokenInIndex = 0;
-                tokenOutIndex = 1;
+                inAmt0 = uint256(deltas[0]);
+                inAmt1 = 0;
+                outAmt0 = 0;
+                outAmt1 = getAmountIn(uint256(deltas[0]), reserves[1], weights[1], tokens[1], reserves[0], weights[0], tokens[0]);
             } else {
-                tokenInIndex = 1;
-                tokenOutIndex = 0;
+                inAmt0 = 0;
+                inAmt1 = uint256(deltas[1]);
+                outAmt0 = getAmountIn(uint256(deltas[1]), reserves[0], weights[0], tokens[0], reserves[1], weights[1], tokens[1]);
+                outAmt1 = 0;
             }
-
-            uint256 outAmount = getAmountIn(deltas[tokenInIndex], reserves[tokenOutIndex], weights[tokenOutIndex], tokens[tokenOutIndex], reserves[tokenInIndex], weights[tokenInIndex], tokens[tokenInIndex]);
-
-            // Assigning values to the return variables
-            inAmt0 = delta0 > 0 ? deltas[tokenInIndex] : 0;
-            inAmt1 = delta0 > 0 ? 0 : deltas[tokenInIndex];
-            outAmt0 = delta0 > 0 ? 0 : outAmount;
-            outAmt1 = delta0 > 0 ? outAmount : 0;
         } else {
-            deltas[0] = uint256(-delta0);
-            deltas[1] = uint256(-delta1);
-
             // If the delta is negative, then we are selling a token to the Balancer pool
-            if (delta0 < 0) {
-                tokenInIndex = 0;
-                tokenOutIndex = 1;
+            if (deltas[0] < 0) {
+                inAmt0 = 0;
+                inAmt1 = getAmountOut(uint256(-deltas[0]), reserves[1], weights[1], tokens[1], reserves[0], weights[0], tokens[0]);
+                outAmt0 = uint256(-deltas[0]);
+                outAmt1 = 0;
             } else {
-                tokenInIndex = 1;
-                tokenOutIndex = 0;
+                inAmt0 = getAmountOut(uint256(-deltas[1]), reserves[0], weights[0], tokens[0], reserves[1], weights[1], tokens[1]);
+                inAmt1 = 0;
+                outAmt0 = 0;
+                outAmt1 = uint256(-deltas[1]);
             }
-            
-            uint256 outAmount = getAmountOut(deltas[tokenInIndex], reserves[tokenOutIndex], weights[tokenOutIndex], tokens[tokenOutIndex], reserves[tokenInIndex], weights[tokenInIndex], tokens[tokenInIndex]);
-
-            // Assigning values to the return variables
-            inAmt0 = delta0 < 0 ? 0 : outAmount;
-            inAmt1 = delta0 < 0 ? outAmount : 0;
-            outAmt0 = delta0 < 0 ? deltas[tokenInIndex] : 0;
-            outAmt1 = delta0 < 0 ? 0 : deltas[tokenInIndex];
         }
     }
 
@@ -277,12 +259,12 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         uint256 amountIn = WeightedMath._calcInGivenOut(rescaledReserveIn, weightIn, rescaledReserveOut, weightOut, rescaledAmountOut);
 
+        uint256 feeAdjustedAmountIn = (amountIn * tradingFee2) / tradingFee1;
+
         // Downscale the amountIn to account for decimals
-        uint256 downscaledAmountIn = InputHelpers.downscale(amountIn, InputHelpers.getScalingFactor(tokenIn));
+        uint256 downscaledAmountIn = InputHelpers.downscale(feeAdjustedAmountIn, InputHelpers.getScalingFactor(tokenIn));
 
-        uint256 feeAdjustedAmountIn = (downscaledAmountIn * tradingFee2) / tradingFee1;
-
-        return feeAdjustedAmountIn;
+        return downscaledAmountIn;
     }
 
     /**
