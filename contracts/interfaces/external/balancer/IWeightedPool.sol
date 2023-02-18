@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity >=0.8.0;
 
 // Interface for the Balancer WeightedPool contract
 // E.g. https://etherscan.io/address/0xd1ec5e215e8148d76f4460e4097fd3d5ae0a3558#readContract
