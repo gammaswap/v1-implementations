@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.4;
 
-import "@gammaswap/v1-core/contracts/strategies/ShortStrategyERC4626.sol";
+import "@gammaswap/v1-core/contracts/strategies/ShortStrategySync.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
 import "./BalancerBaseStrategy.sol";
@@ -12,7 +12,7 @@ import "./BalancerBaseStrategy.sol";
  * @notice Sets up variables used by ShortStrategy and defines internal functions specific to Balancer Weighted Pools
  * @dev This implementation was specifically designed to work with Balancer
  */
-contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategyERC4626 {
+contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     error ZeroDeposits();
     error NotOptimalDeposit();
     error ZeroReserves();
