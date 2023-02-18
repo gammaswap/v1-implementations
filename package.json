@@ -66,7 +66,7 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^3.0.1",
     "@balancer-labs/v2-vault": "^3.0.1",
-    "@gammaswap/v1-core": "^0.2.22",
+    "@gammaswap/v1-core": "^0.3.0",
     "@openzeppelin/contracts": "^4.7.0",
     "@prb/math": "^3.1.0",
     "@uniswap/v2-core": "^1.0.1"
