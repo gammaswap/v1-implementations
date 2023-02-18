@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity 0.8.17;
 
 import "../../../strategies/cpmm/CPMMLiquidationStrategy.sol";
 
@@ -120,7 +120,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
         updateLoan(s.loans[tokenId]);
     }
 
-    function calcBorrowRate(uint256, uint256) internal override virtual view returns(uint256) {
+    function calcBorrowRate(uint256, uint256) internal override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256) {
         return 1e19;
     }
 
