@@ -42,14 +42,18 @@ contract BalancerGammaPool is GammaPool {
      */
     address immutable public poolFactory;
 
-    /// @dev stores weights passed to constructor as immutable variables
+    /// @dev Stores weights passed to constructor as immutable variable
     uint256 immutable weight0;
 
+    /// @dev Stores poolId passed to constructor as immutable variable
+    bytes32 immutable poolId;
+
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, and `poolFactory`.
-    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
+    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0, bytes32 _poolId)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
         poolFactory = _poolFactory;
         weight0 = _weight0;
+        poolId = _poolId;
     }
 
     /// @dev See {IGammaPool-createLoan}
@@ -76,13 +80,14 @@ contract BalancerGammaPool is GammaPool {
         (_tokensOrdered[0], _tokensOrdered[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);
 
         // Fetch the tokens corresponding to the CFMM address
-        bytes32 poolId = IWeightedPool(_cfmm).getPoolId();
+        bytes32 _poolId = IWeightedPool(_cfmm).getPoolId();
         address vault = IWeightedPool(_cfmm).getVault();
         uint256 swapFeePercentage = IWeightedPool(_cfmm).getSwapFeePercentage();
         uint256[] memory _weights = IWeightedPool(_cfmm).getNormalizedWeights();
 
         // Validate that all parameters match
-        if (poolId != cfmmPoolId) {
+        
+        if (_poolId != cfmmPoolId) {
             revert IncorrectPoolId();
         }
 
@@ -94,7 +99,7 @@ contract BalancerGammaPool is GammaPool {
             revert IncorrectSwapFee();
         }
 
-        (IERC20[] memory vaultTokens, ,) = IVault(vault).getPoolTokens(poolId);
+        (IERC20[] memory vaultTokens, ,) = IVault(cfmmVault).getPoolTokens(cfmmPoolId);
 
         // Verify the number of tokens in the CFMM matches the number of tokens given in the constructor
         if(vaultTokens.length != tokenCount) {
@@ -106,11 +111,11 @@ contract BalancerGammaPool is GammaPool {
             revert IncorrectTokens();
         }
 
-        if(_weights[0] != weight0) {
+        if(_weights[0] != cfmmWeight0) {
             revert IncorrectWeights();
         }
 
-        if(_weights[1] != 1e18 - weight0) {
+        if(_weights[1] != 1e18 - cfmmWeight0) {
             revert IncorrectWeights();
         }
 
@@ -118,12 +123,6 @@ contract BalancerGammaPool is GammaPool {
         _decimals = new uint8[](2);
         _decimals[0] = GammaSwapLibrary.decimals(_tokensOrdered[0]);
         _decimals[1] = GammaSwapLibrary.decimals(_tokensOrdered[1]);
-
-        // Store the Balancer pool first weight and pool ID
-        // s.setUint256(BalancerStorageVariables.WEIGHT0, _weights[0]);
-        s.setUint256(0, _weights[0]);
-        // s.setBytes32(BalancerStorageVariables.POOLID, poolId);
-        s.setBytes32(1, poolId);
     }
 
 }
