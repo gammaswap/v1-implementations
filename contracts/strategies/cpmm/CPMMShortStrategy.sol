@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity 0.8.17;
 
-import "@gammaswap/v1-core/contracts/strategies/ShortStrategyERC4626.sol";
+import "@gammaswap/v1-core/contracts/strategies/ShortStrategySync.sol";
 import "../../interfaces/external/cpmm/ICPMM.sol";
 import "./CPMMBaseStrategy.sol";
 
 /// @title Short Strategy concrete implementation contract for Constant Product Market Maker
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by ShortStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategyERC4626 {
+contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
 
     error ZeroDeposits();
     error NotOptimalDeposit();

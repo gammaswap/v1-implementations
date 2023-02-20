@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/rates/LogDerivativeRateModel.sol";
@@ -7,7 +7,7 @@ import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
 import "../../interfaces/external/cpmm/ICPMM.sol";
 
 /// @title Base Strategy abstract contract for Constant Product Market Maker
-/// @author Daniel D. Alcarraz
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker
 /// @dev This implementation was specifically designed to work with UniswapV2. Inherits Rate Model
 abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {

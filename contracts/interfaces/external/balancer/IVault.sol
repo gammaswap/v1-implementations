@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity >=0.8.0;
 
 // Interface for the Balancer Vault contract
 // E.g. https://etherscan.io/address/0xBA12222222228d8Ba445958a75a0704d566BF2C8
