@@ -143,6 +143,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         addVaultApproval(assetIn, amountIn);
 
         IVault(getVault(_cfmm)).swap(singleSwap, fundManagement, 0, block.timestamp);
+
     }
 
     /**
@@ -177,6 +178,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint128[] memory reserves = s.CFMM_RESERVES;
 
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(reserves, deltas);
+
         outAmts[0] = outAmts[0] > 0 ? checkAvailableCollateral(outAmts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]) : 0;
         outAmts[1] = outAmts[1] > 0 ? checkAvailableCollateral(outAmts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]) : 0;
     }
@@ -217,11 +219,11 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
                 inAmt0 = uint256(deltas[0]);
                 inAmt1 = 0;
                 outAmt0 = 0;
-                outAmt1 = getAmountIn(uint256(deltas[0]), reserves[1], weights[1], tokens[1], reserves[0], weights[0], tokens[0]);
+                outAmt1 = getAmountIn(uint256(deltas[0]), reserves[0], weights[0], tokens[0], reserves[1], weights[1], tokens[1]);
             } else {
                 inAmt0 = 0;
                 inAmt1 = uint256(deltas[1]);
-                outAmt0 = getAmountIn(uint256(deltas[1]), reserves[0], weights[0], tokens[0], reserves[1], weights[1], tokens[1]);
+                outAmt0 = getAmountIn(uint256(deltas[1]), reserves[1], weights[1], tokens[1], reserves[0], weights[0], tokens[0]);
                 outAmt1 = 0;
             }
         } else {
@@ -259,12 +261,12 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
         uint256 amountIn = WeightedMath._calcInGivenOut(rescaledReserveIn, weightIn, rescaledReserveOut, weightOut, rescaledAmountOut);
 
-        uint256 feeAdjustedAmountIn = (amountIn * tradingFee2) / tradingFee1;
-
         // Downscale the amountIn to account for decimals
-        uint256 downscaledAmountIn = InputHelpers.downscale(feeAdjustedAmountIn, InputHelpers.getScalingFactor(tokenIn));
+        uint256 downscaledAmountIn = InputHelpers.downscale(amountIn, InputHelpers.getScalingFactor(tokenIn));
 
-        return downscaledAmountIn;
+        uint256 feeAdjustedAmountIn = (downscaledAmountIn * tradingFee2) / tradingFee1;
+
+        return feeAdjustedAmountIn;
     }
 
     /**
@@ -278,7 +280,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     function getAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) internal view returns (uint256) {
         // Revert if the sum of normalised weights is not equal to 1
         require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
-        
+
         uint256 rescaledReserveOut = InputHelpers.upscale(reserveOut, InputHelpers.getScalingFactor(tokenOut));
         uint256 rescaledReserveIn = InputHelpers.upscale(reserveIn, InputHelpers.getScalingFactor(tokenIn));
         uint256 rescaledAmountIn = InputHelpers.upscale(amountIn, InputHelpers.getScalingFactor(tokenIn));
