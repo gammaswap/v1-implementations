@@ -34,12 +34,14 @@ describe("BalancerGammaPool", function () {
   let cfmmPoolId: any;
   let cfmmPoolWeights: any;
   let cfmmPoolSwapFeePercentage: any;
+  let cfmmPoolTokens: any;
 
   let weighted3Pool: any;
   let cfmmWeighted3Pool: any;
   let cfmmWeighted3PoolId: any;
   let cfmmWeighted3PoolWeights: any;
   let cfmmWeighted3PoolSwapFeePercentage: any;
+  let cfmmWeighted3PoolTokens: any;
 
   let BalancerVault: any;
   let WeightedPoolFactory: any;
@@ -119,6 +121,7 @@ describe("BalancerGammaPool", function () {
     cfmmPoolId = await cfmmPool.getPoolId();
     cfmmPoolWeights = await cfmmPool.getNormalizedWeights();
     cfmmPoolSwapFeePercentage = await cfmmPool.getSwapFeePercentage();
+    cfmmPoolTokens = await sort2Tokens(tokenA, tokenB)
 
     pool = await BalancerGammaPool.deploy(
       PROTOCOL_ID,
@@ -128,13 +131,13 @@ describe("BalancerGammaPool", function () {
       liquidationStrategyAddr,
       factory.address, // Address of the WeightedPoolFactory used to create the pool
       BigNumber.from(50).mul(BigNumber.from(10).pow(16)), // weight0
-      cfmmPoolId // poolId
     );
 
     cfmmWeighted3Pool = WeightedPool.attach(weighted3Pool);
     cfmmWeighted3PoolId = await cfmmWeighted3Pool.getPoolId();
     cfmmWeighted3PoolWeights = await cfmmWeighted3Pool.getNormalizedWeights();
     cfmmWeighted3PoolSwapFeePercentage = await cfmmWeighted3Pool.getSwapFeePercentage();
+    cfmmWeighted3PoolTokens = await sort3Tokens(tokenA, tokenB, tokenC);
 
     threePool = await BalancerGammaPool.deploy(
       PROTOCOL_ID,
@@ -144,7 +147,6 @@ describe("BalancerGammaPool", function () {
       liquidationStrategyAddr,
       factory.address, // Address of the WeightedPoolFactory used to create the pool
       BigNumber.from(10).pow(17), // weight0
-      cfmmWeighted3PoolId // poolId
     );
   });
 
@@ -224,6 +226,35 @@ describe("BalancerGammaPool", function () {
     const events = receipt.events.filter((e: any) => e.event === "PoolCreated");
     const poolAddress = events[0].args.pool;
     return poolAddress;
+  }
+
+  function sort2Tokens(token1: any, token2: any) {
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      return [token2.address, token1.address];
+    } else {
+      return [token1.address, token2.address];
+    }
+  }
+
+  function sort3Tokens(token1: any, token2: any, token3: any) {
+    let sortedList;
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      sortedList = [token2.address, token1.address];
+    } else {
+      sortedList = [token1.address, token2.address];
+    }
+
+    if (BigNumber.from(token3.address).lt(BigNumber.from(sortedList[0]))) {
+      sortedList = [token3.address, ...sortedList];
+    } else {
+      if (BigNumber.from(token3.address).gt(BigNumber.from(sortedList[1]))) {
+        sortedList = [...sortedList, token3.address];
+      } else {
+        sortedList = [sortedList[0], token3.address, sortedList[1]];
+      }
+    }
+
+    return sortedList;
   }
 
   async function validateCFMM(
@@ -333,10 +364,20 @@ describe("BalancerGammaPool", function () {
         liquidationStrategyAddr,
         factory.address, // Address of the WeightedPoolFactory used to create the pool
         BigNumber.from(50).pow(17), // weight0
-        testCfmmPoolId // poolId
       );
 
       await validateCFMM(tokenA, tokenD, testCFMM, testPool, testCfmmPoolId, vault.address, BigNumber.from(5).mul(BigNumber.from(10).pow(17)), BigNumber.from(10).pow(16));
+    });
+  });
+
+  describe("Initialize BalancerGammaPool" , function () {
+    it("Initializes Correctly", async function () {
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
+      
+      await pool.initialize(cfmmPool.address, sort2Tokens(tokenA, tokenB), [18, 18], data);
+
+      expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
+      expect(await pool.getPoolId()).to.equal(cfmmPoolId);
     });
   });
 });
