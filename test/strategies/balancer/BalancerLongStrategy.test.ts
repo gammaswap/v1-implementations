@@ -117,7 +117,19 @@ describe("BalancerLongStrategy", function () {
       BigNumber.from(20).mul(HUNDRETH)
     );
 
-    await (await strategy.initialize(cfmm, sortTokens(tokenA, tokenB), await sortDecimals(tokenA, tokenB))).wait();
+    const _data = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32"], // encode as address array
+      [cfmmPoolId]
+    );
+
+    await (
+      await strategy.initialize(
+        cfmm,
+        sortTokens(tokenA, tokenB),
+        await sortDecimals(tokenA, tokenB),
+        _data
+      )
+    ).wait();
 
     // Initialise a strategy with [18, 6] decimals
     let res1 = await createPair([tokenA, tokenC], feePercentage);
@@ -136,7 +148,19 @@ describe("BalancerLongStrategy", function () {
       BigNumber.from(20).mul(HUNDRETH)
     );
 
-    await (await strategyDecimals.initialize(cfmmDecimals, sortTokens(tokenA, tokenC), await sortDecimals(tokenA, tokenC))).wait();
+    const _data0 = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32"], // encode as address array
+      [cfmmDecimalsPoolId]
+    );
+
+    await (
+      await strategyDecimals.initialize(
+        cfmmDecimals,
+        sortTokens(tokenA, tokenC),
+        await sortDecimals(tokenA, tokenC),
+        _data0
+      )
+    ).wait();
   });
 
   function sortTokens(token1: any, token2: any) {
@@ -433,7 +457,7 @@ describe("BalancerLongStrategy", function () {
             WEIGHT0,
             cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
 
         await expect(
           strategy.testGetAmountIn(
@@ -445,7 +469,7 @@ describe("BalancerLongStrategy", function () {
             WEIGHT1,
             cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Error GetAmountOut", async function () {
@@ -479,7 +503,7 @@ describe("BalancerLongStrategy", function () {
             WEIGHT0,
             cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
 
         await expect(
           strategy.testGetAmountOut(
@@ -491,7 +515,7 @@ describe("BalancerLongStrategy", function () {
             WEIGHT1,
             cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Calculate GetAmountIn", async function () {
@@ -902,7 +926,7 @@ describe("BalancerLongStrategy", function () {
         );
 
         const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
-          
+
         // delta tokens are added to the strategy in slot 0 and expAmtOut0 tokens are removed from the strategy in slot 1
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [delta, 0])
@@ -956,7 +980,7 @@ describe("BalancerLongStrategy", function () {
         const strategyReserves3 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         const evt1 = res1.events[res1.events.length - 1];
-        
+
         expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
         expect(evt1.args.outAmts[1]).to.equal(0);
         expect(evt1.args.inAmts[0]).to.equal(0);
@@ -1009,7 +1033,7 @@ describe("BalancerLongStrategy", function () {
         const strategyReserves2 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         const evt1 = res1.events[res1.events.length - 1];
-        
+
         expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
         expect(evt1.args.outAmts[1]).to.equal(0);
         expect(evt1.args.inAmts[0]).to.equal(0);
@@ -1049,7 +1073,7 @@ describe("BalancerLongStrategy", function () {
           reserves0,
           WEIGHTS[0],
           cfmmTokens[0]
-        ); 
+        );
 
         // delta tokens are leaving the GammaPool in slot 0 and expectedAmountOut0 tokens are entering the GammaPool in slot 1
         const res0 = await (

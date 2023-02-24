@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { any } from "hardhat/internal/core/params/argumentTypes";
 
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
 const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPoolFactory.json");
@@ -115,7 +114,7 @@ describe("BalancerGammaPool", function () {
     longStrategyAddr = addr1.address;
     shortStrategyAddr = addr2.address;
     liquidationStrategyAddr = addr3.address;
-    
+
     // Deploy two GammaPool contracts for both separate CFMMs
     cfmmPool = WeightedPool.attach(cfmm);
     cfmmPoolId = await cfmmPool.getPoolId();
@@ -298,7 +297,7 @@ describe("BalancerGammaPool", function () {
   describe("Validate CFMM", function () {
     it("Error Not Contract", async function () {
       const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
-      
+
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], owner.address, data)
       ).to.be.revertedWith("NotContract");
@@ -373,7 +372,7 @@ describe("BalancerGammaPool", function () {
   describe("Initialize BalancerGammaPool" , function () {
     it("Initializes Correctly", async function () {
       const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
-      
+
       await pool.initialize(cfmmPool.address, sort2Tokens(tokenA, tokenB), [18, 18], data);
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
