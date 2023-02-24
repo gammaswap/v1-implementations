@@ -62,6 +62,12 @@ describe("BalancerShortStrategy", function () {
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
 
+    if (BigNumber.from(tokenA.address).gt(BigNumber.from(tokenB.address))) {
+      const tmpToken = tokenA;
+      tokenA = tokenB;
+      tokenB = tmpToken;
+    }
+
     const HOUR = 60 * 60;
     const DAY = HOUR * 24;
     const MONTH = DAY * 30;
@@ -90,11 +96,17 @@ describe("BalancerShortStrategy", function () {
 
     strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
 
+    const _data = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32"], // encode as address array
+      [poolId]
+    );
+
     await (
       await strategy.initialize(
         cfmm,
-        [tokenB.address, tokenA.address],
-        [18, 18]
+        [tokenA.address, tokenB.address],
+        [18, 18],
+        _data
       )
     ).wait();
   });

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.17;
+pragma solidity >=0.8.4;
 
 import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../libraries/weighted/FixedPoint.sol";
 import "../../libraries/weighted/WeightedMath.sol";
+import "../../libraries/weighted/InputHelpers.sol";
+
 import "./BalancerBaseStrategy.sol";
 
 /**
@@ -15,7 +17,9 @@ import "./BalancerBaseStrategy.sol";
  */
 abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStrategy {
     error BadDelta();
+    error BadOutAmts();
     error ZeroReserves();
+    error BAL308();
 
     /**
      * @return origFee Origination fee charged to every new loan that is issued.
@@ -104,7 +108,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 amountIn;
         uint256 amountOut;
         address _cfmm = s.cfmm;
-        address[] memory tokens = getTokens(_cfmm);
+        address[] memory tokens = s.tokens;
 
         // Parse the function inputs to determine which direction and outputs are expected
         if (outAmts[0] == 0) {
@@ -118,11 +122,11 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
             amountIn = outAmts[0];
             amountOut = inAmts[1];
         } else {
-            revert("The parameter outAmts is not defined correctly.");
+            revert BadOutAmts();
         }
 
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
-            poolId: getPoolId(_cfmm),
+            poolId: getPoolId(),
             kind: uint8(IVault.SwapKind.GIVEN_IN),
             assetIn: assetIn,
             assetOut: assetOut,
@@ -172,7 +176,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // NOTE: inAmts is the quantity of tokens going INTO the GammaPool
         // outAmts is the quantity of tokens going OUT OF the GammaPool
 
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(s.CFMM_RESERVES, deltas);
+
         outAmts[0] = outAmts[0] > 0 ? checkAvailableCollateral(outAmts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]) : 0;
         outAmts[1] = outAmts[1] > 0 ? checkAvailableCollateral(outAmts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]) : 0;
     }
@@ -180,94 +185,109 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /**
      * @dev Calculates the expected bought and sold amounts corresponding to a change in collateral given by delta.
      *      This calculation depends on the reserves existing in the Balancer pool.
-     * @param reserve0 The amount of reserve token0 in the Balancer pool
-     * @param reserve1 The amount of reserve token1 in the Balancer pool
-     * @param delta0 The desired amount of collateral token0 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
-     * @param delta1 The desired amount of collateral token1 from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
+     * @param reserves The amount of reserve tokens in the Balancer pool
+     * @param deltas The desired amount of collateral tokens from the loan to swap (> 0 buy, < 0 sell, 0 ignore)
      * @return inAmt0 The expected amount of token0 to receive from the Balancer pool (corresponding to a buy)
      * @return inAmt1 The expected amount of token1 to receive from the Balancer pool (corresponding to a buy)
      * @return outAmt0 The expected amount of token0 to send to the Balancer pool (corresponding to a sell)
      * @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
      */
-    function calcInAndOutAmounts(uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
+    function calcInAndOutAmounts(uint128[] memory reserves, int256[] calldata deltas)
         internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
-        if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
+        if(!((deltas[0] != 0 && deltas[1] == 0) || (deltas[0] == 0 && deltas[1] != 0))) {
             revert BadDelta();
         }
 
-        if(reserve0 == 0 || reserve1 == 0) {
+        if(reserves[0] == 0 || reserves[1] == 0) {
             revert ZeroReserves();
         }
 
-        // Get the Balancer weights and re-org them to represent in and out weights
         uint256[] memory weights = getWeights(s.cfmm);
-        uint256 weightIn = delta0 > 0 ? weights[0] : weights[1];
-        uint256 weightOut = delta0 > 0 ? weights[1] : weights[0];
+        uint8[] memory decimals = s.decimals;
 
-        // If the delta is positive, then we are buying a token from the Balancer pool
-        if (delta0 > 0 || delta1 > 0) {
-            // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
-            uint256 amountIn = delta0 > 0 ? uint256(delta0) : uint256(delta1);
-            uint256 reserveIn = delta0 > 0 ? reserve0 : reserve1;
-            uint256 reserveOut = delta0 > 0 ? reserve1 : reserve0;
-
-            uint256 amountOut = getAmountIn(amountIn, reserveIn, weightIn, reserveOut, weightOut);
-
-            // Assigning values to the return variables
-            inAmt0 = delta0 > 0 ? amountIn : 0;
-            inAmt1 = delta0 > 0 ? 0 : amountIn;
-            outAmt0 = delta0 > 0 ? 0 : amountOut;
-            outAmt1 = delta0 > 0 ? amountOut : 0;
+        if (deltas[0] > 0 || deltas[1] > 0) {
+            // If the delta is positive, then we are buying a token from the Balancer pool
+            if (deltas[0] > 0) {
+                // Then the first token corresponds to the token that the GammaPool is getting from the Balancer pool
+                inAmt0 = uint256(deltas[0]);
+                inAmt1 = 0;
+                outAmt0 = 0;
+                outAmt1 = getAmountIn(uint256(deltas[0]), reserves, weights, decimals, 0, 1);
+            } else {
+                inAmt0 = 0;
+                inAmt1 = uint256(deltas[1]);
+                outAmt0 = getAmountIn(uint256(deltas[1]), reserves, weights, decimals, 1, 0);
+                outAmt1 = 0;
+            }
         } else {
             // If the delta is negative, then we are selling a token to the Balancer pool
-            uint256 amountIn = delta0 < 0 ? uint256(-delta0) : uint256(-delta1);
-
-            // TODO: Check the orientation of these reserves, switching them fixed the issue
-            uint256 reserveIn = delta0 < 0 ? reserve1 : reserve0;
-            uint256 reserveOut = delta0 < 0 ? reserve0 : reserve1;
-
-            uint256 amountOut = getAmountOut(amountIn, reserveIn, weightIn, reserveOut, weightOut);
-
-            // Assigning values to the return variables
-            inAmt0 = delta0 < 0 ? 0 : amountOut;
-            inAmt1 = delta0 < 0 ? amountOut : 0;
-            outAmt0 = delta0 < 0 ? amountIn : 0;
-            outAmt1 = delta0 < 0 ? 0 : amountIn;
+            if (deltas[0] < 0) {
+                inAmt0 = 0;
+                inAmt1 = getAmountOut(uint256(-deltas[0]), reserves, weights, decimals, 1, 0);
+                outAmt0 = uint256(-deltas[0]);
+                outAmt1 = 0;
+            } else {
+                inAmt0 = getAmountOut(uint256(-deltas[1]), reserves, weights, decimals, 0, 1);
+                inAmt1 = 0;
+                outAmt0 = 0;
+                outAmt1 = uint256(-deltas[1]);
+            }
         }
     }
 
     /**
      * @dev Calculates the amountIn amount required for an exact amountOut value according to the Balancer invariant formula.
-     * @param amountOut The amount of token removed from the pool during the swap.
-     * @param reserveOut The pool reserves for the token exiting the pool on the swap.
-     * @param weightOut The normalised weight of the token exiting the pool on the swap.
-     * @param reserveIn The pool reserves for the token entering the pool on the swap.
-     * @param weightIn The normalised weight of the token entering the pool on the swap.
+     * @param amountOut - The amount of token removed from the pool during the swap.
+     * @param reserves - The pool reserves for the token exiting the pool on the swap.
+     * @param weights - The normalised weight of the token exiting the pool on the swap.
+     * @param decimals - The pool's token addresses
+     * @param outIdx - Index of reserves, weights, decimals array that represent token leaving GammaPool
+     * @param inIdx - Index of reserves, weights, decimals array that represent token coming into GammaPool
+     * @return amountIn - The normalised weight of the token entering the pool on the swap.
      */
-    function getAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
+    function getAmountIn(uint256 amountOut, uint128[] memory reserves, uint256[] memory weights, uint8[] memory decimals, uint256 outIdx, uint256 inIdx) internal view returns (uint256) {
         // Revert if the sum of normalised weights is not equal to 1
-        require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
+        if(weights[outIdx] + weights[inIdx] != FixedPoint.ONE) {
+            revert BAL308();
+        }
 
-        uint256 amountIn = WeightedMath._calcInGivenOut(reserveIn, weightIn, reserveOut, weightOut, amountOut);
-        uint256 feeAdjustedAmountIn = (amountIn * tradingFee2) / tradingFee1;
+        // Upscale the input data to account for decimals
+        uint256 rescaledReserveOut = InputHelpers.upscale(reserves[outIdx], InputHelpers.getScalingFactor(decimals[outIdx]));
+        uint256 rescaledReserveIn = InputHelpers.upscale(reserves[inIdx], InputHelpers.getScalingFactor(decimals[inIdx]));
+        uint256 rescaledAmountOut = InputHelpers.upscale(amountOut, InputHelpers.getScalingFactor(decimals[outIdx]));
 
-        return feeAdjustedAmountIn;
+        uint256 amountIn = WeightedMath._calcInGivenOut(rescaledReserveIn, weights[inIdx], rescaledReserveOut, weights[outIdx], rescaledAmountOut);
+
+        // Downscale the amountIn to account for decimals
+        uint256 downscaledAmountIn = InputHelpers.downscale(amountIn, InputHelpers.getScalingFactor(decimals[inIdx]));
+        return (downscaledAmountIn * tradingFee2) / tradingFee1;
     }
 
     /**
      * @dev Calculates the amountOut swap amount given for an exact amountIn value according to the Balancer invariant formula.
      * @param amountIn The amount of token swapped into the pool.
-     * @param reserveOut The pool reserves for the token exiting the pool on the swap.
-     * @param weightOut The normalised weight of the token exiting the pool on the swap.
-     * @param reserveIn The pool reserves for the token entering the pool on the swap.
-     * @param weightIn The normalised weight of the token entering the pool on the swap.
+     * @param reserves - The pool reserves for the token exiting the pool on the swap.
+     * @param weights - The normalised weight of the token exiting the pool on the swap.
+     * @param decimals - The pool's token addresses
+     * @param outIdx - Index of reserves, weights, decimals array that represent token leaving GammaPool
+     * @param inIdx - Index of reserves, weights, decimals array that represent token coming into GammaPool
+     * @return amountOut - The amount of token removed from the pool during the swap.
      */
-    function getAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn) internal view returns (uint256) {
+    function getAmountOut(uint256 amountIn, uint128[] memory reserves, uint256[] memory weights, uint8[] memory decimals, uint256 outIdx, uint256 inIdx) internal view returns (uint256) {
         // Revert if the sum of normalised weights is not equal to 1
-        require(weightOut + weightIn == FixedPoint.ONE, "BAL#308");
+        if(weights[outIdx] + weights[inIdx] != FixedPoint.ONE) {
+            revert BAL308();
+        }
 
-        uint256 feeAdjustedAmountIn = (amountIn * tradingFee1) / tradingFee2;
+        uint256 rescaledReserveOut = InputHelpers.upscale(reserves[outIdx], InputHelpers.getScalingFactor(decimals[outIdx]));
+        uint256 rescaledReserveIn = InputHelpers.upscale(reserves[inIdx], InputHelpers.getScalingFactor(decimals[inIdx]));
+        uint256 rescaledAmountIn = InputHelpers.upscale(amountIn, InputHelpers.getScalingFactor(decimals[inIdx]));
 
-        return WeightedMath._calcOutGivenIn(reserveIn, weightIn, reserveOut, weightOut, feeAdjustedAmountIn);
+        uint256 feeAdjustedAmountIn = (rescaledAmountIn * tradingFee1) / tradingFee2;
+
+        uint256 amountOut = WeightedMath._calcOutGivenIn(rescaledReserveIn, weights[inIdx], rescaledReserveOut, weights[outIdx], feeAdjustedAmountIn);
+
+        // Downscale the amountOut to account for decimals
+        return InputHelpers.downscale(amountOut, InputHelpers.getScalingFactor(decimals[outIdx]));
     }
 }

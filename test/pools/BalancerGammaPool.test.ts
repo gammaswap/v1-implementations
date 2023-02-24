@@ -5,6 +5,8 @@ import { BigNumber } from "ethers";
 const _Vault = require("@balancer-labs/v2-deployments/dist/tasks/20210418-vault/artifact/Vault.json");
 const _WeightedPoolFactoryAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPoolFactory.json");
 const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPoolFactory.json");
+const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
+const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
 // Protocol ID for Balancer
 const PROTOCOL_ID = 2;
@@ -21,14 +23,28 @@ describe("BalancerGammaPool", function () {
   let addr2: any;
   let addr3: any;
   let pool: any;
+  let threePool: any;
   let longStrategyAddr: any;
   let shortStrategyAddr: any;
   let liquidationStrategyAddr: any;
+
   let cfmm: any;
+  let cfmmPool: any;
+  let cfmmPoolId: any;
+  let cfmmPoolWeights: any;
+  let cfmmPoolSwapFeePercentage: any;
+  let cfmmPoolTokens: any;
+
   let weighted3Pool: any;
+  let cfmmWeighted3Pool: any;
+  let cfmmWeighted3PoolId: any;
+  let cfmmWeighted3PoolWeights: any;
+  let cfmmWeighted3PoolSwapFeePercentage: any;
+  let cfmmWeighted3PoolTokens: any;
 
   let BalancerVault: any;
   let WeightedPoolFactory: any;
+  let WeightedPool: any;
   let vault: any;
   let factory: any;
 
@@ -45,6 +61,12 @@ describe("BalancerGammaPool", function () {
     WeightedPoolFactory = new ethers.ContractFactory(
       _WeightedPoolFactoryAbi,
       _WeightedPoolFactoryBytecode.creationCode,
+      owner
+    );
+
+    WeightedPool = new ethers.ContractFactory(
+      _WeightedPoolAbi,
+      _WeightedPoolBytecode.creationCode,
       owner
     );
 
@@ -93,13 +115,37 @@ describe("BalancerGammaPool", function () {
     shortStrategyAddr = addr2.address;
     liquidationStrategyAddr = addr3.address;
 
+    // Deploy two GammaPool contracts for both separate CFMMs
+    cfmmPool = WeightedPool.attach(cfmm);
+    cfmmPoolId = await cfmmPool.getPoolId();
+    cfmmPoolWeights = await cfmmPool.getNormalizedWeights();
+    cfmmPoolSwapFeePercentage = await cfmmPool.getSwapFeePercentage();
+    cfmmPoolTokens = await sort2Tokens(tokenA, tokenB)
+
     pool = await BalancerGammaPool.deploy(
       PROTOCOL_ID,
       owner.address,
       longStrategyAddr,
       shortStrategyAddr,
       liquidationStrategyAddr,
-      factory.address // Address of the WeightedPoolFactory used to create the pool
+      factory.address, // Address of the WeightedPoolFactory used to create the pool
+      BigNumber.from(50).mul(BigNumber.from(10).pow(16)), // weight0
+    );
+
+    cfmmWeighted3Pool = WeightedPool.attach(weighted3Pool);
+    cfmmWeighted3PoolId = await cfmmWeighted3Pool.getPoolId();
+    cfmmWeighted3PoolWeights = await cfmmWeighted3Pool.getNormalizedWeights();
+    cfmmWeighted3PoolSwapFeePercentage = await cfmmWeighted3Pool.getSwapFeePercentage();
+    cfmmWeighted3PoolTokens = await sort3Tokens(tokenA, tokenB, tokenC);
+
+    threePool = await BalancerGammaPool.deploy(
+      PROTOCOL_ID,
+      owner.address,
+      longStrategyAddr,
+      shortStrategyAddr,
+      liquidationStrategyAddr,
+      factory.address, // Address of the WeightedPoolFactory used to create the pool
+      BigNumber.from(10).pow(17), // weight0
     );
   });
 
@@ -181,18 +227,52 @@ describe("BalancerGammaPool", function () {
     return poolAddress;
   }
 
+  function sort2Tokens(token1: any, token2: any) {
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      return [token2.address, token1.address];
+    } else {
+      return [token1.address, token2.address];
+    }
+  }
+
+  function sort3Tokens(token1: any, token2: any, token3: any) {
+    let sortedList;
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      sortedList = [token2.address, token1.address];
+    } else {
+      sortedList = [token1.address, token2.address];
+    }
+
+    if (BigNumber.from(token3.address).lt(BigNumber.from(sortedList[0]))) {
+      sortedList = [token3.address, ...sortedList];
+    } else {
+      if (BigNumber.from(token3.address).gt(BigNumber.from(sortedList[1]))) {
+        sortedList = [...sortedList, token3.address];
+      } else {
+        sortedList = [sortedList[0], token3.address, sortedList[1]];
+      }
+    }
+
+    return sortedList;
+  }
+
   async function validateCFMM(
     token0: any,
     token1: any,
     cfmm: any,
-    gammaPool: any
+    gammaPool: any,
+    cfmmPoolId: any, 
+    cfmmVault: any, 
+    cfmmWeight0: any, 
+    cfmmSwapFeePercentage: any
   ) {
-    const data = ethers.utils.defaultAbiCoder.encode([], []);
+    const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, cfmmVault, cfmmWeight0, cfmmSwapFeePercentage]);
     const resp = await gammaPool.validateCFMM(
       [token0.address, token1.address],
       cfmm,
       data
     );
+
     const bigNum0 = BigNumber.from(token0.address);
     const bigNum1 = BigNumber.from(token1.address);
     const token0Addr = bigNum0.lt(bigNum1) ? token0.address : token1.address;
@@ -204,7 +284,7 @@ describe("BalancerGammaPool", function () {
   }
 
   describe("Deployment", function () {
-    it("Should set right init params", async function () {
+    it("Should Set Correct Initialisation Parameters", async function () {
       expect(await pool.protocolId()).to.equal(2);
       expect(await pool.longStrategy()).to.equal(addr1.address);
       expect(await pool.shortStrategy()).to.equal(addr2.address);
@@ -216,7 +296,8 @@ describe("BalancerGammaPool", function () {
 
   describe("Validate CFMM", function () {
     it("Error Not Contract", async function () {
-      const data = ethers.utils.defaultAbiCoder.encode([], []);
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
+
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], owner.address, data)
       ).to.be.revertedWith("NotContract");
@@ -224,7 +305,8 @@ describe("BalancerGammaPool", function () {
 
     it("Error Incorrect Token Length", async function () {
       // The WeightedPool given has more than 2 tokens
-      const data = ethers.utils.defaultAbiCoder.encode([], []);
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmWeighted3PoolId, vault.address, cfmmWeighted3PoolWeights[0], cfmmWeighted3PoolSwapFeePercentage]);
+
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], weighted3Pool, data)
       ).to.be.revertedWith("IncorrectTokenLength");
@@ -232,18 +314,46 @@ describe("BalancerGammaPool", function () {
 
     it("Error Incorrect Tokens", async function () {
       // The WeightedPool given has the wrong tokens
-      const data = ethers.utils.defaultAbiCoder.encode([], []);
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
+
       await expect(
         pool.validateCFMM([tokenA.address, tokenC.address], cfmm, data)
       ).to.be.revertedWith("IncorrectTokens");
     });
 
+    it("Error Incorrect Pool ID", async function () {
+      await expect(
+        validateCFMM(tokenA, tokenB, cfmm, pool, cfmmWeighted3PoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage)
+      ).to.be.revertedWith("IncorrectPoolId");
+    });
+
+    it("Error Incorrect Vault", async function () {
+      await expect(
+        validateCFMM(tokenA, tokenB, cfmm, pool, cfmmPoolId, tokenA.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage)
+      ).to.be.revertedWith("IncorrectVault");
+    });
+
+    it("Error Incorrect Swap Fee", async function () {
+      await expect(
+        validateCFMM(tokenA, tokenB, cfmm, pool, cfmmPoolId, vault.address, cfmmPoolWeights[0], BigNumber.from(10).pow(17))
+      ).to.be.revertedWith("IncorrectSwapFee");
+    });
+
+    it("Error Incorrect Weights", async function () {
+      await expect(
+        validateCFMM(tokenA, tokenB, cfmm, pool, cfmmPoolId, vault.address, cfmmWeighted3PoolWeights[0], cfmmPoolSwapFeePercentage)
+      ).to.be.revertedWith("IncorrectWeights");
+    });
+
     it("Correct Validation #1", async function () {
-      await validateCFMM(tokenA, tokenB, cfmm, pool);
+      await validateCFMM(tokenA, tokenB, cfmm, pool, cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage);
     });
 
     it("Correct Validation #2", async function () {
       const testCFMM = await createPair(tokenA, tokenD);
+
+      let testCfmm = await WeightedPool.attach(testCFMM);
+      let testCfmmPoolId = await testCfmm.getPoolId();
 
       const testPool = await BalancerGammaPool.deploy(
         PROTOCOL_ID,
@@ -251,10 +361,22 @@ describe("BalancerGammaPool", function () {
         longStrategyAddr,
         shortStrategyAddr,
         liquidationStrategyAddr,
-        factory.address // Address of the WeightedPoolFactory used to create the pool
+        factory.address, // Address of the WeightedPoolFactory used to create the pool
+        BigNumber.from(50).pow(17), // weight0
       );
 
-      await validateCFMM(tokenA, tokenD, testCFMM, testPool);
+      await validateCFMM(tokenA, tokenD, testCFMM, testPool, testCfmmPoolId, vault.address, BigNumber.from(5).mul(BigNumber.from(10).pow(17)), BigNumber.from(10).pow(16));
+    });
+  });
+
+  describe("Initialize BalancerGammaPool" , function () {
+    it("Initializes Correctly", async function () {
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
+
+      await pool.initialize(cfmmPool.address, sort2Tokens(tokenA, tokenB), [18, 18], data);
+
+      expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
+      expect(await pool.getPoolId()).to.equal(cfmmPoolId);
     });
   });
 });

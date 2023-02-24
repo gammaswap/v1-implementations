@@ -14,6 +14,7 @@ import "../interfaces/external/balancer/IVault.sol";
  * @title GammaPool implementation for Balancer Weighted Pool
  * @author JakeXBT (https://github.com/JakeXBT)
  * @dev This implementation is specifically for validating Balancer Weighted Pools
+ * @notice implementation ID is unique to gammapool implementation
  */
 contract BalancerGammaPool is GammaPool {
 
@@ -24,8 +25,21 @@ contract BalancerGammaPool is GammaPool {
     error BadProtocol();
     error IncorrectTokenLength();
     error IncorrectTokens();
+    error IncorrectWeights();
+    error IncorrectPoolId();
+    error IncorrectVaultAddress();
+    error IncorrectSwapFee();
 
     using LibStorage for LibStorage.Storage;
+
+    struct BalancerCalldata {
+        bytes32 cfmmPoolId;
+        address cfmmVault;
+        uint256 cfmmWeight0;
+        uint256 cfmmSwapFeePercentage;
+    }
+
+    enum StorageIndexes { POOL_ID }
 
     /// @return tokenCount - number of tokens expected in CFMM
     uint8 constant public tokenCount = 2;
@@ -35,10 +49,18 @@ contract BalancerGammaPool is GammaPool {
      */
     address immutable public poolFactory;
 
-    /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, and `poolFactory`.
-    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory)
+    /// @dev Stores weights passed to constructor as immutable variable
+    uint256 immutable public weight0;
+
+    /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
+    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
         poolFactory = _poolFactory;
+        weight0 = _weight0;
+    }
+
+    function getPoolId() external view virtual returns(bytes32) {
+        return s.getBytes32(uint256(StorageIndexes.POOL_ID));
     }
 
     /// @dev See {IGammaPool-createLoan}
@@ -47,8 +69,23 @@ contract BalancerGammaPool is GammaPool {
         emit LoanCreated(msg.sender, tokenId);
     }
 
+    function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals, bytes calldata _data) external virtual override {
+        if(msg.sender != factory) // only factory is allowed to initialize
+            revert Forbidden();
+
+        s.initialize(factory, _cfmm, _tokens, _decimals);
+
+        // Decode the PoolId in this function
+        BalancerCalldata memory balancerCalldata = abi.decode(_data, (BalancerCalldata));
+
+        // Store the PoolId in the storage contract
+        s.setBytes32(uint256(StorageIndexes.POOL_ID), balancerCalldata.cfmmPoolId);
+    }
+
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata _data) external virtual override view returns(address[] memory _tokensOrdered, uint8[] memory _decimals) {
+        BalancerCalldata memory balancerCalldata = abi.decode(_data, (BalancerCalldata));
+        
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
             revert NotContract();
         }
@@ -62,7 +99,26 @@ contract BalancerGammaPool is GammaPool {
         (_tokensOrdered[0], _tokensOrdered[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);
 
         // Fetch the tokens corresponding to the CFMM address
-        (IERC20[] memory vaultTokens, ,) = IVault(IWeightedPool(_cfmm).getVault()).getPoolTokens(IWeightedPool(_cfmm).getPoolId());
+        bytes32 _poolId = IWeightedPool(_cfmm).getPoolId();
+        address vault = IWeightedPool(_cfmm).getVault();
+        uint256 swapFeePercentage = IWeightedPool(_cfmm).getSwapFeePercentage();
+        uint256[] memory _weights = IWeightedPool(_cfmm).getNormalizedWeights();
+
+        // Validate that all parameters match
+        
+        if (_poolId != balancerCalldata.cfmmPoolId) {
+            revert IncorrectPoolId();
+        }
+
+        if (vault != balancerCalldata.cfmmVault) {
+            revert IncorrectVaultAddress();
+        }
+
+        if (swapFeePercentage != balancerCalldata.cfmmSwapFeePercentage) {
+            revert IncorrectSwapFee();
+        }
+
+        (IERC20[] memory vaultTokens, ,) = IVault(balancerCalldata.cfmmVault).getPoolTokens(balancerCalldata.cfmmPoolId);
 
         // Verify the number of tokens in the CFMM matches the number of tokens given in the constructor
         if(vaultTokens.length != tokenCount) {
@@ -72,6 +128,10 @@ contract BalancerGammaPool is GammaPool {
         // Verify the tokens in the CFMM match the tokens given in the constructor
         if(_tokensOrdered[0] != address(vaultTokens[0]) || _tokensOrdered[1] != address(vaultTokens[1])) {
             revert IncorrectTokens();
+        }
+
+        if(_weights[0] != balancerCalldata.cfmmWeight0) {
+            revert IncorrectWeights();
         }
 
         // Get CFMM's tokens' decimals

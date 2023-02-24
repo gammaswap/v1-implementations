@@ -10,30 +10,41 @@ const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/
 
 describe("BalancerLongStrategy", function () {
   let TestERC20: any;
+  let TestERC20Decimals: any;
+
   let TestStrategy: any;
+
   let BalancerVault: any;
   let WeightedPoolFactory: any;
   let WeightedPool: any;
+
   let tokenA: any;
   let tokenB: any;
+  let tokenC: any;
+
   let cfmm: any;
+  let cfmmDecimals: any;
+
   let vault: any;
   let factory: any;
   let strategy: any;
+  let strategyDecimals: any;
+
   let owner: any;
   let pool: any;
-  let poolId: any;
-  let weightedMathFactory: any;
-  let weightedMath: any;
+  let decimalsPool: any;
+  let cfmmPoolId: any;
+  let cfmmDecimalsPoolId: any;
 
-  let TOKENS: any;
   let WEIGHTS: any;
+  let cfmmTokens: any;
+  let cfmmDecimalsTokens: any;
+  let cfmmTokenDecimals: any;
+  let cfmmDecimalsTokenDecimals: any;
 
   beforeEach(async function () {
-    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
-    weightedMath = await weightedMathFactory.deploy();
-
     TestERC20 = await ethers.getContractFactory("TestERC20");
+    TestERC20Decimals = await ethers.getContractFactory("TestERC20Decimals");
     [owner] = await ethers.getSigners();
 
     // Get contract factory for WeightedPool: '@balancer-labs/v2-pool-weighted/WeightedPoolFactory'
@@ -60,6 +71,7 @@ describe("BalancerLongStrategy", function () {
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
+    tokenC = await TestERC20Decimals.deploy("Test Token C", "TOKC")
 
     const HOUR = 60 * 60;
     const DAY = HOUR * 24;
@@ -77,17 +89,23 @@ describe("BalancerLongStrategy", function () {
     factory = await WeightedPoolFactory.deploy(vault.address);
 
     // Create a WeightedPool using the WeightedPoolFactory
-    cfmm = await createPair(tokenA, tokenB);
-
-    pool = WeightedPool.attach(cfmm);
-    poolId = await pool.getPoolId();
-
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
     const tradingFee1 = 990;
     const tradingFee2 = 1000;
+
+    // Initialise a strategy with [18, 18] decimals
+    // Create a WeightedPool using the WeightedPoolFactory
+    let feePercentage = BigNumber.from(10).pow(18).div(100);
+    let res = await createPair([tokenA, tokenB], feePercentage);
+    cfmm = res[0];
+    cfmmTokens = res[1];
+
+    pool = WeightedPool.attach(cfmm);
+    cfmmPoolId = await pool.getPoolId();
+    cfmmTokenDecimals = await sortDecimals(tokenA, tokenB);
 
     strategy = await TestStrategy.deploy(
       0,
@@ -98,97 +116,88 @@ describe("BalancerLongStrategy", function () {
       maxApy
     );
 
-    // uint16 _originationFee, uint16 _tradingFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy
+    const _data = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32"], // encode as address array
+      [cfmmPoolId]
+    );
 
-    await (await strategy.initialize(cfmm, TOKENS, [18, 18])).wait();
+    await (
+      await strategy.initialize(
+        cfmm,
+        sortTokens(tokenA, tokenB),
+        await sortDecimals(tokenA, tokenB),
+        _data
+      )
+    ).wait();
+
+    // Initialise a strategy with [18, 6] decimals
+    let res1 = await createPair([tokenA, tokenC], feePercentage);
+    cfmmDecimals = res1[0];
+    cfmmDecimalsTokens = res1[1];
+
+    decimalsPool = WeightedPool.attach(cfmmDecimals);
+    cfmmDecimalsPoolId = await decimalsPool.getPoolId();
+    cfmmDecimalsTokenDecimals = await sortDecimals(tokenA, tokenC);
+
+    strategyDecimals = await TestStrategy.deploy(
+      0,
+      tradingFee1,
+      tradingFee2,
+      baseRate,
+      factor,
+      maxApy
+    );
+
+    const _data0 = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32"], // encode as address array
+      [cfmmDecimalsPoolId]
+    );
+
+    await (
+      await strategyDecimals.initialize(
+        cfmmDecimals,
+        sortTokens(tokenA, tokenC),
+        await sortDecimals(tokenA, tokenC),
+        _data0
+      )
+    ).wait();
   });
 
-  // function calcAmtIn(
-  //   amountOut: BigNumber,
-  //   reserveOut: BigNumber,
-  //   reserveIn: BigNumber,
-  //   tradingFee1: any,
-  //   tradingFee2: any
-  // ): BigNumber {
-  //   const amountOutWithFee = amountOut.mul(tradingFee1);
-  //   const denominator = reserveOut.mul(tradingFee2).add(amountOutWithFee);
-  //   return amountOutWithFee.mul(reserveIn).div(denominator);
-  // }
+  function sortTokens(token1: any, token2: any) {
+    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
+      return [token2.address, token1.address];
+    } else {
+      return [token1.address, token2.address];
+    }
+  }
 
-  // function calcAmtOut(
-  //   amountIn: BigNumber,
-  //   reserveOut: BigNumber,
-  //   reserveIn: BigNumber,
-  //   tradingFee1: any,
-  //   tradingFee2: any
-  // ): BigNumber {
-  //   const denominator = reserveIn.sub(amountIn).mul(tradingFee1);
-  //   const num = reserveOut.mul(amountIn).mul(tradingFee2).div(denominator);
-  //   return num.add(1);
-  // }
+  async function sortDecimals(token1: any, token2: any) {
+    if (BigNumber.from(token1.address).lt(BigNumber.from(token2.address))) {
+      return [await token1.decimals(), await token2.decimals()];
+    } else {
+      return [await token2.decimals(), await token1.decimals()];
+    }
+  }
 
-  // async function setUpStrategyAndCFMM(tokenId: any, hasFee: any) {
-  //   const ONE = BigNumber.from(10).pow(18);
-
-  //   if (hasFee) {
-  //     strategy = strategyFee;
-  //     tokenA = tokenAFee;
-  //     tokenB = tokenBFee;
-  //     cfmm = cfmmFee;
-  //   }
-
-  //   const collateral0 = ONE.mul(100);
-  //   const collateral1 = ONE.mul(200);
-  //   const balance0 = ONE.mul(1000);
-  //   const balance1 = ONE.mul(2000);
-
-  //   await (await tokenA.transfer(strategy.address, balance0)).wait();
-  //   await (await tokenB.transfer(strategy.address, balance1)).wait();
-
-  //   await (
-  //     await strategy.setTokenBalances(
-  //       tokenId,
-  //       collateral0,
-  //       collateral1,
-  //       balance0,
-  //       balance1
-  //     )
-  //   ).wait();
-
-  //   await (await tokenA.transfer(cfmm.address, ONE.mul(5000))).wait();
-  //   await (await tokenB.transfer(cfmm.address, ONE.mul(10000))).wait();
-  //   await (await cfmm.sync()).wait();
-
-  //   const rez = await cfmm.getReserves();
-  //   const reserves0 = rez._reserve0;
-  //   const reserves1 = rez._reserve1;
-
-  //   await (await strategy.setCFMMReserves(reserves0, reserves1, 0)).wait();
-
-  //   return { res0: reserves0, res1: reserves1 };
-  // }
-
-  async function createPair(token1: any, token2: any) {
+  async function createPair(tokens: any, fee_percent: any) {
     const NAME = "TESTPOOL";
     const SYMBOL = "TP";
-    if (BigNumber.from(token2.address).lt(BigNumber.from(token1.address))) {
-      TOKENS = [token2.address, token1.address];
-    } else {
-      TOKENS = [token1.address, token2.address];
-    }
-    const HUNDRETH = BigNumber.from(10).pow(16);
-    WEIGHTS = [
-      BigNumber.from(50).mul(HUNDRETH),
-      BigNumber.from(50).mul(HUNDRETH),
-    ];
-    const FEE_PERCENTAGE = HUNDRETH;
 
+    let _TOKENS = sortTokens(tokens[0], tokens[1]);
+
+    const HUNDRETH = BigNumber.from(10).pow(16);
+
+    WEIGHTS = [
+      BigNumber.from(20).mul(HUNDRETH),
+      BigNumber.from(80).mul(HUNDRETH),
+    ];
+    
     const poolReturnData = await factory.create(
       NAME,
       SYMBOL,
-      TOKENS,
+      _TOKENS,
       WEIGHTS,
-      FEE_PERCENTAGE,
+      fee_percent,
       owner.address
     );
 
@@ -198,7 +207,7 @@ describe("BalancerLongStrategy", function () {
 
     const poolAddress = events[0].args.pool;
 
-    return poolAddress;
+    return [poolAddress, _TOKENS];
   }
 
   function expectEqualWithError(actual: BigNumber, expected: BigNumber) {
@@ -206,7 +215,7 @@ describe("BalancerLongStrategy", function () {
     expect(error.mul(100000).div(expected).lte(1000)).to.be.equal(true);
   }
 
-  async function initialisePool(initialBalances: any) {
+  async function initialisePool(initialBalances: any, poolId: any, tokens: any) {
     // We must perform an INIT join at the beginning to start the pool
     const JOIN_KIND_INIT = 0;
     const initUserData = ethers.utils.defaultAbiCoder.encode(
@@ -214,13 +223,14 @@ describe("BalancerLongStrategy", function () {
       [JOIN_KIND_INIT, initialBalances]
     );
 
-    // 'ERC20: insufficient allowance'
     // We must approve the vault to spend the tokens we own
-    await tokenA.approve(vault.address, ethers.constants.MaxUint256);
-    await tokenB.approve(vault.address, ethers.constants.MaxUint256);
+    await tokens[0].approve(vault.address, ethers.constants.MaxUint256);
+    await tokens[1].approve(vault.address, ethers.constants.MaxUint256);
+
+    let orderedTokens = sortTokens(tokens[0], tokens[1]);
 
     const joinPoolRequest = {
-      assets: TOKENS,
+      assets: orderedTokens,
       maxAmountsIn: initialBalances,
       userData: initUserData,
       fromInternalBalance: false,
@@ -241,12 +251,19 @@ describe("BalancerLongStrategy", function () {
 
     const collateral0 = ONE.mul(100);
     const collateral1 = ONE.mul(200);
-    const balance0 = ONE.mul(1000);
-    const balance1 = ONE.mul(2000);
+    const balance0 = ONE.mul(100);
+    const balance1 = ONE.mul(200);
 
-    await (await tokenA.transfer(strategy.address, balance0)).wait();
-    await (await tokenB.transfer(strategy.address, balance1)).wait();
+    // Send the strategy the balance of tokens
+    if (cfmmTokens[0] == tokenA.address) {
+      await (await tokenA.transfer(strategy.address, balance0)).wait();
+      await (await tokenB.transfer(strategy.address, balance1)).wait();
+    } else {
+      await (await tokenA.transfer(strategy.address, balance1)).wait();
+      await (await tokenB.transfer(strategy.address, balance0)).wait();
+    }
 
+    // Set the strategy's TOKEN_BALANCE array and update tokensHeld in the loan
     await (
       await strategy.setTokenBalances(
         tokenId,
@@ -257,7 +274,8 @@ describe("BalancerLongStrategy", function () {
       )
     ).wait();
 
-    await initialisePool([ONE.mul(5000), ONE.mul(10000)]);
+    // Initialise the Balancer pool with 5000 tokenA and 10000 tokenB
+    await initialisePool([ONE.mul(500), ONE.mul(1000)], cfmmPoolId, [tokenA, tokenB]);
     const reserves = await strategy.testGetPoolReserves(cfmm);
 
     const reserves0 = reserves[0];
@@ -268,7 +286,7 @@ describe("BalancerLongStrategy", function () {
   }
 
   describe("Deployment", function () {
-    it("Check Init Params", async function () {
+    it("Check Initialisation Parameters for CFMM", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
@@ -282,8 +300,8 @@ describe("BalancerLongStrategy", function () {
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
       const WEIGHTS = [
-        BigNumber.from(50).mul(HUNDRETH),
-        BigNumber.from(50).mul(HUNDRETH),
+        BigNumber.from(20).mul(HUNDRETH),
+        BigNumber.from(80).mul(HUNDRETH),
       ];
 
       expect(pool.address).to.equal(cfmm);
@@ -293,10 +311,41 @@ describe("BalancerLongStrategy", function () {
         BigNumber.from(0),
       ]);
       expect(await strategy.testGetVault(cfmm)).to.equal(await pool.getVault());
-      expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
-      expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
+      expect(await strategy.testGetTokens(cfmm)).to.deep.equal(cfmmTokens);
+      expect(await strategy.testGetPoolId(cfmm)).to.equal(cfmmPoolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
+    });
+
+    it("Check Initialisation Parameters for Decimals CFMM", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const baseRate = ONE.div(100);
+      const factor = ONE.mul(4).div(100);
+      const maxApy = ONE.mul(75).div(100);
+
+      // Check strategy params are correct
+      expect(await strategyDecimals.baseRate()).to.equal(baseRate);
+      expect(await strategyDecimals.factor()).to.equal(factor);
+      expect(await strategyDecimals.maxApy()).to.equal(maxApy);
+
+      // Check the strategy parameters align
+      const HUNDRETH = BigNumber.from(10).pow(16);
+      const WEIGHTS = [
+        BigNumber.from(20).mul(HUNDRETH),
+        BigNumber.from(80).mul(HUNDRETH),
+      ];
+
+      expect(decimalsPool.address).to.equal(cfmmDecimals);
+      expect(await strategyDecimals.getCFMM()).to.equal(cfmmDecimals);
+      expect(await strategyDecimals.getCFMMReserves()).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
+      expect(await strategyDecimals.testGetVault(cfmmDecimals)).to.equal(await pool.getVault());
+      expect(await strategyDecimals.testGetTokens(cfmmDecimals)).to.deep.equal(cfmmDecimalsTokens);
+      expect(await strategyDecimals.testGetPoolId(cfmmDecimals)).to.equal(cfmmDecimalsPoolId);
+      expect(await decimalsPool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
+      expect(await strategyDecimals.testGetWeights(cfmmDecimals)).to.deep.equal(WEIGHTS);
     });
 
     describe("Repay Functions", function () {
@@ -340,52 +389,6 @@ describe("BalancerLongStrategy", function () {
         expect(res2[1]).to.equal(ONE.mul(100));
       });
 
-      // BeforeRepay now does nothing, hence should never revert
-      // it.skip("Error Before Repay", async function () {
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const res1 = await (await strategy.createLoan()).wait();
-      //   const tokenId = res1.events[0].args.tokenId;
-
-      //   await expect(
-      //     strategy.testBeforeRepay(tokenId, [1, 1])
-      //   ).to.be.revertedWith("NotEnoughBalance");
-
-      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-
-      //   await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 10)).wait();
-
-      //   await expect(
-      //     strategy.testBeforeRepay(tokenId, [11, 1])
-      //   ).to.be.revertedWith("NotEnoughCollateral");
-
-      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-
-      //   const amtA = ONE.mul(100);
-      //   const amtB = ONE.mul(200);
-
-      //   await (await tokenA.transfer(strategy.address, amtA)).wait();
-      //   await (await tokenB.transfer(strategy.address, amtB)).wait();
-
-      //   await expect(
-      //     strategy.testBeforeRepay(tokenId, [1, 11])
-      //   ).to.be.revertedWith("NotEnoughBalance");
-
-      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-
-      //   await (await strategy.setTokenBalances(tokenId, 10, 10, 100, 11)).wait();
-
-      //   await expect(
-      //     strategy.testBeforeRepay(tokenId, [1, 11])
-      //   ).to.be.revertedWith("NotEnoughCollateral");
-
-      //   expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-      //   expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-      // });
-
       it("Before Repay", async function () {
         // BeforeRepay now does nothing, hence should never revert
 
@@ -407,7 +410,6 @@ describe("BalancerLongStrategy", function () {
         await (await strategy.testBeforeRepay(tokenId, [100, 200])).wait();
 
         // The balances of these contracts should be unchanged
-        // TODO: Is this unit test redundant?
         expect(await tokenA.balanceOf(cfmm)).to.equal(0);
         expect(await tokenB.balanceOf(cfmm)).to.equal(0);
         expect(await tokenA.balanceOf(strategy.address)).to.equal(100);
@@ -426,86 +428,94 @@ describe("BalancerLongStrategy", function () {
     describe("Get Amount In/Out", function () {
       it("Error GetAmountIn", async function () {
         const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         await expect(
-          strategy.testGetAmountIn(0, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(0, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 1000000000, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 1000000000, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT1, 1000000000, WEIGHT2)
+          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, cfmmTokens[0], 1000000000, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
+
+        await expect(
+          strategy.testGetAmountIn(
+            40000,
+            1000000000,
+            WEIGHT0,
+            cfmmTokens[0],
+            1000000000,
+            WEIGHT0,
+            cfmmTokens[1]
+          )
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
 
         await expect(
           strategy.testGetAmountIn(
             40000,
             1000000000,
             WEIGHT1,
+            cfmmTokens[0],
             1000000000,
-            WEIGHT1
+            WEIGHT1,
+            cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
-
-        await expect(
-          strategy.testGetAmountIn(
-            40000,
-            1000000000,
-            WEIGHT2,
-            1000000000,
-            WEIGHT2
-          )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Error GetAmountOut", async function () {
         const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         await expect(
-          strategy.testGetAmountOut(0, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(0, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 1000000000, WEIGHT1, 0, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 1000000000, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT1, 1000000000, WEIGHT2)
+          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, cfmmTokens[0], 1000000000, WEIGHT1, cfmmTokens[1])
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
+
+        await expect(
+          strategy.testGetAmountOut(
+            40000,
+            1000000000,
+            WEIGHT0,
+            cfmmTokens[0],
+            1000000000,
+            WEIGHT0,
+            cfmmTokens[1]
+          )
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
 
         await expect(
           strategy.testGetAmountOut(
             40000,
             1000000000,
             WEIGHT1,
+            cfmmTokens[0],
             1000000000,
-            WEIGHT1
+            WEIGHT1,
+            cfmmTokens[1]
           )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
-
-        await expect(
-          strategy.testGetAmountOut(
-            40000,
-            1000000000,
-            WEIGHT2,
-            1000000000,
-            WEIGHT2
-          )
-        ).to.be.revertedWith("BAL#308"); // Pool weights don't add to 1
+        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Calculate GetAmountIn", async function () {
@@ -514,15 +524,17 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const WEIGHT1 = ONE.div(10);
-        const WEIGHT2 = ONE.sub(WEIGHT1);
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
 
         const answer1 = await strategy.testGetAmountIn(
           amountOut,
           reserveOut,
-          WEIGHT1,
+          WEIGHT0,
+          cfmmTokens[0],
           reserveIn,
-          WEIGHT2
+          WEIGHT1,
+          cfmmTokens[1]
         );
 
         const expectedAnswer1 = BigNumber.from("25357220663536529408");
@@ -532,9 +544,11 @@ describe("BalancerLongStrategy", function () {
         const answer2 = await strategy.testGetAmountIn(
           BigNumber.from(105).mul(ONE),
           reserveOut,
-          WEIGHT1,
+          WEIGHT0,
+          cfmmTokens[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          cfmmTokens[1]
         );
 
         const expectedAnswer2 = BigNumber.from("80416298597382832128");
@@ -544,9 +558,11 @@ describe("BalancerLongStrategy", function () {
         const answer3 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(7),
-          WEIGHT1,
+          WEIGHT0,
+          cfmmTokens[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          cfmmTokens[1]
         );
 
         const expectedAnswer3 = BigNumber.from("19876520058160660480");
@@ -556,9 +572,11 @@ describe("BalancerLongStrategy", function () {
         const answer4 = await strategy.testGetAmountIn(
           amountOut.mul(3),
           reserveOut.mul(7),
-          WEIGHT1,
+          WEIGHT0,
+          cfmmTokens[0],
           reserveIn.mul(12),
-          WEIGHT2
+          WEIGHT1,
+          cfmmTokens[1]
         );
 
         const expectedAnswer4 = BigNumber.from("121292623593009332224");
@@ -568,9 +586,11 @@ describe("BalancerLongStrategy", function () {
         const answer5 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(5),
-          WEIGHT1,
+          WEIGHT0,
+          cfmmTokens[0],
           reserveIn.mul(3),
-          WEIGHT2
+          WEIGHT1,
+          cfmmTokens[1]
         );
 
         const expectedAnswer5 = BigNumber.from("28205068727569096704");
@@ -578,123 +598,148 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(answer5, expectedAnswer5);
       });
 
-      /* it.skip("Calculate GetAmountOut", async function () {
+
+      it("Calculate GetAmountIn for Decimals", async function () {
+        const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
+        const DECIMALS_ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
+
+        const amountOut = ONE.mul(100);
+        const reserveOut = ONE.mul(500);
+        const reserveIn = DECIMALS_ONE.mul(1000);
+
+        const WEIGHT0 = BigNumber.from(10).pow(18).div(10);
+        const WEIGHT1 = BigNumber.from(10).pow(18).sub(WEIGHT0);
+
+        const answer1 = await strategy.testGetAmountIn(
+          amountOut,
+          reserveOut,
+          WEIGHT0,
+          cfmmDecimalsTokens[0],
+          reserveIn,
+          WEIGHT1,
+          cfmmDecimalsTokens[1]
+        );
+
+        let expectedAnswer1 = BigNumber.from("25357220663536529408");
+
+        if (cfmmDecimalsTokenDecimals[1] < 18) {
+          expectedAnswer1 = expectedAnswer1.div(BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1]));
+        }
+
+        expectEqualWithError(answer1, expectedAnswer1);
+      });
+
+      it("Calculate GetAmountOut", async function () {
         const ONE = BigNumber.from(10).pow(18);
         const amountIn = ONE.mul(100);
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const amtIn1a = await strategy.testCalcAmtOut(
+        const WEIGHT0 = ONE.div(10);
+        const WEIGHT1 = ONE.sub(WEIGHT0);
+
+        const amountOut1 = await strategy.testGetAmountOut(
           amountIn,
           reserveOut,
-          reserveIn
+          WEIGHT0,
+          cfmmTokens[0],
+          reserveIn,
+          WEIGHT1,
+          cfmmTokens[1]
         );
-        const amtIn1b = calcAmtOut(amountIn, reserveOut, reserveIn, 997, 1000);
-        expect(amtIn1a).to.equal(amtIn1b);
 
-        const amtIn2a = await strategy.testCalcAmtOut(
+        const expectedAnswer1 = BigNumber.from("287429996912549888000");
+
+        expectEqualWithError(amountOut1, expectedAnswer1);
+
+        const amountOut2 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut,
-          reserveIn.mul(3)
+          WEIGHT0,
+          cfmmTokens[0],
+          reserveIn.mul(3),
+          WEIGHT1,
+          cfmmTokens[1]
         );
-        const amtIn2b = calcAmtOut(
+
+        const expectedAnswer2 = BigNumber.from("219815289395209764864");
+
+        expectEqualWithError(amountOut2, expectedAnswer2);
+
+        const amountOut3 = await strategy.testGetAmountOut(
           amountIn.mul(2),
+          reserveOut.mul(7),
+          WEIGHT0,
+          cfmmTokens[0],
+          reserveIn.mul(3),
+          WEIGHT1,
+          cfmmTokens[1]
+        );
+
+        const expectedAnswer3 = BigNumber.from("1538707025766468550656");
+
+        expectEqualWithError(amountOut3, expectedAnswer3);
+
+        const amountOut4 = await strategy.testGetAmountOut(
+          amountIn.mul(2),
+          reserveOut.mul(7),
+          WEIGHT0,
+          cfmmTokens[0],
+          reserveIn.mul(19),
+          WEIGHT1,
+          cfmmTokens[1]
+        );
+
+        const expectedAnswer4 = BigNumber.from("313884305967069986816");
+
+        expectEqualWithError(amountOut4, expectedAnswer4);
+
+        const amountOut5 = await strategy.testGetAmountOut(
+          amountIn.mul(2),
+          reserveOut.mul(2),
+          WEIGHT0,
+          cfmmTokens[0],
+          reserveIn.mul(15),
+          WEIGHT1,
+          cfmmTokens[1]
+        );
+
+        const expectedAnswer5 = BigNumber.from("112060590249046573056");
+
+        expectEqualWithError(amountOut5, expectedAnswer5);
+      });
+
+      it("Calculate GetAmountOut for Decimals", async function () {
+        const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
+        const ONE2 = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
+
+        const amountIn = ONE2.mul(100);
+
+        const reserveOut = ONE.mul(500);
+        const reserveIn = ONE2.mul(1000);
+
+        const weightOut = BigNumber.from(10).pow(17);
+        const weightIn = BigNumber.from(10).pow(18).sub(weightOut);
+
+        const amountOut1 = await strategy.testGetAmountOut(
+          amountIn,
           reserveOut,
-          reserveIn.mul(3),
-          997,
-          1000
+          weightOut,
+          cfmmDecimalsTokens[0],
+          reserveIn,
+          weightIn,
+          cfmmDecimalsTokens[1]
         );
-        expect(amtIn2a).to.equal(amtIn2b);
 
-        const amtIn3a = await strategy.testCalcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn3b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          997,
-          1000
-        );
-        expect(amtIn3a).to.equal(amtIn3b);
+        let expectedAnswer1 = BigNumber.from("287429996912549888000");
+        
+        if (cfmmDecimalsTokenDecimals[0] < 18) {
+          expectedAnswer1 = expectedAnswer1.div(BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0]));
+        }
 
-        const amtIn4a = await strategy.testCalcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn4b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          998,
-          1000
-        );
-        expect(amtIn4a).gt(amtIn4b);
+        expectEqualWithError(amountOut1, expectedAnswer1);
+        });
 
-        const amtIn5a = await strategy.testCalcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3)
-        );
-        const amtIn5b = calcAmtOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          996,
-          1000
-        );
-        expect(amtIn5a).lt(amtIn5b);
-      }); /**/
-
-      // it.skip("Error Calc Actual Out Amount", async function () {
-      //   const ONE = BigNumber.from(10).pow(18);
-      //   const amt = ONE.mul(100);
-      //   await expect(
-      //     strategy.testCalcActualOutAmount(
-      //       tokenA.address,
-      //       addr1.address,
-      //       amt,
-      //       amt.sub(1),
-      //       amt
-      //     )
-      //   ).to.be.revertedWith("NotEnoughBalance");
-      //   await expect(
-      //     strategy.testCalcActualOutAmount(
-      //       tokenA.address,
-      //       addr1.address,
-      //       amt,
-      //       amt,
-      //       amt.sub(1)
-      //     )
-      //   ).to.be.revertedWith("NotEnoughCollateral");
-      // });
-
-      // it.skip("Calc Actual Out Amount", async function () {
-      //   const ONE = BigNumber.from(10).pow(18);
-      //   const amt = ONE.mul(100);
-
-      //   await (await tokenA.transfer(strategy.address, amt)).wait();
-      //   await (await tokenA.transfer(addr1.address, amt)).wait();
-
-      //   const balance0 = await tokenA.balanceOf(addr1.address);
-      //   const res = await (
-      //     await strategy.testCalcActualOutAmount(
-      //       tokenA.address,
-      //       addr1.address,
-      //       amt,
-      //       amt,
-      //       amt
-      //     )
-      //   ).wait();
-      //   const evt = res.events[res.events.length - 1];
-      //   expect(evt.args.outAmount).to.equal(amt);
-
-      //   const balance1 = await tokenA.balanceOf(addr1.address);
-      //   expect(evt.args.outAmount).to.equal(balance1.sub(balance0));
-      // });
     });
 
     describe("Calculate Tokens to Swap", function () {
@@ -746,8 +791,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
+          cfmmTokens[0],
           reserves1,
-          WEIGHTS[1]
+          WEIGHTS[1],
+          cfmmTokens[1]
         );
 
         expectEqualWithError(evt0.args.inAmts[0], delta);
@@ -765,8 +812,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
+          cfmmTokens[1],
           reserves0,
-          WEIGHTS[0]
+          WEIGHTS[0],
+          cfmmTokens[0]
         );
 
         expect(evt1.args.inAmts[0]).to.equal(0);
@@ -799,8 +848,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
+          cfmmTokens[1],
           reserves0,
-          WEIGHTS[0]
+          WEIGHTS[0],
+          cfmmTokens[0]
         );
 
         expect(evt0.args.inAmts[0]).to.equal(0);
@@ -818,8 +869,10 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
+          cfmmTokens[0],
           reserves1,
-          WEIGHTS[1]
+          WEIGHTS[1],
+          cfmmTokens[1]
         );
 
         expectEqualWithError(evt1.args.inAmts[0], amtIn1);
@@ -828,291 +881,60 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(evt1.args.outAmts[1], delta);
       });
 
-      // it("Calc Exact Tokens with Fees to Buy", async function () {
-      //   await createStrategy(true, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // buy exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-      //   const amtOut0Fee = amtOut0.sub(amtOut0.mul(fee).div(ONE));
-      //   const deltaFee0 = calcAmtIn(amtOut0Fee, reserves1, reserves0, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0Fee);
-
-      //   // buy exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const amtOut1 = calcAmtOut(delta, reserves0, reserves1, 997, 1000);
-      //   const amtOut1Fee = amtOut1.sub(amtOut1.mul(fee).div(ONE));
-      //   const deltaFee1 = calcAmtIn(amtOut1Fee, reserves0, reserves1, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(deltaFee1);
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1Fee);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      // });
-
-      // it("Calc Exact Tokens with Fees to Sell", async function () {
-      //   await createStrategy(true, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // sell exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const deltaFee0 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn0 = calcAmtIn(deltaFee0, reserves0, reserves1, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-      //   expect(evt0.args.outAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-
-      //   // sell exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const deltaFee1 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn1 = calcAmtIn(deltaFee0, reserves1, reserves0, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(deltaFee1);
-      // });
-
-      // it("Calc Exact Tokens A with Fees to Buy", async function () {
-      //   await createStrategy(true, false);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // buy exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(delta);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0);
-
-      //   // buy exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const amtOut1 = calcAmtOut(delta, reserves0, reserves1, 997, 1000);
-      //   const amtOut1Fee = amtOut1.sub(amtOut1.mul(fee).div(ONE));
-      //   const deltaFee1 = calcAmtIn(amtOut1Fee, reserves0, reserves1, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(deltaFee1);
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1Fee);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      // });
-
-      // it("Calc Exact Tokens A with Fees to Sell", async function () {
-      //   await createStrategy(true, false);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // sell exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const deltaFee0 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn0 = calcAmtIn(deltaFee0, reserves0, reserves1, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-      //   expect(evt0.args.outAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-
-      //   // sell exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const amtIn1 = calcAmtIn(delta, reserves1, reserves0, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(delta);
-      // });
-
-      // it("Calc Exact Tokens B with Fees to Buy", async function () {
-      //   await createStrategy(false, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // buy exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-      //   const amtOut0Fee = amtOut0.sub(amtOut0.mul(fee).div(ONE));
-      //   const deltaFee0 = calcAmtIn(amtOut0Fee, reserves1, reserves0, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0Fee);
-
-      //   // buy exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const amtOut1 = calcAmtOut(delta, reserves0, reserves1, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(delta);
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      // });
-
-      // it("Calc Exact Tokens B with Fees to Sell", async function () {
-      //   await createStrategy(false, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   // sell exactly delta
-      //   const res0 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   const amtIn0 = calcAmtIn(delta, reserves0, reserves1, 997, 1000);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-      //   expect(evt0.args.outAmts[0]).to.equal(delta);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-
-      //   // sell exactly delta
-      //   const res1 = await (
-      //     await strategyFee.testBeforeSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   const deltaFee1 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn1 = calcAmtIn(deltaFee1, reserves1, reserves0, 997, 1000);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(deltaFee1);
-      // });
     });
 
     describe("Swap Tokens", function () {
-      async function getStrategyReserves() {
+      async function getStrategyReserves(_strategy: any, _tokens: any) {
         let tokens0Balance;
         let tokens1Balance;
 
-        if (TOKENS[0] === tokenB.address) {
-          tokens0Balance = await tokenB.balanceOf(strategy.address);
-          tokens1Balance = await tokenA.balanceOf(strategy.address);
+        if (BigNumber.from(_tokens[0].address).lt(BigNumber.from(_tokens[1].address))) {
+          tokens0Balance = await _tokens[0].balanceOf(_strategy.address);
+          tokens1Balance = await _tokens[1].balanceOf(_strategy.address);
         } else {
-          tokens0Balance = await tokenA.balanceOf(strategy.address);
-          tokens1Balance = await tokenB.balanceOf(strategy.address);
+          tokens0Balance = await _tokens[1].balanceOf(_strategy.address);
+          tokens1Balance = await _tokens[0].balanceOf(_strategy.address);
         }
         return { tokens0: tokens0Balance, tokens1: tokens1Balance };
       }
 
-      it("Swap Tokens for Exact Tokens", async function () {
+      it("Swap Tokens for Exact Tokens, First Index", async function () {
+        // Create a loan in the Long Strategy
         const res = await (await strategy.createLoan()).wait();
+        // Get the loan token ID
         const tokenId = res.events[0].args.tokenId;
 
         const ONE = BigNumber.from(10).pow(18);
 
         const reserves = await setUpStrategyAndBalancerPool(tokenId);
+
+        // Reserves of the Balancer pool
         const reserves0 = reserves.reserves0;
         const reserves1 = reserves.reserves1;
 
         const delta = ONE.mul(10);
 
-        const strategyReserves0 = await getStrategyReserves();
-
+        // Calculated the expected amount out
         const expAmtOut0 = await strategy.testGetAmountIn(
           delta,
           reserves0,
           WEIGHTS[0],
+          cfmmTokens[0],
           reserves1,
-          WEIGHTS[1]
+          WEIGHTS[1],
+          cfmmTokens[1]
         );
 
+        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        // delta tokens are added to the strategy in slot 0 and expAmtOut0 tokens are removed from the strategy in slot 1
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [delta, 0])
         ).wait();
 
+        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        // Check that the event arguments are correct
         const evt0 = res0.events[res0.events.length - 1];
 
         expect(evt0.args.outAmts[0]).to.equal(0);
@@ -1120,12 +942,11 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(evt0.args.inAmts[0], delta);
         expect(evt0.args.inAmts[1]).to.equal(0);
 
-        const strategyReserves1 = await getStrategyReserves();
-
         expectEqualWithError(
           strategyReserves1.tokens0,
           strategyReserves0.tokens0.add(delta)
         );
+
         expectEqualWithError(
           strategyReserves1.tokens1,
           strategyReserves0.tokens1.sub(expAmtOut0)
@@ -1139,19 +960,77 @@ describe("BalancerLongStrategy", function () {
           )
         ).wait();
 
+        const strategyReserves2 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
-          reserves1.sub(expAmtOut0),
+          reserves1.add(expAmtOut0),
           WEIGHTS[1],
-          reserves0.add(delta),
-          WEIGHTS[0]
+          cfmmTokens[1],
+          reserves0.sub(delta),
+          WEIGHTS[0],
+          cfmmTokens[0]
         );
 
+        // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
         const res1 = await (
           await strategy.testSwapTokens(tokenId, [0, delta])
         ).wait();
 
-        const strategyReserves2 = await getStrategyReserves();
+        const strategyReserves3 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        const evt1 = res1.events[res1.events.length - 1];
+
+        expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
+        expect(evt1.args.outAmts[1]).to.equal(0);
+        expect(evt1.args.inAmts[0]).to.equal(0);
+        expectEqualWithError(evt1.args.inAmts[1], delta);
+
+        expectEqualWithError(
+          strategyReserves3.tokens0,
+          strategyReserves2.tokens0.sub(expAmtOut1)
+        );
+
+        expectEqualWithError(
+          strategyReserves3.tokens1,
+          strategyReserves2.tokens1.add(delta)
+        );
+      });
+
+      it("Swap Tokens for Exact Tokens, Second Index", async function () {
+        // Create a loan in the Long Strategy
+        const res = await (await strategy.createLoan()).wait();
+        // Get the loan token ID
+        const tokenId = res.events[0].args.tokenId;
+
+        const ONE = BigNumber.from(10).pow(18);
+
+        const reserves = await setUpStrategyAndBalancerPool(tokenId);
+
+        // Reserves of the Balancer pool
+        const reserves0 = reserves.reserves0;
+        const reserves1 = reserves.reserves1;
+
+        const delta = ONE.mul(10);
+
+        const expAmtOut1 = await strategy.testGetAmountIn(
+          delta,
+          reserves1, // TODO: Check orientations here, something wrong
+          WEIGHTS[1],
+          cfmmTokens[1],
+          reserves0, // TODO: Check orientations here, something wrong
+          WEIGHTS[0],
+          cfmmTokens[0]
+        );
+
+        const strategyReserves = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
+        const res1 = await (
+          await strategy.testSwapTokens(tokenId, [0, delta])
+        ).wait();
+
+        const strategyReserves2 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         const evt1 = res1.events[res1.events.length - 1];
 
@@ -1162,15 +1041,16 @@ describe("BalancerLongStrategy", function () {
 
         expectEqualWithError(
           strategyReserves2.tokens0,
-          strategyReserves1.tokens0.sub(expAmtOut1)
+          strategyReserves.tokens0.sub(expAmtOut1)
         );
+
         expectEqualWithError(
           strategyReserves2.tokens1,
-          strategyReserves1.tokens1.add(delta)
+          strategyReserves.tokens1.add(delta)
         );
       });
 
-      it("Swap Exact Tokens for Tokens", async function () {
+      it("Swap Exact Tokens for Tokens, First Index", async function () {
         const res = await (await strategy.createLoan()).wait();
         const tokenId = res.events[0].args.tokenId;
 
@@ -1183,21 +1063,24 @@ describe("BalancerLongStrategy", function () {
         const delta = ONE.mul(10);
         const negDelta = ethers.constants.Zero.sub(delta);
 
-        const strategyReserves0 = await getStrategyReserves();
+        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         const expectedAmountOut0 = await strategy.testGetAmountOut(
           delta,
           reserves1,
           WEIGHTS[1],
+          cfmmTokens[1],
           reserves0,
-          WEIGHTS[0]
+          WEIGHTS[0],
+          cfmmTokens[0]
         );
 
+        // delta tokens are leaving the GammaPool in slot 0 and expectedAmountOut0 tokens are entering the GammaPool in slot 1
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [negDelta, 0])
         ).wait();
 
-        const strategyReserves1 = await getStrategyReserves();
+        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         const evt0 = res0.events[res0.events.length - 1];
         expect(evt0.args.outAmts[0]).to.equal(delta);
@@ -1209,12 +1092,13 @@ describe("BalancerLongStrategy", function () {
           strategyReserves1.tokens0,
           strategyReserves0.tokens0.sub(delta)
         );
+
         expectEqualWithError(
           strategyReserves1.tokens1,
           strategyReserves0.tokens1.add(expectedAmountOut0)
         );
 
-        const actualStrategyReserves1 = await getStrategyReserves();
+        const actualStrategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
         await (
           await strategy.setCFMMReserves(
@@ -1235,449 +1119,80 @@ describe("BalancerLongStrategy", function () {
           strategyReserves2[1]
         );
 
-        const res1 = await (
+      });
+
+      it("Swap Exact Tokens for Tokens, Second Index", async function () {
+        const res = await (await strategy.createLoan()).wait();
+        const tokenId = res.events[0].args.tokenId;
+
+        const ONE = BigNumber.from(10).pow(18);
+
+        const reserves = await setUpStrategyAndBalancerPool(tokenId);
+        const reserves0 = reserves.reserves0;
+        const reserves1 = reserves.reserves1;
+
+        const delta = ONE.mul(10);
+        const negDelta = ethers.constants.Zero.sub(delta);
+
+        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        const expectedAmountOut0 = await strategy.testGetAmountOut(
+          delta,
+          reserves0,
+          WEIGHTS[0],
+          cfmmTokens[0],
+          reserves1,
+          WEIGHTS[1],
+          cfmmTokens[1]
+        ); 
+
+        // delta tokens are leaving the GammaPool in slot 1 and expectedAmountOut0 tokens are entering the GammaPool in slot 0
+        const res0 = await (
           await strategy.testSwapTokens(tokenId, [0, negDelta])
         ).wait();
 
-        const strategyReserves3 = await getStrategyReserves();
+        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
 
-        const evt1 = res1.events[res1.events.length - 1];
-
-        const expAmtIn1 = await strategy.testGetAmountOut(
-          delta,
-          strategyReserves2[0],
-          WEIGHTS[0],
-          strategyReserves2[1],
-          WEIGHTS[1]
-        );
-
-        expect(evt1.args.outAmts[0]).to.equal(0);
-        expect(evt1.args.outAmts[1]).to.equal(delta);
-        expect(evt1.args.inAmts[0]).to.equal(expAmtIn1);
-        expect(evt1.args.inAmts[1]).to.equal(0);
+        const evt0 = res0.events[res0.events.length - 1];
+        expect(evt0.args.outAmts[0]).to.equal(0);
+        expect(evt0.args.outAmts[1]).to.equal(delta);
+        expect(evt0.args.inAmts[0]).to.equal(expectedAmountOut0);
+        expect(evt0.args.inAmts[1]).to.equal(0);
 
         expectEqualWithError(
-          strategyReserves3.tokens0,
-          strategyReserves2[0].add(expAmtIn1)
+          strategyReserves1.tokens1,
+          strategyReserves0.tokens1.sub(delta)
         );
+
         expectEqualWithError(
-          strategyReserves3.tokens1,
-          strategyReserves2[1].sub(delta)
+          strategyReserves1.tokens0,
+          strategyReserves0.tokens0.add(expectedAmountOut0)
         );
+
+        const actualStrategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+
+        await (
+          await strategy.setCFMMReserves(
+            strategyReserves0.tokens0.add(expectedAmountOut0),
+            strategyReserves0.tokens1.sub(delta),
+            0
+          )
+        ).wait();
+
+        const strategyReserves2 = await strategy.getCFMMReserves();
+
+        expectEqualWithError(
+          actualStrategyReserves1.tokens0,
+          strategyReserves2[0]
+        );
+
+        expectEqualWithError(
+          actualStrategyReserves1.tokens1,
+          strategyReserves2[1]
+        );
+
       });
 
-      // it("Swap Tokens with Fees for Exact Tokens", async function () {
-      //   await createStrategy(true, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-      //   const amtOut0Fee = amtOut0.sub(amtOut0.mul(fee).div(ONE));
-      //   const deltaFee0 = calcAmtIn(amtOut0Fee, reserves1, reserves0, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0Fee);
-      //   expect(evt0.args.inAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee0Fee = deltaFee0.sub(deltaFee0.mul(fee).div(ONE));
-      //   expect(tokenABalance1).to.equal(tokenABalance0.add(deltaFee0Fee));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.sub(amtOut0));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.sub(deltaFee0));
-      //   expect(_reserves1).to.equal(reserves1.add(amtOut0Fee));
-
-      //   const amtOut1 = calcAmtOut(delta, _reserves0, _reserves1, 997, 1000);
-      //   const amtOut1Fee = amtOut1.sub(amtOut1.mul(fee).div(ONE));
-      //   const deltaFee1 = calcAmtIn(
-      //     amtOut1Fee,
-      //     _reserves0,
-      //     _reserves1,
-      //     997,
-      //     1000
-      //   );
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1Fee);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(deltaFee1);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee1Fee = deltaFee1.sub(deltaFee1.mul(fee).div(ONE));
-      //   expect(tokenABalance2).to.equal(tokenABalance1.sub(amtOut1));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.add(deltaFee1Fee));
-      // });
-
-      // it("Swap Exact Tokens with Fees for Tokens", async function () {
-      //   await createStrategy(true, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee0 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn0 = calcAmtIn(deltaFee0, reserves0, reserves1, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtIn0Fee = amtIn0.sub(amtIn0.mul(fee).div(ONE));
-      //   expect(tokenABalance1).to.equal(tokenABalance0.sub(delta));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.add(amtIn0Fee));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.add(deltaFee0));
-      //   expect(_reserves1).to.equal(reserves1.sub(amtIn0));
-
-      //   const deltaFee1 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn1 = calcAmtIn(deltaFee1, _reserves1, _reserves0, 997, 1000);
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(deltaFee1);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtIn1Fee = amtIn1.sub(amtIn1.mul(fee).div(ONE));
-      //   expect(tokenABalance2).to.equal(tokenABalance1.add(amtIn1Fee));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.sub(delta));
-      // });
-
-      // it("Swap Tokens A with Fees for Exact Tokens", async function () {
-      //   await createStrategy(true, false);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0);
-      //   expect(evt0.args.inAmts[0]).to.equal(delta);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee0 = delta.sub(delta.mul(fee).div(ONE));
-      //   expect(tokenABalance1).to.equal(tokenABalance0.add(deltaFee0));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.sub(amtOut0));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.sub(delta));
-      //   expect(_reserves1).to.equal(reserves1.add(amtOut0));
-
-      //   const amtOut1 = calcAmtOut(delta, _reserves0, _reserves1, 997, 1000);
-      //   const amtOut1Fee = amtOut1.sub(amtOut1.mul(fee).div(ONE));
-      //   const deltaFee1 = calcAmtIn(
-      //     amtOut1Fee,
-      //     _reserves0,
-      //     _reserves1,
-      //     997,
-      //     1000
-      //   );
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1Fee);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(deltaFee1);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   expect(tokenABalance2).to.equal(tokenABalance1.sub(amtOut1));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.add(deltaFee1));
-      // });
-
-      // it("Swap Exact Tokens A with Fees for Tokens", async function () {
-      //   await createStrategy(true, false);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee0 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn0 = calcAmtIn(deltaFee0, reserves0, reserves1, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   expect(tokenABalance1).to.equal(tokenABalance0.sub(delta));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.add(amtIn0));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.add(deltaFee0));
-      //   expect(_reserves1).to.equal(reserves1.sub(amtIn0));
-
-      //   const amtIn1 = calcAmtIn(delta, _reserves1, _reserves0, 997, 1000);
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(delta);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtIn1Fee = amtIn1.sub(amtIn1.mul(fee).div(ONE));
-      //   expect(tokenABalance2).to.equal(tokenABalance1.add(amtIn1Fee));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.sub(delta));
-      // });
-
-      // it("Swap Tokens B with Fees for Exact Tokens", async function () {
-      //   await createStrategy(false, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtOut0 = calcAmtOut(delta, reserves1, reserves0, 997, 1000);
-      //   const amtOut0Fee = amtOut0.sub(amtOut0.mul(fee).div(ONE));
-      //   const deltaFee0 = calcAmtIn(amtOut0Fee, reserves1, reserves0, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [delta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(0);
-      //   expect(evt0.args.outAmts[1]).to.equal(amtOut0Fee);
-      //   expect(evt0.args.inAmts[0]).to.equal(deltaFee0);
-      //   expect(evt0.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   expect(tokenABalance1).to.equal(tokenABalance0.add(deltaFee0));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.sub(amtOut0));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.sub(deltaFee0));
-      //   expect(_reserves1).to.equal(reserves1.add(amtOut0Fee));
-
-      //   const amtOut1 = calcAmtOut(delta, _reserves0, _reserves1, 997, 1000);
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, delta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(amtOut1);
-      //   expect(evt1.args.outAmts[1]).to.equal(0);
-      //   expect(evt1.args.inAmts[0]).to.equal(0);
-      //   expect(evt1.args.inAmts[1]).to.equal(delta);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const deltaFee1 = delta.sub(delta.mul(fee).div(ONE));
-      //   expect(tokenABalance2).to.equal(tokenABalance1.sub(amtOut1));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.add(deltaFee1));
-      // });
-
-      // it("Swap Exact Tokens B with Fees for Tokens", async function () {
-      //   await createStrategy(false, true);
-
-      //   const res = await (await strategyFee.createLoan()).wait();
-      //   const tokenId = res.events[0].args.tokenId;
-
-      //   const ONE = BigNumber.from(10).pow(18);
-
-      //   const rex = await setUpStrategyAndCFMM(tokenId, true);
-      //   const reserves0 = rex.res0;
-      //   const reserves1 = rex.res1;
-
-      //   const delta = ONE.mul(10);
-      //   const negDelta = ethers.constants.Zero.sub(delta);
-      //   const fee = BigNumber.from(10).pow(16);
-
-      //   const tokenABalance0 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance0 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtIn0 = calcAmtIn(delta, reserves0, reserves1, 997, 1000);
-
-      //   const res0 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [negDelta, 0])
-      //   ).wait();
-      //   const evt0 = res0.events[res0.events.length - 1];
-      //   expect(evt0.args.outAmts[0]).to.equal(delta);
-      //   expect(evt0.args.outAmts[1]).to.equal(0);
-      //   expect(evt0.args.inAmts[0]).to.equal(0);
-      //   expect(evt0.args.inAmts[1]).to.equal(amtIn0);
-
-      //   const tokenABalance1 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance1 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   const amtIn0Fee = amtIn0.sub(amtIn0.mul(fee).div(ONE));
-      //   expect(tokenABalance1).to.equal(tokenABalance0.sub(delta));
-      //   expect(tokenBBalance1).to.equal(tokenBBalance0.add(amtIn0Fee));
-
-      //   const _rez = await cfmmFee.getReserves();
-      //   const _reserves0 = _rez._reserve0;
-      //   const _reserves1 = _rez._reserve1;
-      //   await (
-      //     await strategyFee.setCFMMReserves(_reserves0, _reserves1, 0)
-      //   ).wait();
-
-      //   expect(_reserves0).to.equal(reserves0.add(delta));
-      //   expect(_reserves1).to.equal(reserves1.sub(amtIn0));
-
-      //   const deltaFee1 = delta.sub(delta.mul(fee).div(ONE));
-      //   const amtIn1 = calcAmtIn(deltaFee1, _reserves1, _reserves0, 997, 1000);
-
-      //   const res1 = await (
-      //     await strategyFee.testSwapTokens(tokenId, [0, negDelta])
-      //   ).wait();
-      //   const evt1 = res1.events[res1.events.length - 1];
-      //   expect(evt1.args.outAmts[0]).to.equal(0);
-      //   expect(evt1.args.outAmts[1]).to.equal(deltaFee1);
-      //   expect(evt1.args.inAmts[0]).to.equal(amtIn1);
-      //   expect(evt1.args.inAmts[1]).to.equal(0);
-
-      //   const tokenABalance2 = await tokenAFee.balanceOf(strategyFee.address);
-      //   const tokenBBalance2 = await tokenBFee.balanceOf(strategyFee.address);
-
-      //   expect(tokenABalance2).to.equal(tokenABalance1.add(amtIn1));
-      //   expect(tokenBBalance2).to.equal(tokenBBalance1.sub(delta));
-      // });
     });
   });
 });

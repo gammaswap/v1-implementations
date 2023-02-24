@@ -16,8 +16,10 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
         BalancerShortStrategy(1e19, 2252571, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId) external virtual {
         s.initialize(msg.sender, cfmm, tokens, decimals);
+        // Store the PoolId in the storage contract
+        s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);
     }
 
     function getCFMM() public virtual view returns(address) {
@@ -29,7 +31,7 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
     }
 
     function testGetPoolId(address cfmm) public virtual view returns(bytes32) {
-        return getPoolId(cfmm);
+        return getPoolId();
     }
 
     function testGetVault(address cfmm) public virtual view returns(address) {
@@ -45,7 +47,7 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
     }
 
     function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
-        return getTokens(cfmm);
+        return s.tokens;
     }
 
 
