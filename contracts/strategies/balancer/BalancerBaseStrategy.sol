@@ -26,13 +26,16 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
+    uint256 immutable public weight0;
+
     /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
         if(_maxTotalApy < _maxApy) { // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
             revert MaxTotalApy();
         }
         MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
+        weight0 = _weight0;
     }
 
     /**
@@ -64,6 +67,14 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     function getPoolId(address cfmm) internal virtual view returns(bytes32) {
         bytes32 poolId = IWeightedPool(cfmm).getPoolId();
         return poolId;
+    }
+
+    /**
+     * @dev Returns the swap fee percentage of a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
+     */
+    function getSwapFeePercentage(address cfmm) internal virtual view returns(uint256) {
+        return IWeightedPool(cfmm).getSwapFeePercentage();
     }
 
     /**
@@ -102,7 +113,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param cfmm The contract address of the Balancer weighted pool.
      */
     function getWeights(address cfmm) internal virtual view returns(uint256[] memory) {
-        uint256[] memory weights = IWeightedPool(cfmm).getNormalizedWeights();
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = weight0;
+        weights[1] = 1e18 - weight0;
         return weights;
     }
 

@@ -14,8 +14,8 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {

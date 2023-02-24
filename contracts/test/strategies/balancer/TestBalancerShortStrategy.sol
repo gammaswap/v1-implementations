@@ -12,8 +12,8 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
     event DepositToCFMM(address cfmm, address to, uint256 liquidity);
     event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerShortStrategy(1e19, 2252571, _baseRate, _factor, _maxApy) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerShortStrategy(1e19, 2252571, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {

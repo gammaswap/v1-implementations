@@ -87,7 +87,9 @@ describe("BalancerBaseStrategy", function () {
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
+    const HUNDRETH = BigNumber.from(10).pow(16);
+
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
 
     await (
       await strategy.initialize(
@@ -165,6 +167,7 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(BigNumber.from(10).pow(16));
     });
 
     it("Check Invariant Calculation", async function () {

@@ -30,16 +30,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     uint16 immutable public LTV_THRESHOLD;
 
     /**
-     * @return tradingFee1 Numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2).
-     */
-    uint16 immutable public tradingFee1;
-
-    /**
-     * @return tradingFee2 Denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2).
-     */
-    uint16 immutable public tradingFee2;
-
-    /**
      * @return Returns the minimum liquidity borrowed amount.
      */
     uint256 constant public MIN_BORROW = 1e3;
@@ -47,12 +37,10 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /**
      * @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
      */
-    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
         LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
-        tradingFee1 = _tradingFee1;
-        tradingFee2 = _tradingFee2;
     }
 
     /**
@@ -264,7 +252,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         // Downscale the amountIn to account for decimals
         uint256 downscaledAmountIn = InputHelpers.downscale(amountIn, InputHelpers.getScalingFactor(tokenIn));
 
-        uint256 feeAdjustedAmountIn = (downscaledAmountIn * tradingFee2) / tradingFee1;
+        uint256 feeAdjustedAmountIn = (downscaledAmountIn * 1e18) / (1e18 - getSwapFeePercentage(s.cfmm));
 
         return feeAdjustedAmountIn;
     }
@@ -285,7 +273,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 rescaledReserveIn = InputHelpers.upscale(reserveIn, InputHelpers.getScalingFactor(tokenIn));
         uint256 rescaledAmountIn = InputHelpers.upscale(amountIn, InputHelpers.getScalingFactor(tokenIn));
 
-        uint256 feeAdjustedAmountIn = (rescaledAmountIn * tradingFee1) / tradingFee2;
+        uint256 feeAdjustedAmountIn = (rescaledAmountIn * (1e18 - getSwapFeePercentage(s.cfmm))) / 1e18;
 
         uint256 amountOut = WeightedMath._calcOutGivenIn(rescaledReserveIn, weightIn, rescaledReserveOut, weightOut, feeAdjustedAmountIn);
 

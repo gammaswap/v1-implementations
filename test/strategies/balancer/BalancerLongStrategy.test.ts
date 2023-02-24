@@ -107,13 +107,14 @@ describe("BalancerLongStrategy", function () {
     cfmmPoolId = await pool.getPoolId();
     cfmmTokenDecimals = await sortDecimals(tokenA, tokenB);
 
+    const HUNDRETH = BigNumber.from(10).pow(16);
+
     strategy = await TestStrategy.deploy(
       0,
-      tradingFee1,
-      tradingFee2,
       baseRate,
       factor,
-      maxApy
+      maxApy,
+      BigNumber.from(20).mul(HUNDRETH)
     );
 
     await (await strategy.initialize(cfmm, sortTokens(tokenA, tokenB), await sortDecimals(tokenA, tokenB))).wait();
@@ -129,11 +130,10 @@ describe("BalancerLongStrategy", function () {
 
     strategyDecimals = await TestStrategy.deploy(
       0,
-      tradingFee1,
-      tradingFee2,
       baseRate,
       factor,
-      maxApy
+      maxApy,
+      BigNumber.from(20).mul(HUNDRETH)
     );
 
     await (await strategyDecimals.initialize(cfmmDecimals, sortTokens(tokenA, tokenC), await sortDecimals(tokenA, tokenC))).wait();
@@ -991,10 +991,10 @@ describe("BalancerLongStrategy", function () {
 
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
-          reserves1, // TODO: Check orientations here, something wrong
+          reserves1, 
           WEIGHTS[1],
           cfmmTokens[1],
-          reserves0, // TODO: Check orientations here, something wrong
+          reserves0,
           WEIGHTS[0],
           cfmmTokens[0]
         );

@@ -87,8 +87,9 @@ describe("BalancerShortStrategy", function () {
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
+    const HUNDRETH = BigNumber.from(10).pow(16);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
 
     await (
       await strategy.initialize(

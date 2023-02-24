@@ -12,8 +12,8 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
     event DepositToCFMM(address cfmm, address to, uint256 liquidity);
     event WithdrawFromCFMM(address cfmm, address to, uint256[] amounts);
 
-    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(1e19, 2252571, _baseRate, _factor, _maxApy) {
+    constructor(uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerBaseStrategy(1e19, 2252571, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
@@ -34,6 +34,10 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
 
     function testGetVault(address cfmm) public virtual view returns(address) {
         return getVault(cfmm);
+    }
+
+    function testGetSwapFeePercentage(address cfmm) public virtual view returns(uint256) {
+        return getSwapFeePercentage(cfmm);
     }
 
     function testGetPoolReserves(address cfmm) public view returns(uint128[] memory) {
