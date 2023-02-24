@@ -77,8 +77,11 @@ library InputHelpers {
         uint256 length = amounts.length;
         ensureInputLengthMatch(length, scalingFactors.length);
 
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < length;) {
             amounts[i] = upscale(amounts[i], scalingFactors[i]);
+            unchecked {
+                i++;
+            }
         }
 
         return amounts;
@@ -91,8 +94,11 @@ library InputHelpers {
         uint256 length = amounts.length;
         ensureInputLengthMatch(length, scalingFactors.length);
 
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < length;) {
             amounts[i] = downscale(amounts[i], scalingFactors[i]);
+            unchecked {
+                i++;
+            }
         }
 
         return amounts;
@@ -103,30 +109,36 @@ library InputHelpers {
      * @notice Tokens with more than 18 decimals are not supported.
      * @notice Implementation is different from Balancer's one, as we don't scale the return value up by 1e18.
      */
-    function getScalingFactor(address token) internal view returns (uint256) {
-        // TODO: Decimals is stored in s.decimals in the GammaPool
-        uint256 decimals = ERC20(token).decimals();
-
+    function getScalingFactor(uint8 decimals) internal pure returns (uint256) {
         // As in Balancer documentation, tokens with more than 18 decimals are not supported.
-        uint256 decimalsDifference = 18 - decimals;
-        return 10 ** decimalsDifference;
+        unchecked{
+            uint256 decimalsDifference = 18 - decimals;
+            return 10 ** decimalsDifference;
+        }
     }
 
     /**
      * @dev Returns an array of scaling factors for the given tokens.
      */
-    function getScalingFactors(address[] memory tokens) internal view returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            scalingFactors[i] = getScalingFactor(tokens[i]);
+    //function getScalingFactors(address[] memory tokens) internal view returns (uint256[] memory) {
+    function getScalingFactors(uint8[] memory decimals) internal view returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](decimals.length);
+        for (uint256 i = 0; i < decimals.length;) {
+            scalingFactors[i] = getScalingFactor(decimals[i]);
+            unchecked {
+                i++;
+            }
         }
         return scalingFactors;
     }
 
     function castToUint256Array(uint128[] memory values) internal pure returns (uint256[] memory) {
         uint256[] memory result = new uint256[](values.length);
-        for (uint256 i = 0; i < values.length; ++i) {
+        for (uint256 i = 0; i < values.length;) {
             result[i] = uint256(values[i]);
+            unchecked {
+                i++;
+            }
         }
         return result;
     }

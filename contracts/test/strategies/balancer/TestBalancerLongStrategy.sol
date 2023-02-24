@@ -18,8 +18,10 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
+    function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId) external virtual {
         s.initialize(msg.sender, _cfmm, tokens, decimals);
+        // Store the PoolId in the storage contract
+        s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);
     }
     
     function getCFMM() public virtual view returns(address) {
@@ -31,7 +33,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     function testGetPoolId(address _cfmm) public virtual view returns(bytes32) {
-        return getPoolId(_cfmm);
+        return getPoolId();
     }
 
     function testGetVault(address _cfmm) public virtual view returns(address) {
@@ -47,7 +49,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     function testGetTokens(address _cfmm) public virtual view returns(address[] memory) {
-        return getTokens(_cfmm);
+        return s.tokens;
     }
 
     function cfmm() public view returns(address) {
@@ -85,12 +87,24 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
 
     // Calculating how much input required for a given output amount
     function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
-        return getAmountIn(amountOut, reserveOut, weightOut, tokenOut, reserveIn, weightIn, tokenIn);
+        uint128[] memory reserves = new uint128[](2);
+        reserves[0] = uint128(reserveOut);
+        reserves[1] = uint128(reserveIn);
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = weightOut;
+        weights[1] = weightIn;
+        return getAmountIn(amountOut, reserves, weights, s.decimals, 0, 1);
     }
 
     // Calculating how much output required for a given input amount
     function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
-        return getAmountOut(amountIn, reserveOut, weightOut, tokenOut, reserveIn, weightIn, tokenIn);
+        uint128[] memory reserves = new uint128[](2);
+        reserves[0] = uint128(reserveOut);
+        reserves[1] = uint128(reserveIn);
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = weightOut;
+        weights[1] = weightIn;
+        return getAmountOut(amountIn, reserves, weights, s.decimals, 0, 1);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
