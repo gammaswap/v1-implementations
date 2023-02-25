@@ -25,7 +25,7 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
      * @dev Get latest reserve quantities in Balancer pool through public function.
      */
     function _getLatestCFMMReserves(address _cfmm) public virtual override view returns(uint256[] memory reserves) {
-        return InputHelpers.castToUint256Array(getPoolReserves(_cfmm));
+        return InputHelpers.castToUint256Array(getPoolReserves());
     }
 
 }

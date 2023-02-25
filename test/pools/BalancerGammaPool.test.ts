@@ -284,7 +284,7 @@ describe("BalancerGammaPool", function () {
   }
 
   describe("Deployment", function () {
-    it("Should Set Correct Initialisation Parameters", async function () {
+    it.only("Should Set Correct Initialisation Parameters", async function () {
       expect(await pool.protocolId()).to.equal(2);
       expect(await pool.longStrategy()).to.equal(addr1.address);
       expect(await pool.shortStrategy()).to.equal(addr2.address);
@@ -377,6 +377,17 @@ describe("BalancerGammaPool", function () {
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
       expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      expect(await pool.getScalingFactors()).to.deep.equal([BigNumber.from(1), BigNumber.from(1)]);
+    });
+
+    it("Initializes Correctly with Scaling Factors", async function () {
+      const data = ethers.utils.defaultAbiCoder.encode(['bytes32', 'address', 'uint256', 'uint256'], [cfmmPoolId, vault.address, cfmmPoolWeights[0], cfmmPoolSwapFeePercentage]);
+
+      await pool.initialize(cfmmPool.address, sort2Tokens(tokenA, tokenB), [6, 12], data);
+
+      expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
+      expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      expect(await pool.getScalingFactors()).to.deep.equal([BigNumber.from(10).pow(12), BigNumber.from(10).pow(6)]);
     });
   });
 });

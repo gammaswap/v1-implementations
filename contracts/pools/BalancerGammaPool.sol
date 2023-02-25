@@ -39,7 +39,7 @@ contract BalancerGammaPool is GammaPool {
         uint256 cfmmSwapFeePercentage;
     }
 
-    enum StorageIndexes { POOL_ID }
+    enum StorageIndexes { POOL_ID, VAULT, SCALING_FACTOR0, SCALING_FACTOR1 }
 
     /// @return tokenCount - number of tokens expected in CFMM
     uint8 constant public tokenCount = 2;
@@ -63,6 +63,15 @@ contract BalancerGammaPool is GammaPool {
         return s.getBytes32(uint256(StorageIndexes.POOL_ID));
     }
 
+    function getScalingFactors() external view virtual returns(uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](2);
+
+        scalingFactors[0] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR0));
+        scalingFactors[1] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR1));
+
+        return scalingFactors;
+    }
+
     /// @dev See {IGammaPool-createLoan}
     function createLoan() external lock virtual override returns(uint256 tokenId) {
         tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
@@ -80,6 +89,13 @@ contract BalancerGammaPool is GammaPool {
 
         // Store the PoolId in the storage contract
         s.setBytes32(uint256(StorageIndexes.POOL_ID), balancerCalldata.cfmmPoolId);
+
+        // Store the Balancer Vault address in the storage contract
+        s.setAddress(uint256(StorageIndexes.VAULT), balancerCalldata.cfmmVault);
+
+        // Store the scaling factors for the CFMM in the storage contract
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR0), 10 ** (18 - _decimals[0]));
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR1), 10 ** (18 - _decimals[1]));
     }
 
     /// @dev See {IGammaPool-validateCFMM}

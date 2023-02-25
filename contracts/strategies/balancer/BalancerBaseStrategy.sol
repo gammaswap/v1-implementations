@@ -22,7 +22,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
     error MaxTotalApy();
 
-    enum StorageIndexes { POOL_ID }
+    enum StorageIndexes { POOL_ID, VAULT, SCALING_FACTOR0, SCALING_FACTOR1 }
 
     /// @dev Number of blocks network will issue within a ear. Currently expected
     uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
@@ -30,13 +30,16 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
+    uint256 immutable public weight0;
+
     /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
         if(_maxTotalApy < _maxApy) { // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
             revert MaxTotalApy();
         }
         MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
+        weight0 = _weight0;
     }
 
     /**
@@ -55,10 +58,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
     /**
      * @dev Returns the address of the Balancer Vault contract attached to a given Balancer pool.
-     * @param cfmm The contract address of the Balancer weighted pool.
      */
-    function getVault(address cfmm) internal virtual view returns(address) {
-        return IWeightedPool(cfmm).getVault();
+    function getVault() internal virtual view returns(address) {
+        return s.getAddress(uint256(StorageIndexes.VAULT));
     }
 
     /**
@@ -69,12 +71,20 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     /**
-     * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-     * @param _cfmm The contract address of the Balancer weighted pool.
+     * @dev Returns the swap fee percentage of a given Balancer pool.
+     * @param cfmm The contract address of the Balancer weighted pool.
      */
-    function getPoolReserves(address _cfmm) internal virtual view returns(uint128[] memory reserves) {
+    function getSwapFeePercentage(address cfmm) internal virtual view returns(uint256) {
+        return IWeightedPool(cfmm).getSwapFeePercentage();
+    }
+
+    /**
+     * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
+     */
+    function getPoolReserves() internal virtual view returns(uint128[] memory reserves) {
+        // TODO: Which functions need cfmm as calldata and which don't?
         uint[] memory poolReserves = new uint[](2);
-        (, poolReserves, ) = IVault(getVault(_cfmm)).getPoolTokens(getPoolId());
+        (, poolReserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
 
         reserves = new uint128[](2);
         reserves[0] = uint128(poolReserves[0]);
@@ -84,8 +94,21 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /**
      * @dev Returns the normalized weights of a given Balancer pool.
      */
-    function getWeights(address _cfmm) internal virtual view returns(uint256[] memory) {
-        return IWeightedPool(_cfmm).getNormalizedWeights();
+    function getWeights() internal virtual view returns(uint256[] memory) {
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = weight0;
+        weights[1] = 1e18 - weight0;
+        return weights;
+    }
+
+    /**
+     * @dev Returns the scaling factors of a given Balancer pool based on stored values.
+     */
+    function getScalingFactors() internal virtual view returns(uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](2);
+        scalingFactors[0] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR0));
+        scalingFactors[1] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR1));
+        return scalingFactors;
     }
 
     /**
@@ -106,7 +129,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @param amount The amount required to approve.
      */
     function addVaultApproval(address token, uint256 amount) internal {
-        address vault = getVault(s.cfmm);
+        address vault = getVault();
         uint256 allowance = IERC20(token).allowance(address(this), vault);
         if (allowance < amount) {
             // Approve the maximum amount
@@ -114,9 +137,10 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         }
     }
 
+
     /// @dev See {BaseStrategy-updateReserves}.
-    function updateReserves(address _cfmm) internal virtual override {
-        uint128[] memory reserves = getPoolReserves(_cfmm);
+    function updateReserves(address) internal virtual override {
+        uint128[] memory reserves = getPoolReserves();
         s.CFMM_RESERVES[0] = reserves[0];
         s.CFMM_RESERVES[1] = reserves[1];
     }
@@ -126,7 +150,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // We need to encode userData for the joinPool call
         bytes memory userDataEncoded = abi.encode(1, amounts, 0);
 
-        address vaultId = getVault(_cfmm);
+        address vaultId = getVault();
         bytes32 poolId = getPoolId();
 
         address[] memory tokens = s.tokens;
@@ -154,8 +178,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         return GammaSwapLibrary.balanceOf(IERC20(_cfmm), address(this)) - initialBalance;
     }
 
+
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
-    function withdrawFromCFMM(address _cfmm, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
+    function withdrawFromCFMM(address, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
         // We need to encode userData for the exitPool call
         bytes memory userDataEncoded = abi.encode(1, amount);
 
@@ -164,7 +189,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
         uint256[] memory minAmountsOut = new uint[](2);
 
-        IVault(getVault(_cfmm)).exitPool(getPoolId(),
+        IVault(getVault()).exitPool(getPoolId(),
             address(this), // The GammaPool is sending the Balancer LP tokens
             payable(to), // Recipient of pool reserve tokens
             IVault.ExitPoolRequest({assets: s.tokens, minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
@@ -180,11 +205,15 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         // The difference between the initial and final reserves is the amount of reserve tokens withdrawn
         amounts[0] = finalReserves[0] - initialReserves[0];
         amounts[1] = finalReserves[1] - initialReserves[1];
+
+        return amounts;
     }
 
+
     /// @dev See {BaseStrategy-calcInvariant}.
-    function calcInvariant(address _cfmm, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        return WeightedMath._calculateInvariant(getWeights(_cfmm),
-            InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), InputHelpers.getScalingFactors(s.decimals)));
+    function calcInvariant(address, uint128[] memory amounts) internal virtual override view returns(uint256) {
+        return WeightedMath._calculateInvariant(getWeights(), 
+            InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), getScalingFactors()));
     }
+
 }

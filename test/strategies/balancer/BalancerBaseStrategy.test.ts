@@ -107,7 +107,8 @@ describe("BalancerBaseStrategy", function () {
         cfmm,
         [tokenA.address, tokenB.address],
         [18, 18],
-        _data
+        _data,
+        vault.address
       )
     ).wait();
   });
@@ -160,6 +161,7 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
+      expect(await strategy.weight0()).to.equal(BigNumber.from(50).mul(BigNumber.from(10).pow(16)));
 
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
@@ -178,7 +180,7 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
-      expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetWeights()).to.deep.equal(WEIGHTS);
       expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(BigNumber.from(10).pow(16));
     });
 

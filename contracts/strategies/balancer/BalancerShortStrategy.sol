@@ -26,10 +26,10 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
 
     /**
      * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-     * @param cfmm The contract address of the Balancer weighted pool.
      */
-    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory) {
-        return getPoolReserves(cfmm);
+    function getReserves(address) internal virtual override view returns(uint128[] memory) {
+        // TODO: This function calls storage so doesn't need CFMM as an argument
+        return getPoolReserves();
     }
 
     /**
@@ -53,7 +53,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
             revert ZeroDeposits();
         }
 
-        uint128[] memory reserves = getPoolReserves(s.cfmm);
+        uint128[] memory reserves = getPoolReserves();
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);

@@ -16,10 +16,17 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         BalancerBaseStrategy(1e19, 2252571, _baseRate, _factor, _maxApy, _weight0) {
     }
 
-    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId) external virtual {
+    function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
         s.initialize(msg.sender, cfmm, tokens, decimals);
+
         // Store the PoolId in the storage contract
         s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);
+        
+        s.setAddress(uint256(StorageIndexes.VAULT), _vault);
+
+        // Store the scaling factors for the CFMM in the storage contract
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR0), 10 ** (18 - decimals[0]));
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR1), 10 ** (18 - decimals[1]));
     }
 
     function getCFMM() public virtual view returns(address) {
@@ -30,27 +37,31 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         return s.CFMM_RESERVES;
     }
 
-    function testGetPoolId(address cfmm) public virtual view returns(bytes32) {
+    function testGetPoolId(address) public virtual view returns(bytes32) {
         return getPoolId();
     }
 
-    function testGetVault(address cfmm) public virtual view returns(address) {
-        return getVault(cfmm);
+    function testGetVault(address) public virtual view returns(address) {
+        return getVault();
     }
 
     function testGetSwapFeePercentage(address cfmm) public virtual view returns(uint256) {
         return getSwapFeePercentage(cfmm);
     }
 
-    function testGetPoolReserves(address cfmm) public view returns(uint128[] memory) {
-        return getPoolReserves(cfmm);
+    function testGetPoolReserves(address) public view returns(uint128[] memory) {
+        return getPoolReserves();
     }
 
-    function testGetWeights(address cfmm) public virtual view returns(uint256[] memory) {
-        return getWeights(cfmm);
+    function testGetWeights() public virtual view returns(uint256[] memory) {
+        return getWeights();
     }
 
-    function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
+    function testGetScalingFactors() public virtual view returns(uint256[] memory) {
+        return getScalingFactors();
+    }
+
+    function testGetTokens(address) public virtual view returns(address[] memory) {
         return s.tokens;
     }
 
