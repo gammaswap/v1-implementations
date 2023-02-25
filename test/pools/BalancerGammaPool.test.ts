@@ -91,7 +91,7 @@ describe("BalancerGammaPool", function () {
       MONTH
     );
 
-    [owner, addr1, addr2, addr3] = await ethers.getSigners();
+    [owner] = await ethers.getSigners();
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
