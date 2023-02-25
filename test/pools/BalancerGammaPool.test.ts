@@ -19,28 +19,22 @@ describe("BalancerGammaPool", function () {
   let tokenC: any;
   let tokenD: any;
   let owner: any;
-  let addr1: any;
-  let addr2: any;
-  let addr3: any;
   let pool: any;
-  let threePool: any;
-  let longStrategyAddr: any;
-  let shortStrategyAddr: any;
-  let liquidationStrategyAddr: any;
+  let longStrategy: any;
+  let shortStrategy: any;
+  let liquidationStrategy: any;
 
   let cfmm: any;
   let cfmmPool: any;
   let cfmmPoolId: any;
   let cfmmPoolWeights: any;
   let cfmmPoolSwapFeePercentage: any;
-  let cfmmPoolTokens: any;
 
   let weighted3Pool: any;
   let cfmmWeighted3Pool: any;
   let cfmmWeighted3PoolId: any;
   let cfmmWeighted3PoolWeights: any;
   let cfmmWeighted3PoolSwapFeePercentage: any;
-  let cfmmWeighted3PoolTokens: any;
 
   let BalancerVault: any;
   let WeightedPoolFactory: any;
@@ -54,6 +48,11 @@ describe("BalancerGammaPool", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool");
+    
+    // Fetch contract factories for strategies
+    shortStrategy = await ethers.getContractFactory("BalancerShortStrategy");
+    longStrategy = await ethers.getContractFactory("BalancerLongStrategy");
+    liquidationStrategy = await ethers.getContractFactory("BalancerLiquidationStrategy");
 
     [owner] = await ethers.getSigners();
 
@@ -110,24 +109,57 @@ describe("BalancerGammaPool", function () {
     // Create a 3 token WeightedPool using the WeightedPoolFactory
     weighted3Pool = await create3Pool(tokenA, tokenB, tokenC);
 
-    // Mock addresses for strategies
-    longStrategyAddr = addr1.address;
-    shortStrategyAddr = addr2.address;
-    liquidationStrategyAddr = addr3.address;
-
     // Deploy two GammaPool contracts for both separate CFMMs
     cfmmPool = WeightedPool.attach(cfmm);
     cfmmPoolId = await cfmmPool.getPoolId();
     cfmmPoolWeights = await cfmmPool.getNormalizedWeights();
     cfmmPoolSwapFeePercentage = await cfmmPool.getSwapFeePercentage();
-    cfmmPoolTokens = await sort2Tokens(tokenA, tokenB)
+
+    // Deploy strategies
+    const ONE = BigNumber.from(10).pow(18);
+    const baseRate = ONE.div(100);
+    const factor = ONE.mul(4).div(100);
+    const maxApy = ONE.mul(75).div(100);
+
+    const HUNDRETH = BigNumber.from(10).pow(16);
+
+    longStrategy = await longStrategy.deploy(  
+      BigNumber.from(800), 
+      BigNumber.from(10).pow(19), 
+      BigNumber.from(2252571), 
+      BigNumber.from(0),
+      baseRate,
+      factor,
+      maxApy,
+      cfmmPoolWeights[0]
+      );
+
+    shortStrategy = await shortStrategy.deploy(      
+      BigNumber.from(10).pow(19), 
+      BigNumber.from(2252571), 
+      baseRate,
+      factor,
+      maxApy,
+      cfmmPoolWeights[0]
+      );
+
+    liquidationStrategy = await liquidationStrategy.deploy(      
+      BigNumber.from(800), 
+      BigNumber.from(1),
+      BigNumber.from(10).pow(19), 
+      BigNumber.from(2252571), 
+      baseRate,
+      factor,
+      maxApy,
+      cfmmPoolWeights[0]
+      );
 
     pool = await BalancerGammaPool.deploy(
       PROTOCOL_ID,
       owner.address,
-      longStrategyAddr,
-      shortStrategyAddr,
-      liquidationStrategyAddr,
+      longStrategy.address,
+      shortStrategy.address,
+      liquidationStrategy.address,
       factory.address, // Address of the WeightedPoolFactory used to create the pool
       BigNumber.from(50).mul(BigNumber.from(10).pow(16)), // weight0
     );
@@ -136,17 +168,7 @@ describe("BalancerGammaPool", function () {
     cfmmWeighted3PoolId = await cfmmWeighted3Pool.getPoolId();
     cfmmWeighted3PoolWeights = await cfmmWeighted3Pool.getNormalizedWeights();
     cfmmWeighted3PoolSwapFeePercentage = await cfmmWeighted3Pool.getSwapFeePercentage();
-    cfmmWeighted3PoolTokens = await sort3Tokens(tokenA, tokenB, tokenC);
-
-    threePool = await BalancerGammaPool.deploy(
-      PROTOCOL_ID,
-      owner.address,
-      longStrategyAddr,
-      shortStrategyAddr,
-      liquidationStrategyAddr,
-      factory.address, // Address of the WeightedPoolFactory used to create the pool
-      BigNumber.from(10).pow(17), // weight0
-    );
+    
   });
 
   async function createPair(token1: any, token2: any) {
@@ -284,11 +306,11 @@ describe("BalancerGammaPool", function () {
   }
 
   describe("Deployment", function () {
-    it.only("Should Set Correct Initialisation Parameters", async function () {
+    it("Should Set Correct Initialisation Parameters", async function () {
       expect(await pool.protocolId()).to.equal(2);
-      expect(await pool.longStrategy()).to.equal(addr1.address);
-      expect(await pool.shortStrategy()).to.equal(addr2.address);
-      expect(await pool.liquidationStrategy()).to.equal(addr3.address);
+      expect(await pool.longStrategy()).to.equal(longStrategy.address);
+      expect(await pool.shortStrategy()).to.equal(shortStrategy.address);
+      expect(await pool.liquidationStrategy()).to.equal(liquidationStrategy.address);
       expect(await pool.factory()).to.equal(owner.address);
       expect(await pool.poolFactory()).to.equal(factory.address);
     });
@@ -358,11 +380,11 @@ describe("BalancerGammaPool", function () {
       const testPool = await BalancerGammaPool.deploy(
         PROTOCOL_ID,
         owner.address,
-        longStrategyAddr,
-        shortStrategyAddr,
-        liquidationStrategyAddr,
+        longStrategy.address,
+        shortStrategy.address,
+        liquidationStrategy.address,
         factory.address, // Address of the WeightedPoolFactory used to create the pool
-        BigNumber.from(50).pow(17), // weight0
+        cfmmPoolWeights[0], // weight0
       );
 
       await validateCFMM(tokenA, tokenD, testCFMM, testPool, testCfmmPoolId, vault.address, BigNumber.from(5).mul(BigNumber.from(10).pow(17)), BigNumber.from(10).pow(16));

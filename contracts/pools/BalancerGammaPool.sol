@@ -7,6 +7,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
+import "../strategies/balancer/BalancerBaseStrategy.sol";
 import "../interfaces/external/balancer/IWeightedPool.sol";
 import "../interfaces/external/balancer/IVault.sol";
 
@@ -55,6 +56,10 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
+        require(_weight0 == BalancerBaseStrategy(_longStrategy).weight0(), "weight0 long strategy");
+        require(_weight0 == BalancerBaseStrategy(_shortStrategy).weight0(), "weight0 short strategy");
+        require(_weight0 == BalancerBaseStrategy(_liquidationStrategy).weight0(), "weight0 liquidation strategy");
+        
         poolFactory = _poolFactory;
         weight0 = _weight0;
     }

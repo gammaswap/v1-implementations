@@ -8,7 +8,7 @@ const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist
 const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
 const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
-describe.only("BalancerLongStrategy", function () {
+describe("BalancerLongStrategy", function () {
   let TestERC20: any;
   let TestERC20Decimals: any;
 
@@ -93,8 +93,6 @@ describe.only("BalancerLongStrategy", function () {
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
-    const tradingFee1 = 990;
-    const tradingFee2 = 1000;
 
     // Initialise a strategy with [18, 18] decimals
     // Create a WeightedPool using the WeightedPoolFactory
