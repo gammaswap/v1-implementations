@@ -14,14 +14,21 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
     }
 
-    function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId) external virtual {
+    function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
         s.initialize(msg.sender, _cfmm, tokens, decimals);
+
         // Store the PoolId in the storage contract
         s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);
+
+        s.setAddress(uint256(StorageIndexes.VAULT), _vault);
+
+        // Store the scaling factors for the CFMM in the storage contract
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR0), 10 ** (18 - decimals[0]));
+        s.setUint256(uint256(StorageIndexes.SCALING_FACTOR1), 10 ** (18 - decimals[1]));
     }
     
     function getCFMM() public virtual view returns(address) {
@@ -32,23 +39,23 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         return s.CFMM_RESERVES;
     }
 
-    function testGetPoolId(address _cfmm) public virtual view returns(bytes32) {
+    function testGetPoolId(address) public virtual view returns(bytes32) {
         return getPoolId();
     }
 
-    function testGetVault(address _cfmm) public virtual view returns(address) {
-        return getVault(_cfmm);
+    function testGetVault(address) public virtual view returns(address) {
+        return getVault();
     }
 
-    function testGetPoolReserves(address _cfmm) public view returns(uint128[] memory) {
-        return getPoolReserves(_cfmm);
+    function testGetPoolReserves(address) public view returns(uint128[] memory) {
+        return getPoolReserves();
     }
 
-    function testGetWeights(address _cfmm) public virtual view returns(uint256[] memory) {
-        return getWeights(_cfmm);
+    function testGetWeights() public virtual view returns(uint256[] memory) {
+        return getWeights();
     }
 
-    function testGetTokens(address _cfmm) public virtual view returns(address[] memory) {
+    function testGetTokens(address) public virtual view returns(address[] memory) {
         return s.tokens;
     }
 
@@ -86,25 +93,31 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     // Calculating how much input required for a given output amount
-    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
+    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
         uint256[] memory weights = new uint256[](2);
         weights[0] = weightOut;
         weights[1] = weightIn;
-        return getAmountIn(amountOut, reserves, weights, s.decimals, 0, 1);
+        uint256[] memory scalingFactors = new uint256[](2);
+        scalingFactors[0] = scalingFactorIn;
+        scalingFactors[1] = scalingFactorOut;
+        return getAmountIn(amountOut, reserves, weights, scalingFactors, 0, 1);
     }
 
     // Calculating how much output required for a given input amount
-    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn) external virtual view returns (uint256) {
+    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
         uint256[] memory weights = new uint256[](2);
         weights[0] = weightOut;
         weights[1] = weightIn;
-        return getAmountOut(amountIn, reserves, weights, s.decimals, 0, 1);
+        uint256[] memory scalingFactors = new uint256[](2);
+        scalingFactors[0] = scalingFactorIn;
+        scalingFactors[1] = scalingFactorOut;
+        return getAmountOut(amountIn, reserves, weights, scalingFactors, 0, 1);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {

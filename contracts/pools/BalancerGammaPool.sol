@@ -7,14 +7,16 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
+import "../strategies/balancer/BalancerBaseStrategy.sol";
 import "../interfaces/external/balancer/IWeightedPool.sol";
 import "../interfaces/external/balancer/IVault.sol";
+import "../interfaces/strategies/IBalancerBaseStrategy.sol";
 
 /**
  * @title GammaPool implementation for Balancer Weighted Pool
  * @author JakeXBT (https://github.com/JakeXBT)
  * @dev This implementation is specifically for validating Balancer Weighted Pools
- * @notice implementation ID is unique to gammapool implementation
+ * @notice Implementation ID is unique to gammapool implementation
  */
 contract BalancerGammaPool is GammaPool {
 
@@ -39,14 +41,10 @@ contract BalancerGammaPool is GammaPool {
         uint256 cfmmSwapFeePercentage;
     }
 
-    enum StorageIndexes { POOL_ID }
-
     /// @return tokenCount - number of tokens expected in CFMM
     uint8 constant public tokenCount = 2;
 
-    /**
-     * @return poolFactory Address corresponding to the WeightedPoolFactory which created the Balancer weighted pool.
-     */
+    /// @return poolFactory Address corresponding to the WeightedPoolFactory which created the Balancer weighted pool.
     address immutable public poolFactory;
 
     /// @dev Stores weights passed to constructor as immutable variable
@@ -55,12 +53,25 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
+        require(_weight0 == IBalancerBaseStrategy(_longStrategy).weight0(), "weight0 long strategy");
+        require(_weight0 == IBalancerBaseStrategy(_shortStrategy).weight0(), "weight0 short strategy");
+        require(_weight0 == IBalancerBaseStrategy(_liquidationStrategy).weight0(), "weight0 liquidation strategy");
+        
         poolFactory = _poolFactory;
         weight0 = _weight0;
     }
 
     function getPoolId() external view virtual returns(bytes32) {
-        return s.getBytes32(uint256(StorageIndexes.POOL_ID));
+        return s.getBytes32(uint256(IBalancerBaseStrategy.StorageIndexes.POOL_ID));
+    }
+
+    function getScalingFactors() external view virtual returns(uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](2);
+
+        scalingFactors[0] = s.getUint256(uint256(IBalancerBaseStrategy.StorageIndexes.SCALING_FACTOR0));
+        scalingFactors[1] = s.getUint256(uint256(IBalancerBaseStrategy.StorageIndexes.SCALING_FACTOR1));
+
+        return scalingFactors;
     }
 
     /// @dev See {IGammaPool-createLoan}
@@ -79,7 +90,14 @@ contract BalancerGammaPool is GammaPool {
         BalancerCalldata memory balancerCalldata = abi.decode(_data, (BalancerCalldata));
 
         // Store the PoolId in the storage contract
-        s.setBytes32(uint256(StorageIndexes.POOL_ID), balancerCalldata.cfmmPoolId);
+        s.setBytes32(uint256(IBalancerBaseStrategy.StorageIndexes.POOL_ID), balancerCalldata.cfmmPoolId);
+
+        // Store the Balancer Vault address in the storage contract
+        s.setAddress(uint256(IBalancerBaseStrategy.StorageIndexes.VAULT), balancerCalldata.cfmmVault);
+
+        // Store the scaling factors for the CFMM in the storage contract
+        s.setUint256(uint256(IBalancerBaseStrategy.StorageIndexes.SCALING_FACTOR0), 10 ** (18 - _decimals[0]));
+        s.setUint256(uint256(IBalancerBaseStrategy.StorageIndexes.SCALING_FACTOR1), 10 ** (18 - _decimals[1]));
     }
 
     /// @dev See {IGammaPool-validateCFMM}

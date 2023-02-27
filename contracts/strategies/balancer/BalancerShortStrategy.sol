@@ -20,16 +20,15 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     /**
      * @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
      */
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
+    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     /**
      * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-     * @param cfmm The contract address of the Balancer weighted pool.
      */
-    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory) {
-        return getPoolReserves(cfmm);
+    function getReserves(address) internal virtual override view returns(uint128[] memory) {
+        return getPoolReserves();
     }
 
     /**
@@ -53,7 +52,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
             revert ZeroDeposits();
         }
 
-        uint128[] memory reserves = getPoolReserves(s.cfmm);
+        uint128[] memory reserves = getPoolReserves();
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);

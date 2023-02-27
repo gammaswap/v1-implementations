@@ -93,7 +93,9 @@ describe("BalancerBaseStrategy", function () {
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
+    const HUNDRETH = BigNumber.from(10).pow(16);
+
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
 
     const _data = ethers.utils.defaultAbiCoder.encode(
       ["bytes32"], // encode as address array
@@ -105,7 +107,8 @@ describe("BalancerBaseStrategy", function () {
         cfmm,
         [tokenA.address, tokenB.address],
         [18, 18],
-        _data
+        _data,
+        vault.address
       )
     ).wait();
   });
@@ -158,6 +161,7 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
+      expect(await strategy.weight0()).to.equal(BigNumber.from(50).mul(BigNumber.from(10).pow(16)));
 
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
@@ -176,7 +180,8 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
-      expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetWeights()).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(BigNumber.from(10).pow(16));
     });
 
     it("Check Invariant Calculation", async function () {
@@ -344,9 +349,6 @@ describe("BalancerBaseStrategy", function () {
       // Perform the INIT join on the pool
       await initialisePool([amtA, amtB]);
 
-      // TODO Store the pool reserves before the deposit/open interest on LP tokens
-      // Halve this and then test that the withdrawFromCFMM() function works
-
       // Perform the pool join
       await depositIntoPool([amtA, amtB]);
 
@@ -369,19 +371,12 @@ describe("BalancerBaseStrategy", function () {
       expect(withdrawFromCFMMEvent.args.to).to.equal(strategy.address);
       expect(withdrawFromCFMMEvent.args.amounts.length).to.equal(2);
 
-      // TODO Balancer event gives the following answer: "25000000000001000000"
-      // We expect the following answer: "250000000000000000000"
-      // Rounding differences issues is because balancer has a loss of precision in their calculations
-
       expect(withdrawFromCFMMEvent.args.amounts[0].div(1000)).to.equal(
         expectedAmtA.div(1000)
       );
       expect(withdrawFromCFMMEvent.args.amounts[1].div(1000)).to.equal(
         expectedAmtB.div(1000)
       );
-
-      // TODO Balancer event gives the following answer: "25000000000001000000"
-      // We expect the following answer: "250000000000000000000"
 
       expect((await tokenA.balanceOf(strategy.address)).div(1000)).to.equal(
         expectedAmtA.div(1000)

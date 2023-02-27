@@ -93,8 +93,9 @@ describe("BalancerShortStrategy", function () {
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
     const maxApy = ONE.mul(75).div(100);
+    const HUNDRETH = BigNumber.from(10).pow(16);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy);
+    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
 
     const _data = ethers.utils.defaultAbiCoder.encode(
       ["bytes32"], // encode as address array
@@ -106,7 +107,8 @@ describe("BalancerShortStrategy", function () {
         cfmm,
         [tokenA.address, tokenB.address],
         [18, 18],
-        _data
+        _data,
+        vault.address
       )
     ).wait();
   });
@@ -174,7 +176,7 @@ describe("BalancerShortStrategy", function () {
       expect(await strategy.testGetTokens(cfmm)).to.deep.equal(TOKENS);
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
-      expect(await strategy.testGetWeights(cfmm)).to.deep.equal(WEIGHTS);
+      expect(await strategy.testGetWeights()).to.deep.equal(WEIGHTS);
     });
   });
 

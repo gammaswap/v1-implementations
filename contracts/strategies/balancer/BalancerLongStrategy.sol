@@ -17,15 +17,15 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
     /**
      * @dev Initialises the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
      */
-    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        BalancerBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+        BalancerBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     /**
      * @dev Get latest reserve quantities in Balancer pool through public function.
      */
     function _getLatestCFMMReserves(address _cfmm) public virtual override view returns(uint256[] memory reserves) {
-        return InputHelpers.castToUint256Array(getPoolReserves(_cfmm));
+        return InputHelpers.castToUint256Array(getPoolReserves());
     }
 
 }

@@ -59,7 +59,7 @@ library InputHelpers {
     /**
      * @dev Upscales a value by a given scaling factor.
      */
-    function upscale(uint256 value, uint256 scalingFactor) internal view returns (uint256) {
+    function upscale(uint256 value, uint256 scalingFactor) internal pure returns (uint256) {
         return value * scalingFactor;
     }
 
@@ -73,7 +73,7 @@ library InputHelpers {
     /**
      * @dev Upscales an array of values by a given scaling factor.
      */
-    function upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view returns (uint256[] memory){
+    function upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure returns (uint256[] memory){
         uint256 length = amounts.length;
         ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -102,34 +102,6 @@ library InputHelpers {
         }
 
         return amounts;
-    }
-
-    /**
-     * @dev Returns the scaling factor for the given token.
-     * @notice Tokens with more than 18 decimals are not supported.
-     * @notice Implementation is different from Balancer's one, as we don't scale the return value up by 1e18.
-     */
-    function getScalingFactor(uint8 decimals) internal pure returns (uint256) {
-        // As in Balancer documentation, tokens with more than 18 decimals are not supported.
-        unchecked{
-            uint256 decimalsDifference = 18 - decimals;
-            return 10 ** decimalsDifference;
-        }
-    }
-
-    /**
-     * @dev Returns an array of scaling factors for the given tokens.
-     */
-    //function getScalingFactors(address[] memory tokens) internal view returns (uint256[] memory) {
-    function getScalingFactors(uint8[] memory decimals) internal view returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](decimals.length);
-        for (uint256 i = 0; i < decimals.length;) {
-            scalingFactors[i] = getScalingFactor(decimals[i]);
-            unchecked {
-                i++;
-            }
-        }
-        return scalingFactors;
     }
 
     function castToUint256Array(uint128[] memory values) internal pure returns (uint256[] memory) {
