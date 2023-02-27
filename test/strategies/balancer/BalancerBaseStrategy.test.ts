@@ -349,9 +349,6 @@ describe("BalancerBaseStrategy", function () {
       // Perform the INIT join on the pool
       await initialisePool([amtA, amtB]);
 
-      // TODO Store the pool reserves before the deposit/open interest on LP tokens
-      // Halve this and then test that the withdrawFromCFMM() function works
-
       // Perform the pool join
       await depositIntoPool([amtA, amtB]);
 
@@ -374,19 +371,12 @@ describe("BalancerBaseStrategy", function () {
       expect(withdrawFromCFMMEvent.args.to).to.equal(strategy.address);
       expect(withdrawFromCFMMEvent.args.amounts.length).to.equal(2);
 
-      // TODO Balancer event gives the following answer: "25000000000001000000"
-      // We expect the following answer: "250000000000000000000"
-      // Rounding differences issues is because balancer has a loss of precision in their calculations
-
       expect(withdrawFromCFMMEvent.args.amounts[0].div(1000)).to.equal(
         expectedAmtA.div(1000)
       );
       expect(withdrawFromCFMMEvent.args.amounts[1].div(1000)).to.equal(
         expectedAmtB.div(1000)
       );
-
-      // TODO Balancer event gives the following answer: "25000000000001000000"
-      // We expect the following answer: "250000000000000000000"
 
       expect((await tokenA.balanceOf(strategy.address)).div(1000)).to.equal(
         expectedAmtA.div(1000)

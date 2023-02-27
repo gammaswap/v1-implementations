@@ -28,7 +28,6 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
      * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
      */
     function getReserves(address) internal virtual override view returns(uint128[] memory) {
-        // TODO: This function calls storage so doesn't need CFMM as an argument
         return getPoolReserves();
     }
 

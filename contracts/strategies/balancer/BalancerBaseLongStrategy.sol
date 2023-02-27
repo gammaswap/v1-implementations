@@ -95,7 +95,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         address assetOut;
         uint256 amountIn;
         uint256 amountOut;
-        address _cfmm = s.cfmm;
         address[] memory tokens = s.tokens;
 
         // Parse the function inputs to determine which direction and outputs are expected

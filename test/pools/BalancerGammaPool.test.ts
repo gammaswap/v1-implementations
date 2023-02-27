@@ -161,7 +161,7 @@ describe("BalancerGammaPool", function () {
       shortStrategy.address,
       liquidationStrategy.address,
       factory.address, // Address of the WeightedPoolFactory used to create the pool
-      BigNumber.from(50).mul(BigNumber.from(10).pow(16)), // weight0
+      cfmmPoolWeights[0] // weight0
     );
 
     cfmmWeighted3Pool = WeightedPool.attach(weighted3Pool);

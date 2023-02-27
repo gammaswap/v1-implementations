@@ -7,6 +7,7 @@ import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
+import "../../interfaces/strategies/IBalancerBaseStrategy.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 import "../../libraries/weighted/InputHelpers.sol";
 
@@ -16,13 +17,11 @@ import "../../libraries/weighted/InputHelpers.sol";
  * @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
  * @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
  */
-abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
+abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, LogDerivativeRateModel {
 
     using LibStorage for LibStorage.Storage;
 
     error MaxTotalApy();
-
-    enum StorageIndexes { POOL_ID, VAULT, SCALING_FACTOR0, SCALING_FACTOR1 }
 
     /// @dev Number of blocks network will issue within a ear. Currently expected
     uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
@@ -30,6 +29,7 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
+    /// @dev Weight of token0 in the Balancer pool.
     uint256 immutable public weight0;
 
     /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
@@ -82,7 +82,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
      * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
      */
     function getPoolReserves() internal virtual view returns(uint128[] memory reserves) {
-        // TODO: Which functions need cfmm as calldata and which don't?
         uint[] memory poolReserves = new uint[](2);
         (, poolReserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
 
@@ -97,7 +96,9 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     function getWeights() internal virtual view returns(uint256[] memory) {
         uint256[] memory weights = new uint256[](2);
         weights[0] = weight0;
-        weights[1] = 1e18 - weight0;
+        unchecked {
+            weights[1] = 1e18 - weight0;
+        }
         return weights;
     }
 
@@ -136,7 +137,6 @@ abstract contract BalancerBaseStrategy is BaseStrategy, LogDerivativeRateModel {
             IERC20(token).approve(vault, type(uint256).max);
         }
     }
-
 
     /// @dev See {BaseStrategy-updateReserves}.
     function updateReserves(address) internal virtual override {
