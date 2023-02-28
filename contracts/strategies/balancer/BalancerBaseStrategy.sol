@@ -7,7 +7,7 @@ import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
-import "../../interfaces/strategies/IBalancerBaseStrategy.sol";
+import "../../interfaces/strategies/IBalancerStrategy.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 import "../../libraries/weighted/InputHelpers.sol";
 
@@ -17,7 +17,7 @@ import "../../libraries/weighted/InputHelpers.sol";
  * @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
  * @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
  */
-abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, LogDerivativeRateModel {
+abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDerivativeRateModel {
 
     using LibStorage for LibStorage.Storage;
 
