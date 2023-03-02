@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/CPMMLongStrategy.sol";
+import "../../../strategies/cpmm/external/CPMMExternalLongStrategy.sol";
 
-contract TestCPMMLongStrategy is CPMMLongStrategy {
+contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -13,7 +13,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLongStrategy(800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+        CPMMExternalLongStrategy(10, 800, 1e19, 2252571, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
@@ -100,15 +100,15 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         lpInvariant = s.LP_INVARIANT;
     }
 
-    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override returns(uint128[] memory) {
+    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _increaseCollateral(uint256) external virtual override returns(uint128[] memory) {
+    function _increaseCollateral(uint256) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 }
