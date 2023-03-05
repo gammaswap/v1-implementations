@@ -5,6 +5,7 @@ import "@gammaswap/v1-core/contracts/strategies/ShortStrategySync.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
 import "./BalancerBaseStrategy.sol";
+import "../../pools/BalancerGammaPool.sol";
 
 /** 
  * @title Short Strategy concrete implementation contract for Balancer Weighted Pools
@@ -22,6 +23,21 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
      */
     constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
         BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
+    }
+
+    /**
+     * @dev Get latest reserve quantities in Balancer pool through public function.
+     */
+    function _getLatestCFMMReserves(bytes memory _data) public virtual override view returns(uint128[] memory reserves) {
+        // Decode the PoolId in this function
+        BalancerGammaPool.BalancerCalldata memory balancerCalldata = abi.decode(_data, (BalancerGammaPool.BalancerCalldata));
+
+        uint[] memory poolReserves = new uint[](2);
+        (, poolReserves, ) = IVault(balancerCalldata.cfmmVault).getPoolTokens(balancerCalldata.cfmmPoolId);
+
+        reserves = new uint128[](2);
+        reserves[0] = uint128(poolReserves[0]);
+        reserves[1] = uint128(poolReserves[1]);
     }
 
     /**

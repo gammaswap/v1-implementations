@@ -61,8 +61,12 @@ contract BalancerGammaPool is GammaPool {
         weight0 = _weight0;
     }
 
-    function getPoolId() external view virtual returns(bytes32) {
+    function getPoolId() public view virtual returns(bytes32) {
         return s.getBytes32(uint256(IBalancerBaseStrategy.StorageIndexes.POOL_ID));
+    }
+
+    function getVault() public view virtual returns(address) {
+        return s.getAddress(uint256(IBalancerBaseStrategy.StorageIndexes.VAULT));
     }
 
     function getScalingFactors() external view virtual returns(uint256[] memory) {
@@ -72,6 +76,13 @@ contract BalancerGammaPool is GammaPool {
         scalingFactors[1] = s.getUint256(uint256(IBalancerBaseStrategy.StorageIndexes.SCALING_FACTOR1));
 
         return scalingFactors;
+    }
+
+    /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
+    function _getLatestCFMMReserves() internal virtual override view returns(uint128[] memory cfmmReserves) {
+        bytes memory data = abi.encode(BalancerCalldata({cfmmPoolId: getPoolId(), cfmmVault: getVault(),
+            cfmmWeight0: 0, cfmmSwapFeePercentage: 0}));
+        return IShortStrategy(shortStrategy)._getLatestCFMMReserves(data);
     }
 
     /// @dev See {IGammaPool-createLoan}

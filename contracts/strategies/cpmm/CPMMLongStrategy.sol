@@ -15,12 +15,4 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         CPMMBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    /// @notice Get latest reserve quantities in CFMM through public function.
-    /// @dev This mainly exists for logging the reserve quantities in the CFMM which can be used to check the historical price
-    /// @param cfmm - address of CFMM we're reading reserve quantities from.
-    function _getLatestCFMMReserves(address cfmm) public virtual override view returns(uint256[] memory reserves) {
-        reserves = new uint256[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves(); // get uint112 reserves but return uint256 to avoid casting
-    }
-
 }

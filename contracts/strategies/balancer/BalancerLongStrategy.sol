@@ -21,11 +21,4 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
         BalancerBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
     }
 
-    /**
-     * @dev Get latest reserve quantities in Balancer pool through public function.
-     */
-    function _getLatestCFMMReserves(address _cfmm) public virtual override view returns(uint256[] memory reserves) {
-        return InputHelpers.castToUint256Array(getPoolReserves());
-    }
-
 }
