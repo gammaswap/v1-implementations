@@ -23,16 +23,11 @@ describe("BalancerBaseStrategy", function () {
   let owner: any;
   let pool: any;
   let poolId: any;
-  let weightedMathFactory: any;
-  let weightedMath: any;
-
   let TOKENS: any;
   let WEIGHTS: any;
+  let cfmmPoolSwapFeePercentage: any;
 
   beforeEach(async function () {
-    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
-    weightedMath = await weightedMathFactory.deploy();
-
     TestERC20 = await ethers.getContractFactory("TestERC20");
     [owner] = await ethers.getSigners();
 
@@ -88,6 +83,8 @@ describe("BalancerBaseStrategy", function () {
     pool = WeightedPool.attach(cfmm);
     poolId = await pool.getPoolId();
 
+    cfmmPoolSwapFeePercentage = await pool.getSwapFeePercentage();
+
     const ONE = BigNumber.from(10).pow(18);
     const baseRate = ONE.div(100);
     const factor = ONE.mul(4).div(100);
@@ -95,7 +92,12 @@ describe("BalancerBaseStrategy", function () {
 
     const HUNDRETH = BigNumber.from(10).pow(16);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
+    strategy = await TestStrategy.deploy(
+      baseRate,
+      factor,
+      maxApy,
+      BigNumber.from(50).mul(HUNDRETH)
+    );
 
     const _data = ethers.utils.defaultAbiCoder.encode(
       ["bytes32"], // encode as address array
@@ -161,7 +163,9 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
-      expect(await strategy.weight0()).to.equal(BigNumber.from(50).mul(BigNumber.from(10).pow(16)));
+      expect(await strategy.weight0()).to.equal(
+        BigNumber.from(50).mul(BigNumber.from(10).pow(16))
+      );
 
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
@@ -181,7 +185,12 @@ describe("BalancerBaseStrategy", function () {
       expect(await strategy.testGetPoolId(cfmm)).to.equal(poolId);
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategy.testGetWeights()).to.deep.equal(WEIGHTS);
-      expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(BigNumber.from(10).pow(16));
+      expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(
+        BigNumber.from(10).pow(16)
+      );
+      expect(await strategy.testGetSwapFeePercentage(cfmm)).to.equal(
+        cfmmPoolSwapFeePercentage
+      );
     });
 
     it("Check Invariant Calculation", async function () {
@@ -420,10 +429,6 @@ describe("BalancerBaseStrategy", function () {
       expect(reserves2).to.deep.equal(storageReserves2);
 
       const withdrawAmt = (await pool.balanceOf(strategy.address)).div(2);
-      const totalSupply = await pool.totalSupply();
-
-      const expectedAmtA = withdrawAmt.mul(amtA.mul(2)).div(totalSupply);
-      const expectedAmtB = withdrawAmt.mul(amtB.mul(2)).div(totalSupply);
 
       await (
         await strategy.testWithdrawFromCFMM(cfmm, withdrawAmt, strategy.address)

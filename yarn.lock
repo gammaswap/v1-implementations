@@ -568,10 +568,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@gammaswap/v1-core@^0.3.4":
-  version "0.3.4"
-  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.4/06e48e645801407eac2ee468ddd2ea03ecc0363b#06e48e645801407eac2ee468ddd2ea03ecc0363b"
-  integrity sha512-Q27nC1PdVslsgGUMBg24pG2NW0jGJvCN8U7MfVA6F9Skmi2r9YGRq5cSfz0/h8+bapoq8J/KHRGKnA03kbrNnQ==
+"@gammaswap/v1-core@^0.3.6":
+  version "0.3.6"
+  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.6/7993d1c1b349b074f105630840fdd8d2fdc01786#7993d1c1b349b074f105630840fdd8d2fdc01786"
+  integrity sha512-ck2jRHUGHgl81f/3sknLAsXLAx2NiUtTdWvtyPMDeAv2Mu5hEUK2ihLH5QADmLfRmHoWHWY8BsdLZ8ri9Ddmlw==
   dependencies:
     "@openzeppelin/contracts" "^4.7.0"
 
@@ -5412,10 +5412,10 @@ hardhat-gas-reporter@^1.0.8:
     eth-gas-reporter "^0.2.25"
     sha1 "^1.1.1"
 
-hardhat@^2.9.9:
-  version "2.12.0"
-  resolved "https://registry.npmjs.org/hardhat/-/hardhat-2.12.0.tgz"
-  integrity sha512-mNJFbVG479HwOzxiaLxobyvED2M1aEAuPPYhEo1+88yicMDSTrU2JIS7vV+V0GSNQKaDoiHCmV6bcKjiljT/dQ==
+hardhat@^2.12.7:
+  version "2.13.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.13.0.tgz#d52a0ec9b733a651687e5b1c1b0ee9a11a30f3d0"
+  integrity sha512-ZlzBOLML1QGlm6JWyVAG8lVTEAoOaVm1in/RU2zoGAnYEoD1Rp4T+ZMvrLNhHaaeS9hfjJ1gJUBfiDr4cx+htQ==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"
@@ -5464,7 +5464,7 @@ hardhat@^2.9.9:
     source-map-support "^0.5.13"
     stacktrace-parser "^0.1.10"
     tsort "0.0.1"
-    undici "^5.4.0"
+    undici "^5.14.0"
     uuid "^8.3.2"
     ws "^7.4.6"
 
@@ -9726,6 +9726,13 @@ underscore@1.9.1:
   version "1.9.1"
   resolved "https://registry.npmjs.org/underscore/-/underscore-1.9.1.tgz"
   integrity sha512-5/4etnCkd9c8gwgowi5/om/mYO5ajCaOgdzj/oW+0eQV9WxKBDZw5+ycmKmeaTXjInS/W0BzpGLo2xR2aBwZdg==
+
+undici@^5.14.0:
+  version "5.20.0"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-5.20.0.tgz#6327462f5ce1d3646bcdac99da7317f455bcc263"
+  integrity sha512-J3j60dYzuo6Eevbawwp1sdg16k5Tf768bxYK4TUJRH7cBM4kFCbf3mOnM/0E3vQYXvpxITbbWmBafaDbxLDz3g==
+  dependencies:
+    busboy "^1.6.0"
 
 undici@^5.4.0:
   version "5.11.0"

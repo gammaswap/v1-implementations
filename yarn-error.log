@@ -1,35 +1,35 @@
 Arguments: 
-  /home/danner/.nvm/versions/node/v16.15.1/bin/node /home/danner/.nvm/versions/node/v16.15.1/bin/yarn
+  /Users/danielalcarraz/.nvm/versions/node/v18.12.1/bin/node /Users/danielalcarraz/.nvm/versions/node/v18.12.1/bin/yarn
 
 PATH: 
-  /home/danner/.nvm/versions/node/v16.15.1/bin:/home/danner/.cargo/bin:/home/danner/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/danner/.local/bin:/home/danner/.local/bin:/home/danner/Documents/workspace/gammaswap/v1-implementations/node_modules/.bin:/home/danner/.local/bin
+  /Library/Frameworks/Python.framework/Versions/3.10/bin:/Users/danielalcarraz/.nvm/versions/node/v18.12.1/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/danielalcarraz/Documents/workspace/gammaswap/v1-implementations/node_modules/.bin:/Users/danielalcarraz/.foundry/bin
 
 Yarn version: 
   1.22.19
 
 Node version: 
-  16.15.1
+  18.12.1
 
 Platform: 
-  linux x64
+  darwin x64
 
 Trace: 
-  Error: https://registry.yarnpkg.com/@gammaswap%2fv1-core: Not found
-      at Request.params.callback [as _callback] (/home/danner/.nvm/versions/node/v16.15.1/lib/node_modules/yarn/lib/cli.js:66145:18)
-      at Request.self.callback (/home/danner/.nvm/versions/node/v16.15.1/lib/node_modules/yarn/lib/cli.js:140890:22)
-      at Request.emit (node:events:527:28)
-      at Request.<anonymous> (/home/danner/.nvm/versions/node/v16.15.1/lib/node_modules/yarn/lib/cli.js:141862:10)
-      at Request.emit (node:events:527:28)
-      at IncomingMessage.<anonymous> (/home/danner/.nvm/versions/node/v16.15.1/lib/node_modules/yarn/lib/cli.js:141784:12)
-      at Object.onceWrapper (node:events:641:28)
-      at IncomingMessage.emit (node:events:539:35)
-      at endReadableNT (node:internal/streams/readable:1345:12)
-      at processTicksAndRejections (node:internal/process/task_queues:83:21)
+  Error: https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.4/06e48e645801407eac2ee468ddd2ea03ecc0363b: Request failed "401 Unauthorized"
+      at ResponseError.ExtendableBuiltin (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:696:66)
+      at new ResponseError (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:802:124)
+      at Request.<anonymous> (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:66215:16)
+      at Request.emit (node:events:513:28)
+      at module.exports.Request.onRequestResponse (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:141767:10)
+      at ClientRequest.emit (node:events:513:28)
+      at HTTPParser.parserOnIncomingClient (node:_http_client:693:27)
+      at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+      at TLSSocket.socketOnData (node:_http_client:534:22)
+      at TLSSocket.emit (node:events:513:28)
 
 npm manifest: 
   {
     "name": "@gammaswap/v1-implementations",
-    "version": "0.2.19",
+    "version": "0.3.5",
     "description": "Pool and strategies implementation contracts for GammaSwap",
     "homepage": "https://gammaswap.com",
     "main": "index.js",
@@ -95,7 +95,7 @@ npm manifest:
       "@balancer-labs/v2-pool-weighted": "^2.0.1",
       "@balancer-labs/v2-solidity-utils": "^3.0.1",
       "@balancer-labs/v2-vault": "^3.0.1",
-      "@gammaswap/v1-core": "^0.2.17",
+      "@gammaswap/v1-core": "^0.3.4",
       "@openzeppelin/contracts": "^4.7.0",
       "@prb/math": "^3.1.0",
       "@uniswap/v2-core": "^1.0.1"
@@ -676,10 +676,10 @@ Lockfile:
       "@ethersproject/properties" "^5.7.0"
       "@ethersproject/strings" "^5.7.0"
   
-  "@gammaswap/v1-core@^0.2.16":
-    version "0.2.16"
-    resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.2.16/c25fde6feaa1f06a622f3a321d54956468c65617#c25fde6feaa1f06a622f3a321d54956468c65617"
-    integrity sha512-d1pG3AXkh70zKVLhzoZ09yEjvb3erFG4YK12aPZS6J4QBKezi7e+Rx5GFwCKojETq2BygkBs/8/whkiCe5x1xQ==
+  "@gammaswap/v1-core@^0.3.4":
+    version "0.3.4"
+    resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.4/06e48e645801407eac2ee468ddd2ea03ecc0363b#06e48e645801407eac2ee468ddd2ea03ecc0363b"
+    integrity sha512-Q27nC1PdVslsgGUMBg24pG2NW0jGJvCN8U7MfVA6F9Skmi2r9YGRq5cSfz0/h8+bapoq8J/KHRGKnA03kbrNnQ==
     dependencies:
       "@openzeppelin/contracts" "^4.7.0"
   

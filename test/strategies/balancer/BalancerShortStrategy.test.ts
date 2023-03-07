@@ -24,16 +24,10 @@ describe("BalancerShortStrategy", function () {
   let pool: any;
   let poolId: any;
 
-  let weightedMathFactory: any;
-  let weightedMath: any;
-
   let TOKENS: any;
   let WEIGHTS: any;
 
   beforeEach(async function () {
-    weightedMathFactory = await ethers.getContractFactory("WeightedMath");
-    weightedMath = await weightedMathFactory.deploy();
-
     TestERC20 = await ethers.getContractFactory("TestERC20");
     [owner] = await ethers.getSigners();
 
@@ -95,7 +89,12 @@ describe("BalancerShortStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
     const HUNDRETH = BigNumber.from(10).pow(16);
 
-    strategy = await TestStrategy.deploy(baseRate, factor, maxApy, BigNumber.from(50).mul(HUNDRETH));
+    strategy = await TestStrategy.deploy(
+      baseRate,
+      factor,
+      maxApy,
+      BigNumber.from(50).mul(HUNDRETH)
+    );
 
     const _data = ethers.utils.defaultAbiCoder.encode(
       ["bytes32"], // encode as address array
@@ -146,6 +145,40 @@ describe("BalancerShortStrategy", function () {
     return poolAddress;
   }
 
+  async function initialisePool(initialBalances: any) {
+    // We must perform an INIT join at the beginning to start the pool
+    const JOIN_KIND_INIT = 0;
+    const initUserData = ethers.utils.defaultAbiCoder.encode(
+      ["uint256", "uint256[]"],
+      [JOIN_KIND_INIT, initialBalances]
+    );
+
+    // 'ERC20: insufficient allowance'
+    // We must approve the vault to spend the tokens we own
+    await (
+      await tokenA.approve(vault.address, ethers.constants.MaxUint256)
+    ).wait();
+    await (
+      await tokenB.approve(vault.address, ethers.constants.MaxUint256)
+    ).wait();
+
+    const joinPoolRequest = {
+      assets: TOKENS,
+      maxAmountsIn: initialBalances,
+      userData: initUserData,
+      fromInternalBalance: false,
+    };
+
+    await (
+      await vault.joinPool(
+        poolId,
+        owner.address,
+        owner.address,
+        joinPoolRequest
+      )
+    ).wait();
+  }
+
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
@@ -178,43 +211,38 @@ describe("BalancerShortStrategy", function () {
       expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategy.testGetWeights()).to.deep.equal(WEIGHTS);
     });
+
+    it("Get Latest CFMM Reserves", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const amtA = ONE.mul(20);
+      const amtB = ONE.mul(500);
+
+      const res0 = await strategy.testGetReserves(cfmm);
+      expect(res0.length).to.equal(2);
+      expect(res0[0]).to.equal(0);
+      expect(res0[1]).to.equal(0);
+
+      await initialisePool([amtA, amtB]);
+
+      const res1 = await strategy.testGetReserves(cfmm);
+      expect(res1.length).to.equal(2);
+      expect(res1[0]).to.equal(amtA);
+      expect(res1[1]).to.equal(amtB);
+
+      const cfmmPoolId = poolId;
+      const cfmmVault = vault.address;
+      const _data = ethers.utils.defaultAbiCoder.encode(
+        ["bytes32", "address", "uint256"],
+        [cfmmPoolId, cfmmVault, 0]
+      );
+      const poolTokens = await vault.getPoolTokens(poolId);
+      const reserves = await strategy._getLatestCFMMReserves(_data);
+      expect(poolTokens.balances[0]).to.equal(reserves[0]);
+      expect(poolTokens.balances[1]).to.equal(reserves[1]);
+    });
   });
 
   describe("Calc Deposit Amounts Functions", function () {
-    async function initialisePool(initialBalances: any) {
-      // We must perform an INIT join at the beginning to start the pool
-      const JOIN_KIND_INIT = 0;
-      const initUserData = ethers.utils.defaultAbiCoder.encode(
-        ["uint256", "uint256[]"],
-        [JOIN_KIND_INIT, initialBalances]
-      );
-
-      // 'ERC20: insufficient allowance'
-      // We must approve the vault to spend the tokens we own
-      await (
-        await tokenA.approve(vault.address, ethers.constants.MaxUint256)
-      ).wait();
-      await (
-        await tokenB.approve(vault.address, ethers.constants.MaxUint256)
-      ).wait();
-
-      const joinPoolRequest = {
-        assets: TOKENS,
-        maxAmountsIn: initialBalances,
-        userData: initUserData,
-        fromInternalBalance: false,
-      };
-
-      await (
-        await vault.joinPool(
-          poolId,
-          owner.address,
-          owner.address,
-          joinPoolRequest
-        )
-      ).wait();
-    }
-
     async function depositIntoPool(amounts: any) {
       // We must send the tokens to the strategy before we can deposit
       // We must send tokens in the correct orientation
