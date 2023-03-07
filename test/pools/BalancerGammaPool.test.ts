@@ -28,13 +28,11 @@ describe("BalancerGammaPool", function () {
   let cfmmPool: any;
   let cfmmPoolId: any;
   let cfmmPoolWeights: any;
-  let cfmmPoolSwapFeePercentage: any;
 
   let weighted3Pool: any;
   let cfmmWeighted3Pool: any;
   let cfmmWeighted3PoolId: any;
   let cfmmWeighted3PoolWeights: any;
-  let cfmmWeighted3PoolSwapFeePercentage: any;
 
   let BalancerVault: any;
   let WeightedPoolFactory: any;
@@ -51,9 +49,11 @@ describe("BalancerGammaPool", function () {
 
     // Fetch contract factories for strategies
     shortStrategy = await ethers.getContractFactory("BalancerShortStrategy");
-    longStrategy = await ethers.getContractFactory("BalancerLongStrategy");
+    longStrategy = await ethers.getContractFactory(
+      "BalancerExternalLongStrategy"
+    );
     liquidationStrategy = await ethers.getContractFactory(
-      "BalancerLiquidationStrategy"
+      "BalancerExternalLiquidationStrategy"
     );
 
     [owner] = await ethers.getSigners();
@@ -115,7 +115,6 @@ describe("BalancerGammaPool", function () {
     cfmmPool = WeightedPool.attach(cfmm);
     cfmmPoolId = await cfmmPool.getPoolId();
     cfmmPoolWeights = await cfmmPool.getNormalizedWeights();
-    cfmmPoolSwapFeePercentage = await cfmmPool.getSwapFeePercentage();
 
     // Deploy strategies
     const ONE = BigNumber.from(10).pow(18);
@@ -124,6 +123,7 @@ describe("BalancerGammaPool", function () {
     const maxApy = ONE.mul(75).div(100);
 
     longStrategy = await longStrategy.deploy(
+      10,
       BigNumber.from(800),
       BigNumber.from(10).pow(19),
       BigNumber.from(2252571),
@@ -144,6 +144,7 @@ describe("BalancerGammaPool", function () {
     );
 
     liquidationStrategy = await liquidationStrategy.deploy(
+      10,
       BigNumber.from(800),
       BigNumber.from(1),
       BigNumber.from(10).pow(19),
@@ -167,8 +168,6 @@ describe("BalancerGammaPool", function () {
     cfmmWeighted3Pool = WeightedPool.attach(weighted3Pool);
     cfmmWeighted3PoolId = await cfmmWeighted3Pool.getPoolId();
     cfmmWeighted3PoolWeights = await cfmmWeighted3Pool.getNormalizedWeights();
-    cfmmWeighted3PoolSwapFeePercentage =
-      await cfmmWeighted3Pool.getSwapFeePercentage();
   });
 
   async function createPair(token1: any, token2: any) {

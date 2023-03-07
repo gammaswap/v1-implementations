@@ -39,7 +39,6 @@ describe("BalancerLongStrategy", function () {
   let WEIGHTS: any;
   let cfmmTokens: any;
   let cfmmDecimalsTokens: any;
-  let cfmmTokenDecimals: any;
   let cfmmDecimalsTokenDecimals: any;
 
   beforeEach(async function () {
@@ -103,7 +102,6 @@ describe("BalancerLongStrategy", function () {
 
     pool = WeightedPool.attach(cfmm);
     cfmmPoolId = await pool.getPoolId();
-    cfmmTokenDecimals = await sortDecimals(tokenA, tokenB);
 
     const HUNDRETH = BigNumber.from(10).pow(16);
 
@@ -179,7 +177,7 @@ describe("BalancerLongStrategy", function () {
     }
   }
 
-  async function createPair(tokens: any, fee_percent: any) {
+  async function createPair(tokens: any, feePercent: any) {
     const NAME = "TESTPOOL";
     const SYMBOL = "TP";
 
@@ -197,7 +195,7 @@ describe("BalancerLongStrategy", function () {
       SYMBOL,
       _TOKENS,
       WEIGHTS,
-      fee_percent,
+      feePercent,
       owner.address
     );
 
@@ -259,7 +257,7 @@ describe("BalancerLongStrategy", function () {
     const balance1 = ONE.mul(200);
 
     // Send the strategy the balance of tokens
-    if (cfmmTokens[0] == tokenA.address) {
+    if (cfmmTokens[0] === tokenA.address) {
       await (await tokenA.transfer(strategy.address, balance0)).wait();
       await (await tokenB.transfer(strategy.address, balance1)).wait();
     } else {
