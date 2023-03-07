@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/balancer/BalancerLongStrategy.sol";
+import "../../../strategies/balancer/external/BalancerExternalLongStrategy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract TestBalancerLongStrategy is BalancerLongStrategy {
+contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -15,7 +15,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerLongStrategy(800, 1e19, 2252571, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
+        BalancerExternalLongStrategy(10, 800, 1e19, 2252571, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
     }
 
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
@@ -93,7 +93,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     // Calculating how much input required for a given output amount
-    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
+    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
@@ -107,7 +107,7 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
     }
 
     // Calculating how much output required for a given input amount
-    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, address tokenOut, uint256 reserveIn, uint256 weightIn, address tokenIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
+    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn, uint256 scalingFactorIn, uint256 scalingFactorOut) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
@@ -133,23 +133,23 @@ contract TestBalancerLongStrategy is BalancerLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256) external virtual override returns(uint256, uint256[] memory) {
+    function _borrowLiquidity(uint256, uint256) external virtual override(ILongStrategy, LongStrategy) returns(uint256, uint256[] memory) {
         return (0, new uint256[](2));
     }
 
-    function _repayLiquidity(uint256, uint256, uint256[] calldata) external virtual override returns(uint256, uint256[] memory) {
+    function _repayLiquidity(uint256, uint256, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint256, uint256[] memory) {
         return (0, new uint256[](2));
     }
 
-    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override returns(uint128[] memory) {
+    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _increaseCollateral(uint256) external virtual override returns(uint128[] memory) {
+    function _increaseCollateral(uint256) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 }

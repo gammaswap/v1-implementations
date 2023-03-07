@@ -7,17 +7,14 @@ import "@gammaswap/v1-core/contracts/strategies/BaseStrategy.sol";
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../interfaces/external/balancer/IVault.sol";
 import "../../interfaces/external/balancer/IWeightedPool.sol";
-import "../../interfaces/strategies/IBalancerBaseStrategy.sol";
+import "../../interfaces/strategies/IBalancerStrategy.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 import "../../libraries/weighted/InputHelpers.sol";
 
-/**
- * @title Base Strategy abstract contract for Balancer Weighted Pools
- * @author JakeXBT (https://github.com/JakeXBT)
- * @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
- * @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
- */
-abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, LogDerivativeRateModel {
+/// @title Base Strategy abstract contract for Balancer Weighted Pools
+/// @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
+/// @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
+abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDerivativeRateModel {
 
     using LibStorage for LibStorage.Storage;
 
@@ -32,7 +29,7 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
     /// @dev Weight of token0 in the Balancer pool.
     uint256 immutable public weight0;
 
-    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
+    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
     constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
         if(_maxTotalApy < _maxApy) { // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
             revert MaxTotalApy();
@@ -42,45 +39,33 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
         weight0 = _weight0;
     }
 
-    /**
-     * @dev See {BaseStrategy-blocksPerYear}.
-     */
+    /// @dev See {BaseStrategy-blocksPerYear}.
     function blocksPerYear() internal virtual override view returns(uint256) {
         return BLOCKS_PER_YEAR;
     }
 
-    /**
-     * @dev See {BaseStrategy-maxTotalApy}.
-     */
+    /// @dev See {BaseStrategy-maxTotalApy}.
     function maxTotalApy() internal virtual override view returns(uint256) {
         return MAX_TOTAL_APY;
     }
 
-    /**
-     * @dev Returns the address of the Balancer Vault contract attached to a given Balancer pool.
-     */
+    /// @dev Returns the address of the Balancer Vault contract attached to a given Balancer pool.
     function getVault() internal virtual view returns(address) {
         return s.getAddress(uint256(StorageIndexes.VAULT));
     }
 
-    /**
-     * @dev Returns the pool ID of a given Balancer pool.
-     */
+    /// @dev Returns the pool ID of a given Balancer pool.
     function getPoolId() internal virtual view returns(bytes32) {
         return s.getBytes32(uint256(StorageIndexes.POOL_ID));
     }
 
-    /**
-     * @dev Returns the swap fee percentage of a given Balancer pool.
-     * @param cfmm The contract address of the Balancer weighted pool.
-     */
+    /// @dev Returns the swap fee percentage of a given Balancer pool.
+    /// @param cfmm The contract address of the Balancer weighted pool.
     function getSwapFeePercentage(address cfmm) internal virtual view returns(uint256) {
         return IWeightedPool(cfmm).getSwapFeePercentage();
     }
 
-    /**
-     * @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-     */
+    /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
     function getPoolReserves() internal virtual view returns(uint128[] memory reserves) {
         uint[] memory poolReserves = new uint[](2);
         (, poolReserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
@@ -90,9 +75,7 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
         reserves[1] = uint128(poolReserves[1]);
     }
 
-    /**
-     * @dev Returns the normalized weights of a given Balancer pool.
-     */
+    /// @dev Returns the normalized weights of a given Balancer pool.
     function getWeights() internal virtual view returns(uint256[] memory) {
         uint256[] memory weights = new uint256[](2);
         weights[0] = weight0;
@@ -102,9 +85,7 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
         return weights;
     }
 
-    /**
-     * @dev Returns the scaling factors of a given Balancer pool based on stored values.
-     */
+    /// @dev Returns the scaling factors of a given Balancer pool based on stored values.
     function getScalingFactors() internal virtual view returns(uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR0));
@@ -112,9 +93,7 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
         return scalingFactors;
     }
 
-    /**
-     * @dev Returns the quantities of reserve tokens held by the GammaPool contract.
-     */
+    /// @dev Returns the quantities of reserve tokens held by the GammaPool contract.
     function getStrategyReserves() internal virtual view returns(uint256[] memory reserves) {
         address[] memory tokens = s.tokens;
 
@@ -123,12 +102,10 @@ abstract contract BalancerBaseStrategy is IBalancerBaseStrategy, BaseStrategy, L
         reserves[1] = GammaSwapLibrary.balanceOf(IERC20(tokens[1]), address(this));
     }
 
-    /**
-     * @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
-     *      If not, approves the Vault contract to spend the required amount.
-     * @param token The address of the ERC20 token requiring approval.
-     * @param amount The amount required to approve.
-     */
+    /// @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
+    ///     If not, approves the Vault contract to spend the required amount.
+    /// @param token The address of the ERC20 token requiring approval.
+    /// @param amount The amount required to approve.
     function addVaultApproval(address token, uint256 amount) internal {
         address vault = getVault();
         uint256 allowance = IERC20(token).allowance(address(this), vault);

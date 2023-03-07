@@ -53,10 +53,9 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
         return getWeights();
     }
 
-    function testGetTokens(address cfmm) public virtual view returns(address[] memory) {
+    function testGetTokens(address) public virtual view returns(address[] memory) {
         return s.tokens;
     }
-
 
     function testDepositToCFMM(address cfmm, uint256[] memory amounts, address to) public virtual {
         uint256 liquidity = depositToCFMM(cfmm, to, amounts);

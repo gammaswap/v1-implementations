@@ -71,7 +71,7 @@ describe("BalancerLongStrategy", function () {
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
-    tokenC = await TestERC20Decimals.deploy("Test Token C", "TOKC")
+    tokenC = await TestERC20Decimals.deploy("Test Token C", "TOKC");
 
     const HOUR = 60 * 60;
     const DAY = HOUR * 24;
@@ -96,8 +96,8 @@ describe("BalancerLongStrategy", function () {
 
     // Initialise a strategy with [18, 18] decimals
     // Create a WeightedPool using the WeightedPoolFactory
-    let feePercentage = BigNumber.from(10).pow(18).div(100);
-    let res = await createPair([tokenA, tokenB], feePercentage);
+    const feePercentage = BigNumber.from(10).pow(18).div(100);
+    const res = await createPair([tokenA, tokenB], feePercentage);
     cfmm = res[0];
     cfmmTokens = res[1];
 
@@ -131,7 +131,7 @@ describe("BalancerLongStrategy", function () {
     ).wait();
 
     // Initialise a strategy with [18, 6] decimals
-    let res1 = await createPair([tokenA, tokenC], feePercentage);
+    const res1 = await createPair([tokenA, tokenC], feePercentage);
     cfmmDecimals = res1[0];
     cfmmDecimalsTokens = res1[1];
 
@@ -183,7 +183,7 @@ describe("BalancerLongStrategy", function () {
     const NAME = "TESTPOOL";
     const SYMBOL = "TP";
 
-    let _TOKENS = sortTokens(tokens[0], tokens[1]);
+    const _TOKENS = sortTokens(tokens[0], tokens[1]);
 
     const HUNDRETH = BigNumber.from(10).pow(16);
 
@@ -191,7 +191,7 @@ describe("BalancerLongStrategy", function () {
       BigNumber.from(20).mul(HUNDRETH),
       BigNumber.from(80).mul(HUNDRETH),
     ];
-    
+
     const poolReturnData = await factory.create(
       NAME,
       SYMBOL,
@@ -215,7 +215,11 @@ describe("BalancerLongStrategy", function () {
     expect(error.mul(100000).div(expected).lte(1000)).to.be.equal(true);
   }
 
-  async function initialisePool(initialBalances: any, poolId: any, tokens: any) {
+  async function initialisePool(
+    initialBalances: any,
+    poolId: any,
+    tokens: any
+  ) {
     // We must perform an INIT join at the beginning to start the pool
     const JOIN_KIND_INIT = 0;
     const initUserData = ethers.utils.defaultAbiCoder.encode(
@@ -227,7 +231,7 @@ describe("BalancerLongStrategy", function () {
     await tokens[0].approve(vault.address, ethers.constants.MaxUint256);
     await tokens[1].approve(vault.address, ethers.constants.MaxUint256);
 
-    let orderedTokens = sortTokens(tokens[0], tokens[1]);
+    const orderedTokens = sortTokens(tokens[0], tokens[1]);
 
     const joinPoolRequest = {
       assets: orderedTokens,
@@ -275,7 +279,10 @@ describe("BalancerLongStrategy", function () {
     ).wait();
 
     // Initialise the Balancer pool with 5000 tokenA and 10000 tokenB
-    await initialisePool([ONE.mul(500), ONE.mul(1000)], cfmmPoolId, [tokenA, tokenB]);
+    await initialisePool([ONE.mul(500), ONE.mul(1000)], cfmmPoolId, [
+      tokenA,
+      tokenB,
+    ]);
     const reserves = await strategy.testGetPoolReserves(cfmm);
 
     const reserves0 = reserves[0];
@@ -341,9 +348,15 @@ describe("BalancerLongStrategy", function () {
         BigNumber.from(0),
         BigNumber.from(0),
       ]);
-      expect(await strategyDecimals.testGetVault(cfmmDecimals)).to.equal(await pool.getVault());
-      expect(await strategyDecimals.testGetTokens(cfmmDecimals)).to.deep.equal(cfmmDecimalsTokens);
-      expect(await strategyDecimals.testGetPoolId(cfmmDecimals)).to.equal(cfmmDecimalsPoolId);
+      expect(await strategyDecimals.testGetVault(cfmmDecimals)).to.equal(
+        await pool.getVault()
+      );
+      expect(await strategyDecimals.testGetTokens(cfmmDecimals)).to.deep.equal(
+        cfmmDecimalsTokens
+      );
+      expect(await strategyDecimals.testGetPoolId(cfmmDecimals)).to.equal(
+        cfmmDecimalsPoolId
+      );
       expect(await decimalsPool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategyDecimals.testGetWeights()).to.deep.equal(WEIGHTS);
     });
@@ -434,19 +447,51 @@ describe("BalancerLongStrategy", function () {
         const SCALINGFACTOR = BigNumber.from(1);
 
         await expect(
-          strategy.testGetAmountIn(0, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountIn(
+            0,
+            0,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountIn(
+            1000000000,
+            0,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 1000000000, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountIn(
+            1000000000,
+            1000000000,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountIn(1000000000, 0, WEIGHT0, cfmmTokens[0], 1000000000, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountIn(
+            1000000000,
+            0,
+            WEIGHT0,
+            1000000000,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
         await expect(
@@ -454,11 +499,9 @@ describe("BalancerLongStrategy", function () {
             40000,
             1000000000,
             WEIGHT0,
-            cfmmTokens[0],
             1000000000,
             WEIGHT0,
-            cfmmTokens[1],
-            SCALINGFACTOR, 
+            SCALINGFACTOR,
             SCALINGFACTOR
           )
         ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
@@ -468,11 +511,9 @@ describe("BalancerLongStrategy", function () {
             40000,
             1000000000,
             WEIGHT1,
-            cfmmTokens[0],
             1000000000,
             WEIGHT1,
-            cfmmTokens[1],
-            SCALINGFACTOR, 
+            SCALINGFACTOR,
             SCALINGFACTOR
           )
         ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
@@ -486,19 +527,51 @@ describe("BalancerLongStrategy", function () {
         const SCALINGFACTOR = BigNumber.from(1);
 
         await expect(
-          strategy.testGetAmountOut(0, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountOut(
+            0,
+            0,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountOut(
+            1000000000,
+            0,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 1000000000, WEIGHT0, cfmmTokens[0], 0, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountOut(
+            1000000000,
+            1000000000,
+            WEIGHT0,
+            0,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
-          strategy.testGetAmountOut(1000000000, 0, WEIGHT0, cfmmTokens[0], 1000000000, WEIGHT1, cfmmTokens[1], SCALINGFACTOR, SCALINGFACTOR)
+          strategy.testGetAmountOut(
+            1000000000,
+            0,
+            WEIGHT0,
+            1000000000,
+            WEIGHT1,
+            SCALINGFACTOR,
+            SCALINGFACTOR
+          )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
         await expect(
@@ -506,10 +579,8 @@ describe("BalancerLongStrategy", function () {
             40000,
             1000000000,
             WEIGHT0,
-            cfmmTokens[0],
             1000000000,
             WEIGHT0,
-            cfmmTokens[1],
             SCALINGFACTOR,
             SCALINGFACTOR
           )
@@ -520,10 +591,8 @@ describe("BalancerLongStrategy", function () {
             40000,
             1000000000,
             WEIGHT1,
-            cfmmTokens[0],
             1000000000,
             WEIGHT1,
-            cfmmTokens[1],
             SCALINGFACTOR,
             SCALINGFACTOR
           )
@@ -545,10 +614,8 @@ describe("BalancerLongStrategy", function () {
           amountOut,
           reserveOut,
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn,
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -561,10 +628,8 @@ describe("BalancerLongStrategy", function () {
           BigNumber.from(105).mul(ONE),
           reserveOut,
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(3),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -577,10 +642,8 @@ describe("BalancerLongStrategy", function () {
           amountOut.mul(2),
           reserveOut.mul(7),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(3),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -593,10 +656,8 @@ describe("BalancerLongStrategy", function () {
           amountOut.mul(3),
           reserveOut.mul(7),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(12),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -609,10 +670,8 @@ describe("BalancerLongStrategy", function () {
           amountOut.mul(2),
           reserveOut.mul(5),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(3),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -622,10 +681,11 @@ describe("BalancerLongStrategy", function () {
         expectEqualWithError(answer5, expectedAnswer5);
       });
 
-
       it("Calculate GetAmountIn for Decimals", async function () {
         const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
-        const DECIMALS_ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
+        const DECIMALS_ONE = BigNumber.from(10).pow(
+          cfmmDecimalsTokenDecimals[1]
+        );
 
         const amountOut = ONE.mul(100);
         const reserveOut = ONE.mul(500);
@@ -634,17 +694,19 @@ describe("BalancerLongStrategy", function () {
         const WEIGHT0 = BigNumber.from(10).pow(18).div(10);
         const WEIGHT1 = BigNumber.from(10).pow(18).sub(WEIGHT0);
 
-        const SCALINGFACTOR0 = BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0]);
-        const SCALINGFACTOR1 = BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1]);
+        const SCALINGFACTOR0 = BigNumber.from(10).pow(
+          18 - cfmmDecimalsTokenDecimals[0]
+        );
+        const SCALINGFACTOR1 = BigNumber.from(10).pow(
+          18 - cfmmDecimalsTokenDecimals[1]
+        );
 
         const answer1 = await strategy.testGetAmountIn(
           amountOut,
           reserveOut,
           WEIGHT0,
-          cfmmDecimalsTokens[0],
           reserveIn,
           WEIGHT1,
-          cfmmDecimalsTokens[1],
           SCALINGFACTOR1,
           SCALINGFACTOR0
         );
@@ -652,7 +714,9 @@ describe("BalancerLongStrategy", function () {
         let expectedAnswer1 = BigNumber.from("25357220663536529408");
 
         if (cfmmDecimalsTokenDecimals[1] < 18) {
-          expectedAnswer1 = expectedAnswer1.div(BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1]));
+          expectedAnswer1 = expectedAnswer1.div(
+            BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1])
+          );
         }
 
         expectEqualWithError(answer1, expectedAnswer1);
@@ -673,10 +737,8 @@ describe("BalancerLongStrategy", function () {
           amountIn,
           reserveOut,
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn,
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -689,10 +751,8 @@ describe("BalancerLongStrategy", function () {
           amountIn.mul(2),
           reserveOut,
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(3),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -705,10 +765,8 @@ describe("BalancerLongStrategy", function () {
           amountIn.mul(2),
           reserveOut.mul(7),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(3),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -721,10 +779,8 @@ describe("BalancerLongStrategy", function () {
           amountIn.mul(2),
           reserveOut.mul(7),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(19),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -737,10 +793,8 @@ describe("BalancerLongStrategy", function () {
           amountIn.mul(2),
           reserveOut.mul(2),
           WEIGHT0,
-          cfmmTokens[0],
           reserveIn.mul(15),
           WEIGHT1,
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -762,30 +816,33 @@ describe("BalancerLongStrategy", function () {
         const weightOut = BigNumber.from(10).pow(17);
         const weightIn = BigNumber.from(10).pow(18).sub(weightOut);
 
-        const SCALINGFACTOR0 = BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0]);
-        const SCALINGFACTOR1 = BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1]);
+        const SCALINGFACTOR0 = BigNumber.from(10).pow(
+          18 - cfmmDecimalsTokenDecimals[0]
+        );
+        const SCALINGFACTOR1 = BigNumber.from(10).pow(
+          18 - cfmmDecimalsTokenDecimals[1]
+        );
 
         const amountOut1 = await strategy.testGetAmountOut(
           amountIn,
           reserveOut,
           weightOut,
-          cfmmDecimalsTokens[0],
           reserveIn,
           weightIn,
-          cfmmDecimalsTokens[1],
           SCALINGFACTOR1,
           SCALINGFACTOR0
         );
 
         let expectedAnswer1 = BigNumber.from("287429996912549888000");
-        
+
         if (cfmmDecimalsTokenDecimals[0] < 18) {
-          expectedAnswer1 = expectedAnswer1.div(BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0]));
+          expectedAnswer1 = expectedAnswer1.div(
+            BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0])
+          );
         }
 
         expectEqualWithError(amountOut1, expectedAnswer1);
-        });
-
+      });
     });
 
     describe("Calculate Tokens to Swap", function () {
@@ -839,10 +896,8 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -862,10 +917,8 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -902,10 +955,8 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -925,10 +976,8 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -938,7 +987,6 @@ describe("BalancerLongStrategy", function () {
         expect(evt1.args.outAmts[0]).to.equal(0);
         expectEqualWithError(evt1.args.outAmts[1], delta);
       });
-
     });
 
     describe("Swap Tokens", function () {
@@ -946,7 +994,11 @@ describe("BalancerLongStrategy", function () {
         let tokens0Balance;
         let tokens1Balance;
 
-        if (BigNumber.from(_tokens[0].address).lt(BigNumber.from(_tokens[1].address))) {
+        if (
+          BigNumber.from(_tokens[0].address).lt(
+            BigNumber.from(_tokens[1].address)
+          )
+        ) {
           tokens0Balance = await _tokens[0].balanceOf(_strategy.address);
           tokens1Balance = await _tokens[1].balanceOf(_strategy.address);
         } else {
@@ -979,22 +1031,26 @@ describe("BalancerLongStrategy", function () {
           delta,
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves0 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         // delta tokens are added to the strategy in slot 0 and expAmtOut0 tokens are removed from the strategy in slot 1
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [delta, 0])
         ).wait();
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves1 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         // Check that the event arguments are correct
         const evt0 = res0.events[res0.events.length - 1];
@@ -1022,16 +1078,17 @@ describe("BalancerLongStrategy", function () {
           )
         ).wait();
 
-        const strategyReserves2 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves2 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
           reserves1.add(expAmtOut0),
           WEIGHTS[1],
-          cfmmTokens[1],
           reserves0.sub(delta),
           WEIGHTS[0],
-          cfmmTokens[0],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -1041,7 +1098,10 @@ describe("BalancerLongStrategy", function () {
           await strategy.testSwapTokens(tokenId, [0, delta])
         ).wait();
 
-        const strategyReserves3 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves3 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const evt1 = res1.events[res1.events.length - 1];
 
@@ -1081,24 +1141,28 @@ describe("BalancerLongStrategy", function () {
 
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
-          reserves1, 
+          reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
 
-        const strategyReserves = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
         const res1 = await (
           await strategy.testSwapTokens(tokenId, [0, delta])
         ).wait();
 
-        const strategyReserves2 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves2 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const evt1 = res1.events[res1.events.length - 1];
 
@@ -1133,16 +1197,17 @@ describe("BalancerLongStrategy", function () {
 
         const SCALINGFACTOR = BigNumber.from(1);
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves0 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const expectedAmountOut0 = await strategy.testGetAmountOut(
           delta,
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           SCALINGFACTOR,
           SCALINGFACTOR
         );
@@ -1152,7 +1217,10 @@ describe("BalancerLongStrategy", function () {
           await strategy.testSwapTokens(tokenId, [negDelta, 0])
         ).wait();
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves1 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const evt0 = res0.events[res0.events.length - 1];
         expect(evt0.args.outAmts[0]).to.equal(delta);
@@ -1170,7 +1238,10 @@ describe("BalancerLongStrategy", function () {
           strategyReserves0.tokens1.add(expectedAmountOut0)
         );
 
-        const actualStrategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const actualStrategyReserves1 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         await (
           await strategy.setCFMMReserves(
@@ -1190,7 +1261,6 @@ describe("BalancerLongStrategy", function () {
           actualStrategyReserves1.tokens1,
           strategyReserves2[1]
         );
-
       });
 
       it("Swap Exact Tokens for Tokens, Second Index", async function () {
@@ -1205,29 +1275,33 @@ describe("BalancerLongStrategy", function () {
 
         const delta = ONE.mul(10);
         const negDelta = ethers.constants.Zero.sub(delta);
-        
+
         const SCALINGFACTOR = BigNumber.from(1);
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves0 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const expectedAmountOut0 = await strategy.testGetAmountOut(
           delta,
           reserves0,
           WEIGHTS[0],
-          cfmmTokens[0],
           reserves1,
           WEIGHTS[1],
-          cfmmTokens[1],
           SCALINGFACTOR,
           SCALINGFACTOR
-        ); 
+        );
 
         // delta tokens are leaving the GammaPool in slot 1 and expectedAmountOut0 tokens are entering the GammaPool in slot 0
         const res0 = await (
           await strategy.testSwapTokens(tokenId, [0, negDelta])
         ).wait();
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const strategyReserves1 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         const evt0 = res0.events[res0.events.length - 1];
         expect(evt0.args.outAmts[0]).to.equal(0);
@@ -1245,7 +1319,10 @@ describe("BalancerLongStrategy", function () {
           strategyReserves0.tokens0.add(expectedAmountOut0)
         );
 
-        const actualStrategyReserves1 = await getStrategyReserves(strategy, [tokenA, tokenB]);
+        const actualStrategyReserves1 = await getStrategyReserves(strategy, [
+          tokenA,
+          tokenB,
+        ]);
 
         await (
           await strategy.setCFMMReserves(
@@ -1266,9 +1343,7 @@ describe("BalancerLongStrategy", function () {
           actualStrategyReserves1.tokens1,
           strategyReserves2[1]
         );
-
       });
-
     });
   });
 });
