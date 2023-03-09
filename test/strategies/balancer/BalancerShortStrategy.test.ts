@@ -232,16 +232,67 @@ describe("BalancerShortStrategy", function () {
       const cfmmPoolId = poolId;
       const cfmmVault = vault.address;
       const _data = ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "address", "uint256"],
-        [cfmmPoolId, cfmmVault, 0]
+        ["bytes32", "address"],
+        [cfmmPoolId, cfmmVault]
       );
       const poolTokens = await vault.getPoolTokens(poolId);
       const reserves = await strategy._getLatestCFMMReserves(_data);
       expect(poolTokens.balances[0]).to.equal(reserves[0]);
       expect(poolTokens.balances[1]).to.equal(reserves[1]);
     });
+
+    it("Get Latest CFMM Invariant", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const amtA = ONE.mul(20);
+      const amtB = ONE.mul(500);
+
+      const res0 = await strategy.testGetReserves(cfmm);
+      expect(res0.length).to.equal(2);
+      expect(res0[0]).to.equal(0);
+      expect(res0[1]).to.equal(0);
+
+      await initialisePool([amtA, amtB]);
+
+      const res1 = await strategy.testGetReserves(cfmm);
+      expect(res1.length).to.equal(2);
+      expect(res1[0]).to.equal(amtA);
+      expect(res1[1]).to.equal(amtB);
+
+      const params = {
+        cfmmPoolId: poolId,
+        cfmmVault: vault.address,
+        scalingFactors: [1, 1],
+      };
+      const _data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "tuple(bytes32 cfmmPoolId, address cfmmVault, uint256[] scalingFactors)",
+        ],
+        [params]
+      );
+      const poolTokens = await vault.getPoolTokens(poolId);
+      const cfmmInvariant = await strategy._getLatestCFMMInvariant(_data);
+      const expCfmmInvariant = sqrt(
+        poolTokens.balances[0].mul(poolTokens.balances[1])
+      );
+      expect(cfmmInvariant).lt(expCfmmInvariant);
+      expect(cfmmInvariant).gt(expCfmmInvariant.sub(2100000));
+    });
   });
 
+  const sqrt = (y: BigNumber): BigNumber => {
+    let z = BigNumber.from(0);
+    if (y.gt(3)) {
+      z = y;
+      let x = y.div(2).add(1);
+      while (x.lt(z)) {
+        z = x;
+        x = y.div(x).add(x).div(2);
+      }
+    } else if (!y.isZero()) {
+      z = BigNumber.from(1);
+    }
+    return z;
+  };
   describe("Calc Deposit Amounts Functions", function () {
     async function depositIntoPool(amounts: any) {
       // We must send the tokens to the strategy before we can deposit

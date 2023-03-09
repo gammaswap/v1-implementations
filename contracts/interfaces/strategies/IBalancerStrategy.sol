@@ -19,6 +19,24 @@ interface IBalancerStrategy {
         uint256 cfmmWeight0;
     }
 
+    /// @dev struct used to verify and initialize BalancerGammaPool as well as request latest AMM reserves
+    struct BalancerInvariantRequest {
+        /// @dev pool id of AMM in vault address of Balancer
+        bytes32 cfmmPoolId;
+        /// @dev vault address of Balancer AMM (where reserves are actually stored)
+        address cfmmVault;
+        /// @dev factors to scale reserves for invariant calculation
+        uint256[] scalingFactors;
+    }
+
+    /// @dev struct used to verify and initialize BalancerGammaPool as well as request latest AMM reserves
+    struct BalancerReservesRequest {
+        /// @dev pool id of AMM in vault address of Balancer
+        bytes32 cfmmPoolId;
+        /// @dev vault address of Balancer AMM (where reserves are actually stored)
+        address cfmmVault;
+    }
+
     /// @return weight of token0 in Balancer AMM
     function weight0() external view returns (uint256);
 

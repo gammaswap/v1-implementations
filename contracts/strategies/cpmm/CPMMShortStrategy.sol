@@ -20,13 +20,17 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
         CPMMBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
     }
 
-    /// @notice Get latest reserve quantities in CFMM through public function.
-    /// @dev This mainly exists for logging the reserve quantities in the CFMM which can be used to check the historical price
-    /// @param _cfmm - address of CFMM we're reading reserve quantities from.
+    /// @dev See {IShortStrategy-_getLatestCFMMReserves}.
     function _getLatestCFMMReserves(bytes memory _cfmm) public virtual override view returns(uint128[] memory reserves) {
         address cfmm_ = abi.decode(_cfmm, (address));
         reserves = new uint128[](2);
         (reserves[0], reserves[1],) = ICPMM(cfmm_).getReserves(); // get uint112 reserves but return uint256 to avoid casting
+    }
+
+    /// @dev See {IShortStrategy-_getLatestCFMMInvariant}.
+    function _getLatestCFMMInvariant(bytes memory _cfmm) public virtual override view returns(uint256 cfmmInvariant) {
+        uint128[] memory reserves = _getLatestCFMMReserves(_cfmm);
+        cfmmInvariant = calcInvariant(address(0), reserves);
     }
 
     /// @dev See {IShortStrategy-calcDepositAmounts}.

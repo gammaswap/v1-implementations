@@ -18,17 +18,34 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
         BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
     }
 
-    /// @dev Get latest reserve quantities in Balancer pool through public function.
+    /// @dev See {IShortStrategy-_getLatestCFMMReserves}.
     function _getLatestCFMMReserves(bytes memory _data) public virtual override view returns(uint128[] memory reserves) {
         // Decode the PoolId in this function
-        BalancerPoolData memory balancerPoolData = abi.decode(_data, (BalancerPoolData));
+        BalancerReservesRequest memory req = abi.decode(_data, (BalancerReservesRequest));
+        reserves = getBalancerReserves(req.cfmmVault, req.cfmmPoolId);
+    }
 
-        uint[] memory poolReserves = new uint[](2);
-        (, poolReserves, ) = IVault(balancerPoolData.cfmmVault).getPoolTokens(balancerPoolData.cfmmPoolId);
+    /// @dev Get latest reserve quantities in Balancer pool through public function.
+    /// @param _vault - address of vault holding Balancer CFMM's token reserves
+    /// @param _poolId - id of pool in `_vault` referring to the Balancer CFMM we want reserves from
+    /// @return reserves - reserve token quantities in Balancer CFMM
+    function getBalancerReserves(address _vault, bytes32 _poolId) internal virtual view returns(uint128[] memory reserves) {
+        uint256[] memory poolReserves = new uint256[](2);
+        (, poolReserves, ) = IVault(_vault).getPoolTokens(_poolId);
 
         reserves = new uint128[](2);
         reserves[0] = uint128(poolReserves[0]);
         reserves[1] = uint128(poolReserves[1]);
+    }
+
+    /// @dev See {IShortStrategy-_getLatestCFMMInvariant}.
+    function _getLatestCFMMInvariant(bytes memory _data) public virtual override view returns(uint256 cfmmInvariant) {
+        BalancerInvariantRequest memory req = abi.decode(_data, (BalancerInvariantRequest));
+
+        uint128[] memory reserves = getBalancerReserves(req.cfmmVault, req.cfmmPoolId);
+        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(reserves), req.scalingFactors);
+
+        cfmmInvariant = calcScaledInvariant(scaledReserves);
     }
 
     /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
