@@ -155,7 +155,6 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         return GammaSwapLibrary.balanceOf(IERC20(_cfmm), address(this)) - initialBalance;
     }
 
-
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
     function withdrawFromCFMM(address, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
         // We need to encode userData for the exitPool call
@@ -186,11 +185,16 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         return amounts;
     }
 
-
     /// @dev See {BaseStrategy-calcInvariant}.
     function calcInvariant(address, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        return WeightedMath._calculateInvariant(getWeights(), 
-            InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), getScalingFactors()));
+        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), getScalingFactors());
+        return calcScaledInvariant(scaledReserves);
     }
 
+    /// @dev Calculated invariant from amounts scaled to 18 decimals
+    /// @param amounts - reserve amounts used to calculate invariant
+    /// @return invariant - calculated invariant for Balancer AMM
+    function calcScaledInvariant(uint256[] memory amounts) internal virtual view returns(uint256) {
+        return WeightedMath._calculateInvariant(getWeights(), amounts);
+    }
 }

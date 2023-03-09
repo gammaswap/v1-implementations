@@ -51,15 +51,18 @@ contract BalancerGammaPool is GammaPool {
         weight0 = _weight0;
     }
 
+    /// @dev Get poolId of Balancer CFMM in Vault
     function getPoolId() public view virtual returns(bytes32) {
         return s.getBytes32(uint256(IBalancerStrategy.StorageIndexes.POOL_ID));
     }
 
+    /// @dev Get vault address used for Balancer CFMM
     function getVault() public view virtual returns(address) {
         return s.getAddress(uint256(IBalancerStrategy.StorageIndexes.VAULT));
     }
 
-    function getScalingFactors() external view virtual returns(uint256[] memory) {
+    /// @dev Get factors to scale tokens according to their decimals. Used to in Balancer invariant calculation
+    function getScalingFactors() public view virtual returns(uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](2);
 
         scalingFactors[0] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
@@ -70,9 +73,14 @@ contract BalancerGammaPool is GammaPool {
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
     function _getLatestCFMMReserves() internal virtual override view returns(uint128[] memory cfmmReserves) {
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerPoolData({cfmmPoolId: getPoolId(), cfmmVault: getVault(),
-            cfmmWeight0: 0}));
+        bytes memory data = abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()}));
         return IShortStrategy(shortStrategy)._getLatestCFMMReserves(data);
+    }
+
+    /// @dev See {GammaPoolERC4626-_getLatestCFMMInvariant}
+    function _getLatestCFMMInvariant() internal virtual override view returns(uint256 lastCFMMInvariant) {
+        bytes memory data = abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: getScalingFactors()}));
+        return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(data);
     }
 
     /// @dev See {IGammaPool-createLoan}
@@ -81,6 +89,7 @@ contract BalancerGammaPool is GammaPool {
         emit LoanCreated(msg.sender, tokenId);
     }
 
+    /// @dev See {IGammaPool-initialize}
     function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals, bytes calldata _data) external virtual override {
         if(msg.sender != factory) // only factory is allowed to initialize
             revert Forbidden();
