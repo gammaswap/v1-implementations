@@ -17,7 +17,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     uint16 immutable public LTV_THRESHOLD;
 
     /// @return origFee - origination fee charged to every new loan that is issued
-    uint16 immutable public origFee;
+    uint24 immutable public origFee;
 
     /// @return tradingFee1 - numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 immutable public tradingFee1;
@@ -29,7 +29,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     uint256 constant public MIN_BORROW = 1e3;
 
     /// @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
+    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
         CPMMBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
         LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
@@ -48,7 +48,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-originationFee}.
-    function originationFee() internal virtual override view returns(uint16) {
+    function originationFee() internal virtual override view returns(uint24) {
         return origFee;
     }
 

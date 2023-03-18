@@ -17,7 +17,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     error BAL308();
 
     /// @return origFee Origination fee charged to every new loan that is issued.
-    uint16 immutable public origFee;
+    uint24 immutable public origFee;
 
     /// @return LTV_THRESHOLD Maximum Loan-To-Value ratio acceptable before a loan is eligible for liquidation.
     uint16 immutable public LTV_THRESHOLD;
@@ -26,7 +26,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     uint256 constant public MIN_BORROW = 1e3;
 
     /// @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
+    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
         BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
         LTV_THRESHOLD = _ltvThreshold;
         origFee = _originationFee;
@@ -43,7 +43,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     /// @dev See {BaseLongStrategy.originationFee}.
-    function originationFee() internal virtual override view returns(uint16) {
+    function originationFee() internal virtual override view returns(uint24) {
         return origFee;
     }
 

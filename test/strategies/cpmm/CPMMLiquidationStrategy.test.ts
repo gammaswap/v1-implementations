@@ -73,8 +73,8 @@ describe("CPMMLiquidationStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategy = await TestStrategy.deploy(
-      950,
-      975,
+      9500,
+      9750,
       maxTotalApy,
       2252571,
       997,
@@ -140,8 +140,8 @@ describe("CPMMLiquidationStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategyFee = await TestStrategy.deploy(
-      950,
-      975,
+      9500,
+      9750,
       maxTotalApy,
       2252571,
       997,
@@ -330,8 +330,8 @@ describe("CPMMLiquidationStrategy", function () {
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
-      expect(await strategy.LIQUIDATION_FEE_THRESHOLD()).to.equal(975);
-      expect(await strategy.LTV_THRESHOLD()).to.equal(950);
+      expect(await strategy.LIQUIDATION_FEE_THRESHOLD()).to.equal(9750);
+      expect(await strategy.LTV_THRESHOLD()).to.equal(9500);
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
