@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
+import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 
 /// @title GammaPool implementation for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
@@ -41,6 +42,62 @@ contract CPMMGammaPool is GammaPool {
     function _getLastCFMMPrice() internal virtual override view returns(uint256) {
         uint128[] memory _reserves = _getLatestCFMMReserves();
         return _reserves[1] * (10 ** s.decimals[0]) / _reserves[0];
+    }
+
+    /// @dev Update liquidity debt to include accrued trading fees and interest
+    /// @param liquidity - liquidity debt
+    /// @param rateIndex - loan's interest rate index of last update
+    /// @param cfmmInvariant - total liquidity invariant of CFMM
+    /// @return _liquidity - updated liquidity debt
+    function updateLiquidityDebt(uint256 liquidity, uint256 rateIndex, uint256 cfmmInvariant) internal virtual view returns(uint256 _liquidity) {
+        uint256 lastFeeIndex;
+        (, lastFeeIndex,) = IShortStrategy(shortStrategy)
+        .getLastFees(s.BORROWED_INVARIANT, s.LP_TOKEN_BALANCE, cfmmInvariant, _getLatestCFMMTotalSupply(),
+            s.lastCFMMInvariant, s.lastCFMMTotalSupply, s.LAST_BLOCK_NUMBER);
+        uint256 accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
+
+        // accrue interest
+        _liquidity = liquidity * accFeeIndex / rateIndex;
+    }
+
+    /// @dev Get loan information relevant to delta calculation
+    /// @param tokenId - unique identifier of loan in GammaPool
+    /// @return loanLiquidity - last loan liquidity debt (as it was after last update)
+    /// @return rateIndex - loan's interest rate index of last update
+    /// @return sqrtPx - square root of loan collateral ratio
+    function getLoan(uint256 tokenId) internal virtual view returns(uint256 loanLiquidity, uint256 rateIndex, uint256 sqrtPx) {
+        LibStorage.Loan storage _loan = s.loans[tokenId];
+        loanLiquidity = _loan.liquidity;
+        require(_loan.id > 0 && loanLiquidity > 0);
+        uint128[] memory tokensHeld = _loan.tokensHeld;
+        rateIndex = _loan.rateIndex;
+        uint256 strikePx = tokensHeld[1] * (10 ** s.decimals[1]) / tokensHeld[0];
+        sqrtPx = Math.sqrt(strikePx * (10 ** s.decimals[1]));
+    }
+
+    /// @dev See {IGammaPool.getRebalanceDeltas}.
+    function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
+        (uint256 loanLiquidity, uint256 rateIndex, uint256 sqrtPx) = getLoan(tokenId);
+
+        uint256 liquidityFactor = 10 ** ((s.decimals[0] + s.decimals[1]) / 2);
+        uint256 pxFactor = 10 ** s.decimals[1];
+
+        uint128[] memory _reserves = _getLatestCFMMReserves();
+        uint256 liquidityX = _reserves[0] * sqrtPx / pxFactor;
+
+        uint256 cfmmInvariant = Math.sqrt(uint256(_reserves[0]) * _reserves[1]);
+        loanLiquidity = updateLiquidityDebt(loanLiquidity, rateIndex, cfmmInvariant);
+        bool isNeg = cfmmInvariant < liquidityX;
+
+        uint256 collateral1 = loanLiquidity * sqrtPx / pxFactor;
+        uint256 denominator = collateral1 + _reserves[1];
+
+        uint256 numerator = loanLiquidity * (isNeg ? liquidityX - cfmmInvariant : cfmmInvariant - liquidityX) / liquidityFactor;
+        uint256 delta = numerator * pxFactor / denominator;
+
+        deltas = new int256[](2);
+        deltas[0] = isNeg ? int256(delta) : -int256(delta); // if cfmmInvariant > liquidityX, we must sell so negate
+        deltas[1] = 0;
     }
 
     /// @dev See {IGammaPool-validateCFMM}
