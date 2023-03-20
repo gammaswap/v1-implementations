@@ -38,7 +38,7 @@ contract CPMMGammaPool is GammaPool {
     }
 
     /// @dev See {IGammaPool-validateCFMM}
-    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered, uint8[] memory _decimals) {
+    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
             revert NotContract();
         }
@@ -51,11 +51,6 @@ contract CPMMGammaPool is GammaPool {
         if(_cfmm != AddressCalculator.calcAddress(cfmmFactory,keccak256(abi.encodePacked(_tokensOrdered[0], _tokensOrdered[1])),cfmmInitCodeHash)) {
             revert BadProtocol();
         }
-
-        // Get CFMM's tokens' decimals
-        _decimals = new uint8[](2);
-        _decimals[0] = GammaSwapLibrary.decimals(_tokensOrdered[0]);
-        _decimals[1] = GammaSwapLibrary.decimals(_tokensOrdered[1]);
     }
 
 }

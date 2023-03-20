@@ -7,6 +7,7 @@ contract TestGammaPoolFactory is IGammaPoolFactory {
     address private protocol;
 
     mapping(bytes32 => address) public override getPool; // all GS Pools addresses can be predetermined
+    mapping(address => bytes32) public override getKey; // all GS Pools addresses can be predetermined
     uint16 public override fee = 10000; // Default value is 10,000 basis points or 10%
     uint24 public override origMin = 10000; // Default value is 10,000 basis points or 10%
     uint24 public override origMax = 10000; // Default value is 10,000 basis points or 10%
@@ -60,4 +61,9 @@ contract TestGammaPoolFactory is IGammaPoolFactory {
         return(feeTo, 0, 0, 0, false);
     }
 
+    function getPoolDetails(address _pool) external virtual override view returns(PoolDetails memory _details) {
+    }
+
+    function getPools(uint256 start, uint256 end) external virtual override view returns(address[] memory _pools, PoolDetails[] memory _details) {
+    }
 }

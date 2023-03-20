@@ -111,7 +111,7 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev See {IGammaPool-validateCFMM}
-    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata _data) external virtual override view returns(address[] memory _tokensOrdered, uint8[] memory _decimals) {
+    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata _data) external virtual override view returns(address[] memory _tokensOrdered) {
         IBalancerStrategy.BalancerPoolData memory balancerPoolData = abi.decode(_data, (IBalancerStrategy.BalancerPoolData));
         
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
@@ -156,11 +156,6 @@ contract BalancerGammaPool is GammaPool {
         if(_weights[0] != balancerPoolData.cfmmWeight0) {
             revert IncorrectWeights();
         }
-
-        // Get CFMM's tokens' decimals
-        _decimals = new uint8[](2);
-        _decimals[0] = GammaSwapLibrary.decimals(_tokensOrdered[0]);
-        _decimals[1] = GammaSwapLibrary.decimals(_tokensOrdered[1]);
     }
 
 }

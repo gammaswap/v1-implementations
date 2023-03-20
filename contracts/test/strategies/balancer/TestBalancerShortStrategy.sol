@@ -45,7 +45,7 @@ contract TestBalancerShortStrategy is BalancerShortStrategy {
         return getVault();
     }
 
-    function testGetPoolReserves(address) public view returns(uint128[] memory) {
+    function testGetPoolReserves(address) public view returns(uint256[] memory) {
         return getPoolReserves();
     }
 

@@ -49,7 +49,7 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         return getSwapFeePercentage(cfmm);
     }
 
-    function testGetPoolReserves(address) public view returns(uint128[] memory) {
+    function testGetPoolReserves(address) public view returns(uint256[] memory) {
         return getPoolReserves();
     }
 
