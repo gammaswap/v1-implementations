@@ -66,13 +66,9 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     }
 
     /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-    function getPoolReserves() internal virtual view returns(uint128[] memory reserves) {
-        uint[] memory poolReserves = new uint[](2);
+    function getPoolReserves() internal virtual view returns(uint256[] memory poolReserves) {
+        poolReserves = new uint256[](2);
         (, poolReserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
-
-        reserves = new uint128[](2);
-        reserves[0] = uint128(poolReserves[0]);
-        reserves[1] = uint128(poolReserves[1]);
     }
 
     /// @dev Returns the normalized weights of a given Balancer pool.
@@ -108,8 +104,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @param amount The amount required to approve.
     function addVaultApproval(address token, uint256 amount) internal {
         address vault = getVault();
-        uint256 allowance = IERC20(token).allowance(address(this), vault);
-        if (allowance < amount) {
+        if (IERC20(token).allowance(address(this), vault) < amount) {
             // Approve the maximum amount
             IERC20(token).approve(vault, type(uint256).max);
         }
@@ -117,9 +112,9 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev See {BaseStrategy-updateReserves}.
     function updateReserves(address) internal virtual override {
-        uint128[] memory reserves = getPoolReserves();
-        s.CFMM_RESERVES[0] = reserves[0];
-        s.CFMM_RESERVES[1] = reserves[1];
+        uint256[] memory reserves = getPoolReserves();
+        s.CFMM_RESERVES[0] = uint128(reserves[0]);
+        s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
 
     /// @dev See {BaseStrategy-depositToCFMM}.

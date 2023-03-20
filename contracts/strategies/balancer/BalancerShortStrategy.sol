@@ -49,8 +49,11 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     }
 
     /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-    function getReserves(address) internal virtual override view returns(uint128[] memory) {
-        return getPoolReserves();
+    function getReserves(address) internal virtual override view returns(uint128[] memory reserves) {
+        uint256[] memory _reserves = getPoolReserves();
+        reserves = new uint128[](2);
+        reserves[0] = uint128(_reserves[0]);
+        reserves[1] = uint128(_reserves[1]);
     }
 
     /// @dev Check optimal deposit amount is not less than minimum acceptable deposit amount.
@@ -70,7 +73,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
             revert ZeroDeposits();
         }
 
-        uint128[] memory reserves = getPoolReserves();
+        uint128[] memory reserves = getReserves(address(0));
 
         // In the case of Balancer, the payee is the GammaPool itself
         payee = address(this);

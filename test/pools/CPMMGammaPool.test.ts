@@ -113,7 +113,7 @@ describe("CPMMGammaPool", function () {
 
   async function validateCFMM(token0: any, token1: any, cfmm: any) {
     const data = ethers.utils.defaultAbiCoder.encode([], []);
-    const resp = await pool.validateCFMM(
+    const tokensOrdered = await pool.validateCFMM(
       [token0.address, token1.address],
       cfmm.address,
       data
@@ -122,10 +122,8 @@ describe("CPMMGammaPool", function () {
     const bigNum1 = BigNumber.from(token1.address);
     const token0Addr = bigNum0.lt(bigNum1) ? token0.address : token1.address;
     const token1Addr = bigNum0.lt(bigNum1) ? token1.address : token0.address;
-    expect(resp._tokensOrdered[0]).to.equal(token0Addr);
-    expect(resp._tokensOrdered[1]).to.equal(token1Addr);
-    expect(resp._decimals[0]).to.equal(18);
-    expect(resp._decimals[1]).to.equal(18);
+    expect(tokensOrdered[0]).to.equal(token0Addr);
+    expect(tokensOrdered[1]).to.equal(token1Addr);
   }
 
   describe("Deployment", function () {
