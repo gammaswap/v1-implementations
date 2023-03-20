@@ -101,6 +101,13 @@ contract BalancerGammaPool is GammaPool {
         return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(data);
     }
 
+    /// @dev See {IGammaPool.getRebalanceDeltas}.
+    function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
+        deltas[0] = 0;
+        deltas[1] = 0;
+    }
+
     /// @dev See {IGammaPool-createLoan}
     function createLoan() external lock virtual override returns(uint256 tokenId) {
         tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
