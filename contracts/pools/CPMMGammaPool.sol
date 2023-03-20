@@ -37,6 +37,12 @@ contract CPMMGammaPool is GammaPool {
         emit LoanCreated(msg.sender, tokenId);
     }
 
+    /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
+    function _getLastCFMMPrice() internal virtual override view returns(uint256) {
+        uint128[] memory _reserves = _getLatestCFMMReserves();
+        return _reserves[1] * (10 ** s.decimals[0]) / _reserves[0];
+    }
+
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet

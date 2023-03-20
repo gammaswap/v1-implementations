@@ -71,6 +71,24 @@ contract BalancerGammaPool is GammaPool {
         return scalingFactors;
     }
 
+    /// @dev Returns the normalized weights of a given Balancer pool.
+    function getWeights() internal virtual view returns(uint256[] memory) {
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = weight0;
+        unchecked {
+            weights[1] = 1e18 - weight0;
+        }
+        return weights;
+    }
+
+    /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
+    function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
+        uint256[] memory _weights = getWeights();
+        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(_getLatestCFMMReserves()), getScalingFactors());
+        uint256 numerator = scaledReserves[1] * _weights[1] / _weights[0];
+        return numerator * 1e18 / scaledReserves[0];
+    }
+
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
     function _getLatestCFMMReserves() internal virtual override view returns(uint128[] memory cfmmReserves) {
         bytes memory data = abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()}));
