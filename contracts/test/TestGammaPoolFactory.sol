@@ -61,9 +61,6 @@ contract TestGammaPoolFactory is IGammaPoolFactory {
         return(feeTo, 0, 0, 0, false);
     }
 
-    function getPoolDetails(address _pool) external virtual override view returns(PoolDetails memory _details) {
-    }
-
-    function getPools(uint256 start, uint256 end) external virtual override view returns(address[] memory _pools, PoolDetails[] memory _details) {
+    function getPools(uint256 start, uint256 end) external virtual override view returns(address[] memory _pools) {
     }
 }
