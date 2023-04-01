@@ -75,6 +75,79 @@ contract CPMMGammaPool is GammaPool {
         sqrtPx = Math.sqrt(strikePx * (10 ** s.decimals[1]));
     }
 
+    /// dev See {IGammaPool.getRebalanceDeltas2}.
+    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, uint8[] memory decimals) external virtual view returns(int256[] memory deltas) {
+        uint256 fee1 = 997;
+        uint256 fee2 = 1000;
+
+        // must negate
+        uint256 a = fee1 * strikePx / fee2;
+        // must negate
+        bool bIsNeg;
+        uint256 b;
+        {
+            uint256 A_times_Phi = (tokensHeld[0] * fee1 / fee2);
+            bIsNeg = reserves[0] < A_times_Phi;
+            uint256 leftVal0 = (bIsNeg ? A_times_Phi - reserves[0] : reserves[0] - A_times_Phi);
+            uint256 leftVal = leftVal0 * strikePx / (10**decimals[0]);
+            uint256 rightVal = (tokensHeld[1] + reserves[1]) * fee1 / fee2;
+            if(bIsNeg) {
+                b = rightVal - leftVal;
+                bIsNeg = rightVal > leftVal;
+            } else {
+                b = leftVal + rightVal;
+                bIsNeg = true;
+            }
+        }
+
+        uint256 det;
+        {
+            uint256 leftVal = tokensHeld[0] * strikePx / (10**decimals[0]);
+            bool cIsNeg = leftVal < tokensHeld[1];
+            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves[0]; // B*A decimals
+            uint256 ac4 = 4 * c * a / decimals[0];
+            det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
+        }
+
+        // remember that a is always negative
+        if(bIsNeg) { // b < 0
+            // plus version
+            // (b + det)/-2a = -(b + det)/2a
+            // this is always negative
+            // uint256 x1 = (b + det) * (10**decimals[0]) / (2*a);
+            deltas[0] = -int256((b + det) * (10**decimals[0]) / (2*a));
+
+            // minus version
+            // (b - det)/-2a = (det-b)/2a
+            if(det > b) {
+                // x2 is positive
+                // uint256 x2 = (det - b) * (10**decimals[0]) / (2*a);
+                deltas[1] = int256((det - b) * (10**decimals[0]) / (2*a));
+            } else {
+                // x2 is negative
+                // uint256 x2 = (b - det) * (10**decimals[0]) / (2*a);
+                deltas[1]= -int256((b - det) * (10**decimals[0]) / (2*a));
+            }
+        } else { // b > 0
+            // plus version
+            // (-b + det)/-2a = (b - det)/2a
+            if(b > det) {
+                //  x1 is positive
+                // uint256 x1 = (b - det) * (10**decimals[0]) / (2*a);
+                deltas[0] = int256((b - det) * (10**decimals[0]) / (2*a));
+            } else {
+                //  x1 is negative
+                // uint256 x1 = (det - b) * (10**decimals[0]) / (2*a);
+                deltas[0] = -int256((det - b) * (10**decimals[0]) / (2*a));
+            }
+
+            // minus version
+            // (-b - det)/-2a = (b+det)/2a
+            // uint256 x2 = (b + det) * (10**decimals[0]) / (2*a);
+            deltas[1] = int256((b + det) * (10**decimals[0]) / (2*a));
+        }
+    }
+
     /// @dev See {IGammaPool.getRebalanceDeltas}.
     function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
         (uint256 loanLiquidity, uint256 rateIndex, uint256 sqrtPx) = getLoan(tokenId);
