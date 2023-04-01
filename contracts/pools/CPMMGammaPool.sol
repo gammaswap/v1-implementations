@@ -118,6 +118,7 @@ contract CPMMGammaPool is GammaPool {
         }
 
         // remember that a is always negative
+        // root = (-b +/- det)/(2a)
         if(bIsNeg) { // b < 0
             // plus version
             // (b + det)/-2a = -(b + det)/2a
