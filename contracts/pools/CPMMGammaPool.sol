@@ -89,10 +89,13 @@ contract CPMMGammaPool is GammaPool {
         bool bIsNeg;
         uint256 b;
         {
-            uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
-            bIsNeg = reserves[0] < A_times_Phi;
-            uint256 leftVal0 = bIsNeg ? A_times_Phi - reserves[0] : reserves[0] - A_times_Phi;
-            uint256 leftVal = leftVal0 * strikePx / (10**decimals[0]);
+            uint256 leftVal;
+            {
+                uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
+                uint256 A_hat_times_Phi = side ? reserves[0] : reserves[0] * fee1 / fee2;
+                bIsNeg = A_hat_times_Phi < A_times_Phi;
+                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * strikePx / (10**decimals[0]);
+            }
             uint256 rightVal = side ? (tokensHeld[1] + reserves[1]) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserves[1];
             if(bIsNeg) { // leftVal < 0
                 bIsNeg = leftVal < rightVal;
@@ -112,7 +115,8 @@ contract CPMMGammaPool is GammaPool {
         {
             uint256 leftVal = tokensHeld[0] * strikePx / (10**decimals[0]);
             bool cIsNeg = leftVal < tokensHeld[1];
-            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves[0]; // B*A decimals
+            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves[0] * (side ? 1 : fee1 ); // B*A decimals
+            c = side ? c : c / fee2;
             uint256 ac4 = 4 * c * a / decimals[0];
             det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
         }
@@ -156,6 +160,12 @@ contract CPMMGammaPool is GammaPool {
             deltas[1] = int256((b + det) * (10**decimals[0]) / (2*a));
         }
     }
+
+    /// dev See {IGammaPool.getRebalanceDeltas}.
+    // how much to sell or buy token A to close position
+    /*function getRebalanceCloseDelta0(uint256 tokenId) external virtual view returns(int256[] memory deltas) {
+        //
+    }/**/
 
     /// @dev See {IGammaPool.getRebalanceDeltas}.
     function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
