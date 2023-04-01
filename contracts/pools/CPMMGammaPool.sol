@@ -76,7 +76,10 @@ contract CPMMGammaPool is GammaPool {
     }
 
     /// dev See {IGammaPool.getRebalanceDeltas2}.
-    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, uint8[] memory decimals) external virtual view returns(int256[] memory deltas) {
+    // default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
+    // side = 0 (false) => buy
+    // side = 1 (true)  => sell
+    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, uint8[] memory decimals, bool side) external virtual view returns(int256[] memory deltas) {
         uint256 fee1 = 997;
         uint256 fee2 = 1000;
 
@@ -86,18 +89,23 @@ contract CPMMGammaPool is GammaPool {
         bool bIsNeg;
         uint256 b;
         {
-            uint256 A_times_Phi = (tokensHeld[0] * fee1 / fee2);
+            uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
             bIsNeg = reserves[0] < A_times_Phi;
-            uint256 leftVal0 = (bIsNeg ? A_times_Phi - reserves[0] : reserves[0] - A_times_Phi);
+            uint256 leftVal0 = bIsNeg ? A_times_Phi - reserves[0] : reserves[0] - A_times_Phi;
             uint256 leftVal = leftVal0 * strikePx / (10**decimals[0]);
-            uint256 rightVal = (tokensHeld[1] + reserves[1]) * fee1 / fee2;
-            if(bIsNeg) {
-                b = rightVal - leftVal;
-                bIsNeg = rightVal > leftVal;
+            uint256 rightVal = side ? (tokensHeld[1] + reserves[1]) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserves[1];
+            if(bIsNeg) { // leftVal < 0
+                bIsNeg = leftVal < rightVal;
+                if(bIsNeg) {
+                    b = rightVal - leftVal;
+                } else {
+                    b = leftVal - rightVal;
+                }
             } else {
                 b = leftVal + rightVal;
                 bIsNeg = true;
             }
+            bIsNeg = side == false ? !bIsNeg : bIsNeg;
         }
 
         uint256 det;
