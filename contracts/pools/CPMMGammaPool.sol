@@ -162,10 +162,17 @@ contract CPMMGammaPool is GammaPool {
     }
 
     /// dev See {IGammaPool.getRebalanceDeltas}.
-    // how much to sell or buy token A to close position
-    /*function getRebalanceCloseDelta0(uint256 tokenId) external virtual view returns(int256[] memory deltas) {
-        //
-    }/**/
+    // how much collateral to trade to have enough to close a position
+    // reserve and collateral have to be of the same token
+    // if > 0 => have to buy token to have exact amount of token to close position
+    // if < 0 => have to sell token to have exact amount of token to close position
+    function getRebalanceCloseDelta(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity) external virtual pure returns(int256 delta) {
+        uint256 left = reserve * liquidity;
+        uint256 right = collateral * lastCFMMInvariant;
+        bool isNeg = right > left;
+        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity);
+        delta = isNeg ? -int256(_delta) : int256(_delta);
+    }
 
     /// @dev See {IGammaPool.getRebalanceDeltas}.
     function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
