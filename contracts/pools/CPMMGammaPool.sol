@@ -51,7 +51,7 @@ contract CPMMGammaPool is GammaPool {
     /// @return _liquidity - updated liquidity debt
     function updateLiquidityDebt(uint256 liquidity, uint256 rateIndex, uint256 cfmmInvariant) internal virtual view returns(uint256 _liquidity) {
         uint256 lastFeeIndex;
-        (, lastFeeIndex,) = IShortStrategy(shortStrategy)
+        (, lastFeeIndex,,) = IShortStrategy(shortStrategy)
         .getLastFees(s.BORROWED_INVARIANT, s.LP_TOKEN_BALANCE, cfmmInvariant, _getLatestCFMMTotalSupply(),
             s.lastCFMMInvariant, s.lastCFMMTotalSupply, s.LAST_BLOCK_NUMBER);
         uint256 accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
@@ -73,6 +73,104 @@ contract CPMMGammaPool is GammaPool {
         rateIndex = _loan.rateIndex;
         uint256 strikePx = tokensHeld[1] * (10 ** s.decimals[1]) / tokensHeld[0];
         sqrtPx = Math.sqrt(strikePx * (10 ** s.decimals[1]));
+    }
+
+    /// dev See {IGammaPool.getRebalanceDeltas2}.
+    // default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
+    // buying should always give us a positive number, if the response is a negative number, then the result is not good
+    // result should be
+    //  0 index = buying quantity
+    //  1 index = selling quantity
+    //  we can flip the reserves, tokensHeld, and strikePx to make a buy a sell or a sell a buy
+    // side = 0 (false) => buy
+    // side = 1 (true)  => sell
+    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, bool side) external virtual view returns(int256[] memory deltas) {
+        uint256 fee1 = 997;
+        uint256 fee2 = 1000;
+        uint256 factor = 10 ** s.decimals[0];
+        // must negate
+        uint256 a = fee1 * strikePx / fee2;
+        // must negate
+        bool bIsNeg;
+        uint256 b;
+        {
+            uint256 leftVal;
+            {
+                uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
+                uint256 A_hat_times_Phi = side ? reserves[0] : reserves[0] * fee1 / fee2;
+                bIsNeg = A_hat_times_Phi < A_times_Phi;
+                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * strikePx / factor;
+            }
+            uint256 rightVal = side ? (tokensHeld[1] + reserves[1]) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserves[1];
+            if(bIsNeg) { // leftVal < 0
+                bIsNeg = leftVal < rightVal;
+                if(bIsNeg) {
+                    b = rightVal - leftVal;
+                } else {
+                    b = leftVal - rightVal;
+                }
+            } else {
+                b = leftVal + rightVal;
+                bIsNeg = true;
+            }
+            bIsNeg = side == false ? !bIsNeg : bIsNeg;
+        }
+
+        uint256 det;
+        {
+            uint256 leftVal = tokensHeld[0] * strikePx / factor;
+            bool cIsNeg = leftVal < tokensHeld[1];
+            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves[0] * (side ? 1 : fee1 ); // B*A decimals
+            c = side ? c : c / fee2;
+            uint256 ac4 = 4 * c * a / factor;
+            det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
+        }
+
+        // remember that a is always negative
+        // root = (-b +/- det)/(2a)
+        if(bIsNeg) { // b < 0
+            // plus version
+            // (b + det)/-2a = -(b + det)/2a
+            // this is always negative
+            deltas[0] = -int256((b + det) * factor / (2*a));
+
+            // minus version
+            // (b - det)/-2a = (det-b)/2a
+            if(det > b) {
+                // x2 is positive
+                deltas[1] = int256((det - b) * factor / (2*a));
+            } else {
+                // x2 is negative
+                deltas[1]= -int256((b - det) * factor / (2*a));
+            }
+        } else { // b > 0
+            // plus version
+            // (-b + det)/-2a = (b - det)/2a
+            if(b > det) {
+                //  x1 is positive
+                deltas[0] = int256((b - det) * factor / (2*a));
+            } else {
+                //  x1 is negative
+                deltas[0] = -int256((det - b) * factor / (2*a));
+            }
+
+            // minus version
+            // (-b - det)/-2a = (b+det)/2a
+            deltas[1] = int256((b + det) * factor / (2*a));
+        }
+    }
+
+    /// dev See {IGammaPool.getRebalanceDeltas}.
+    // how much collateral to trade to have enough to close a position
+    // reserve and collateral have to be of the same token
+    // if > 0 => have to buy token to have exact amount of token to close position
+    // if < 0 => have to sell token to have exact amount of token to close position
+    function getRebalanceCloseDelta(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity) external virtual pure returns(int256 delta) {
+        uint256 left = reserve * liquidity;
+        uint256 right = collateral * lastCFMMInvariant;
+        bool isNeg = right > left;
+        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity);
+        delta = isNeg ? -int256(_delta) : int256(_delta);
     }
 
     /// @dev See {IGammaPool.getRebalanceDeltas}.

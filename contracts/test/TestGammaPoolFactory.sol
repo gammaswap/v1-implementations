@@ -13,7 +13,7 @@ contract TestGammaPoolFactory is IGammaPoolFactory {
     uint24 public override origMax = 10000; // Default value is 10,000 basis points or 10%
     address public override feeTo;
     address public override feeToSetter;
-    address public override owner;
+    address public owner;
 
     constructor(address _feeToSetter, uint16 _fee){
         feeToSetter = _feeToSetter;
