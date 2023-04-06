@@ -120,8 +120,8 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
         updateLoan(s.loans[tokenId]);
     }
 
-    function calcBorrowRate(uint256, uint256) internal override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256) {
-        return 1e19;
+    function calcBorrowRate(uint256, uint256) internal override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
+        return (1e19,1e19);
     }
 
     function canLiquidate(uint256 tokenId) external virtual view returns(bool) {

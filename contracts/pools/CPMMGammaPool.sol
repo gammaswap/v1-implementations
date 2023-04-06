@@ -51,7 +51,7 @@ contract CPMMGammaPool is GammaPool {
     /// @return _liquidity - updated liquidity debt
     function updateLiquidityDebt(uint256 liquidity, uint256 rateIndex, uint256 cfmmInvariant) internal virtual view returns(uint256 _liquidity) {
         uint256 lastFeeIndex;
-        (, lastFeeIndex,) = IShortStrategy(shortStrategy)
+        (, lastFeeIndex,,) = IShortStrategy(shortStrategy)
         .getLastFees(s.BORROWED_INVARIANT, s.LP_TOKEN_BALANCE, cfmmInvariant, _getLatestCFMMTotalSupply(),
             s.lastCFMMInvariant, s.lastCFMMTotalSupply, s.LAST_BLOCK_NUMBER);
         uint256 accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
