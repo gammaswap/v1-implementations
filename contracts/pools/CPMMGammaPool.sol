@@ -77,12 +77,17 @@ contract CPMMGammaPool is GammaPool {
 
     /// dev See {IGammaPool.getRebalanceDeltas2}.
     // default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
+    // buying should always give us a positive number, if the response is a negative number, then the result is not good
+    // result should be
+    //  0 index = buying quantity
+    //  1 index = selling quantity
+    //  we can flip the reserves, tokensHeld, and strikePx to make a buy a sell or a sell a buy
     // side = 0 (false) => buy
     // side = 1 (true)  => sell
-    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, uint8[] memory decimals, bool side) external virtual view returns(int256[] memory deltas) {
+    function getRebalanceDeltas2(uint128 strikePx, uint128[] memory reserves, uint128[] memory tokensHeld, bool side) external virtual view returns(int256[] memory deltas) {
         uint256 fee1 = 997;
         uint256 fee2 = 1000;
-
+        uint256 factor = 10 ** s.decimals[0];
         // must negate
         uint256 a = fee1 * strikePx / fee2;
         // must negate
@@ -94,7 +99,7 @@ contract CPMMGammaPool is GammaPool {
                 uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
                 uint256 A_hat_times_Phi = side ? reserves[0] : reserves[0] * fee1 / fee2;
                 bIsNeg = A_hat_times_Phi < A_times_Phi;
-                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * strikePx / (10**decimals[0]);
+                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * strikePx / factor;
             }
             uint256 rightVal = side ? (tokensHeld[1] + reserves[1]) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserves[1];
             if(bIsNeg) { // leftVal < 0
@@ -113,11 +118,11 @@ contract CPMMGammaPool is GammaPool {
 
         uint256 det;
         {
-            uint256 leftVal = tokensHeld[0] * strikePx / (10**decimals[0]);
+            uint256 leftVal = tokensHeld[0] * strikePx / factor;
             bool cIsNeg = leftVal < tokensHeld[1];
             uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves[0] * (side ? 1 : fee1 ); // B*A decimals
             c = side ? c : c / fee2;
-            uint256 ac4 = 4 * c * a / decimals[0];
+            uint256 ac4 = 4 * c * a / factor;
             det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
         }
 
@@ -127,37 +132,31 @@ contract CPMMGammaPool is GammaPool {
             // plus version
             // (b + det)/-2a = -(b + det)/2a
             // this is always negative
-            // uint256 x1 = (b + det) * (10**decimals[0]) / (2*a);
-            deltas[0] = -int256((b + det) * (10**decimals[0]) / (2*a));
+            deltas[0] = -int256((b + det) * factor / (2*a));
 
             // minus version
             // (b - det)/-2a = (det-b)/2a
             if(det > b) {
                 // x2 is positive
-                // uint256 x2 = (det - b) * (10**decimals[0]) / (2*a);
-                deltas[1] = int256((det - b) * (10**decimals[0]) / (2*a));
+                deltas[1] = int256((det - b) * factor / (2*a));
             } else {
                 // x2 is negative
-                // uint256 x2 = (b - det) * (10**decimals[0]) / (2*a);
-                deltas[1]= -int256((b - det) * (10**decimals[0]) / (2*a));
+                deltas[1]= -int256((b - det) * factor / (2*a));
             }
         } else { // b > 0
             // plus version
             // (-b + det)/-2a = (b - det)/2a
             if(b > det) {
                 //  x1 is positive
-                // uint256 x1 = (b - det) * (10**decimals[0]) / (2*a);
-                deltas[0] = int256((b - det) * (10**decimals[0]) / (2*a));
+                deltas[0] = int256((b - det) * factor / (2*a));
             } else {
                 //  x1 is negative
-                // uint256 x1 = (det - b) * (10**decimals[0]) / (2*a);
-                deltas[0] = -int256((det - b) * (10**decimals[0]) / (2*a));
+                deltas[0] = -int256((det - b) * factor / (2*a));
             }
 
             // minus version
             // (-b - det)/-2a = (b+det)/2a
-            // uint256 x2 = (b + det) * (10**decimals[0]) / (2*a);
-            deltas[1] = int256((b + det) * (10**decimals[0]) / (2*a));
+            deltas[1] = int256((b + det) * factor / (2*a));
         }
     }
 
