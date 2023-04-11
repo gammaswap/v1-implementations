@@ -65,12 +65,6 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         return IWeightedPool(cfmm).getSwapFeePercentage();
     }
 
-    /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.
-    function getPoolReserves() internal virtual view returns(uint256[] memory poolReserves) {
-        poolReserves = new uint256[](2);
-        (, poolReserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
-    }
-
     /// @dev Returns the normalized weights of a given Balancer pool.
     function getWeights() internal virtual view returns(uint256[] memory) {
         uint256[] memory weights = new uint256[](2);
@@ -90,12 +84,9 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     }
 
     /// @dev Returns the quantities of reserve tokens held by the GammaPool contract.
-    function getStrategyReserves() internal virtual view returns(uint256[] memory reserves) {
-        address[] memory tokens = s.tokens;
-
-        reserves = new uint256[](2);
-        reserves[0] = GammaSwapLibrary.balanceOf(IERC20(tokens[0]), address(this));
-        reserves[1] = GammaSwapLibrary.balanceOf(IERC20(tokens[1]), address(this));
+    function getStrategyReserves() internal virtual view returns(uint256 reserves0, uint256 reserves1) {
+        (reserves0, reserves1) = (GammaSwapLibrary.balanceOf(IERC20(s.tokens[0]), address(this)),
+            GammaSwapLibrary.balanceOf(IERC20(s.tokens[1]), address(this)));
     }
 
     /// @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
@@ -112,7 +103,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev See {BaseStrategy-updateReserves}.
     function updateReserves(address) internal virtual override {
-        uint256[] memory reserves = getPoolReserves();
+        (,uint256[] memory reserves, ) = IVault(getVault()).getPoolTokens(getPoolId());
         s.CFMM_RESERVES[0] = uint128(reserves[0]);
         s.CFMM_RESERVES[1] = uint128(reserves[1]);
     }
@@ -120,11 +111,6 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @dev See {BaseStrategy-depositToCFMM}.
     function depositToCFMM(address _cfmm, address to, uint256[] memory amounts) internal virtual override returns(uint256) {
         // We need to encode userData for the joinPool call
-        bytes memory userDataEncoded = abi.encode(1, amounts, 0);
-
-        address vaultId = getVault();
-        bytes32 poolId = getPoolId();
-
         address[] memory tokens = s.tokens;
 
         // Adding approval for the Vault to spend the tokens
@@ -134,14 +120,13 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         // Log the LP token balance of the GammaPool
         uint256 initialBalance = GammaSwapLibrary.balanceOf(IERC20(_cfmm), address(this));
 
-        IVault(vaultId).joinPool(poolId,
+        IVault(getVault()).joinPool(getPoolId(),
             address(this), // The GammaPool is sending the reserve tokens
             to,
-            IVault.JoinPoolRequest(
-                {
+            IVault.JoinPoolRequest({
                 assets: tokens,
                 maxAmountsIn: amounts,
-                userData: userDataEncoded,
+                userData: abi.encode(1, amounts, 0),
                 fromInternalBalance: false
                 })
             );
@@ -152,32 +137,28 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
     function withdrawFromCFMM(address, address to, uint256 amount) internal virtual override returns(uint256[] memory amounts) {
-        // We need to encode userData for the exitPool call
-        bytes memory userDataEncoded = abi.encode(1, amount);
-
         // Log the initial reserves in the GammaPool
-        uint256[] memory initialReserves = getStrategyReserves();
-
-        uint256[] memory minAmountsOut = new uint[](2);
+        (uint256 initialReserves0, uint256 initialReserves1) = getStrategyReserves();
 
         IVault(getVault()).exitPool(getPoolId(),
             address(this), // The GammaPool is sending the Balancer LP tokens
             payable(to), // Recipient of pool reserve tokens
-            IVault.ExitPoolRequest({assets: s.tokens, minAmountsOut: minAmountsOut, userData: userDataEncoded, toInternalBalance: false})
+            IVault.ExitPoolRequest({
+                assets: s.tokens,
+                minAmountsOut: new uint256[](2),
+                userData: abi.encode(1, amount), // We need to encode userData for the exitPool call
+                toInternalBalance: false})
             );
 
         // Log the final reserves in the GammaPool
-        uint256[] memory finalReserves = getStrategyReserves();
-
-        amounts = new uint256[](2);
+        (uint256 finalReserves0, uint256 finalReserves1) = getStrategyReserves();
 
         // Note: We are logging differences in reserves of the GammaPool (instead of the Vault) to account for transfer tax on the underlying tokens
 
         // The difference between the initial and final reserves is the amount of reserve tokens withdrawn
-        amounts[0] = finalReserves[0] - initialReserves[0];
-        amounts[1] = finalReserves[1] - initialReserves[1];
-
-        return amounts;
+        amounts = new uint256[](2);
+        amounts[0] = finalReserves0 - initialReserves0;
+        amounts[1] = finalReserves1 - initialReserves1;
     }
 
     /// @dev See {BaseStrategy-calcInvariant}.

@@ -63,47 +63,38 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
     /// @dev See {BaseLongStrategy.swapTokens}.
     function swapTokens(LibStorage.Loan storage, uint256[] memory outAmts, uint256[] memory inAmts) internal virtual override {
-        address assetIn;
-        address assetOut;
-        uint256 amountIn;
-        uint256 amountOut;
-        address[] memory tokens = s.tokens;
+        address assetIn = s.tokens[1];
+        address assetOut = s.tokens[0];
+        uint256 amountIn = outAmts[1];
+        uint256 amountOut = inAmts[0];
+        uint256 amountIn0 = outAmts[0];
 
-        // Parse the function inputs to determine which direction and outputs are expected
-        if (outAmts[0] == 0) {
-            assetIn = tokens[1];
-            assetOut = tokens[0];
-            amountIn = outAmts[1];
-            amountOut = inAmts[0];
-        } else if (outAmts[1] == 0) {
-            assetIn = tokens[0];
-            assetOut = tokens[1];
-            amountIn = outAmts[0];
-            amountOut = inAmts[1];
-        } else {
+        if(amountIn != 0 && amountIn0 != 0) {
             revert BadOutAmts();
         }
 
-        IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
-            poolId: getPoolId(),
-            kind: uint8(IVault.SwapKind.GIVEN_IN),
-            assetIn: assetIn,
-            assetOut: assetOut,
-            amount: amountIn,
-            userData: bytes("0x")
-        });
-
-        IVault.FundManagement memory fundManagement = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: address(this),
-            toInternalBalance: false
-        });
+        if(amountIn == 0) {
+            (assetIn, assetOut, amountIn, amountOut) = (assetOut, assetIn, amountIn0, inAmts[1]);
+        }
 
         // Adding approval for the Vault to spend the assetIn tokens
         addVaultApproval(assetIn, amountIn);
 
-        IVault(getVault()).swap(singleSwap, fundManagement, 0, block.timestamp);
+        IVault(getVault()).swap(
+            IVault.SingleSwap({
+                poolId: getPoolId(),
+                kind: uint8(IVault.SwapKind.GIVEN_IN),
+                assetIn: assetIn,
+                assetOut: assetOut,
+                amount: amountIn,
+                userData: bytes("0x")
+            }),
+            IVault.FundManagement({
+                sender: address(this),
+                fromInternalBalance: false,
+                recipient: address(this),
+                toInternalBalance: false
+            }), 0, block.timestamp);
     }
 
     /// @dev Check that there's enough collateral (`amount`) in the pool and the loan. If not revert
