@@ -53,8 +53,10 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         (,_reserves,) = IVault(getVault()).getPoolTokens(getPoolId());
     }
 
-    function testGetWeights() public virtual view returns(uint256[] memory) {
-        return getWeights();
+    function testGetWeights() public virtual view returns(uint256[] memory _weights) {
+        _weights = new uint256[](2);
+        _weights[0] = weight0;
+        _weights[1] = weight1;
     }
 
     function testGetScalingFactors() public virtual view returns(uint256[] memory) {

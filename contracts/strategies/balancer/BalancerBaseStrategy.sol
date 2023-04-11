@@ -17,8 +17,10 @@ import "../../libraries/weighted/InputHelpers.sol";
 abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDerivativeRateModel {
 
     using LibStorage for LibStorage.Storage;
+    using FixedPoint for uint256;
 
     error MaxTotalApy();
+    error BAL311();
 
     /// @dev Number of blocks network will issue within a ear. Currently expected
     uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
@@ -29,6 +31,9 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @dev Weight of token0 in the Balancer pool.
     uint256 immutable public weight0;
 
+    /// @dev Weight of token1 in the Balancer pool.
+    uint256 immutable public weight1;
+
     /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
     constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
         if(_maxTotalApy < _maxApy) { // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
@@ -37,6 +42,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
         weight0 = _weight0;
+        weight1 = 1e18 - weight0;
     }
 
     /// @dev See {BaseStrategy-blocksPerYear}.
@@ -63,16 +69,6 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @param cfmm The contract address of the Balancer weighted pool.
     function getSwapFeePercentage(address cfmm) internal virtual view returns(uint256) {
         return IWeightedPool(cfmm).getSwapFeePercentage();
-    }
-
-    /// @dev Returns the normalized weights of a given Balancer pool.
-    function getWeights() internal virtual view returns(uint256[] memory) {
-        uint256[] memory weights = new uint256[](2);
-        weights[0] = weight0;
-        unchecked {
-            weights[1] = 1e18 - weight0;
-        }
-        return weights;
     }
 
     /// @dev Returns the scaling factors of a given Balancer pool based on stored values.
@@ -170,7 +166,10 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @dev Calculated invariant from amounts scaled to 18 decimals
     /// @param amounts - reserve amounts used to calculate invariant
     /// @return invariant - calculated invariant for Balancer AMM
-    function calcScaledInvariant(uint256[] memory amounts) internal virtual view returns(uint256) {
-        return WeightedMath._calculateInvariant(getWeights(), amounts);
+    function calcScaledInvariant(uint256[] memory amounts) internal virtual view returns(uint256 invariant) {
+        invariant = FixedPoint.ONE.mulDown(amounts[0].powDown(weight0)).mulDown(amounts[1].powDown(weight1));
+        if(invariant == 0) {
+            revert BAL311();
+        }
     }
 }

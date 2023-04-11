@@ -16,9 +16,8 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
 
     /// @dev See {BaseLongStrategy.getCurrentCFMMPrice}.
     function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
-        uint256[] memory _weights = getWeights();
         uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(s.CFMM_RESERVES), getScalingFactors());
-        uint256 numerator = scaledReserves[1] * _weights[1] / _weights[0];
+        uint256 numerator = scaledReserves[1] * weight1 / weight0;
         return numerator * 1e18 / scaledReserves[0];
     }
 }

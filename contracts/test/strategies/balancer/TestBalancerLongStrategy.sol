@@ -51,8 +51,10 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         (,_reserves,) = IVault(getVault()).getPoolTokens(getPoolId());
     }
 
-    function testGetWeights() public virtual view returns(uint256[] memory) {
-        return getWeights();
+    function testGetWeights() public virtual view returns(uint256[] memory _weights) {
+        _weights = new uint256[](2);
+        _weights[0] = weight0;
+        _weights[1] = weight1;
     }
 
     function testGetTokens(address) public virtual view returns(address[] memory) {
@@ -103,7 +105,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountIn(amountOut, reserves, weights, scalingFactors, 0, 1);
+        return getAmountIn(amountOut, reserves, weightOut, weightIn, scalingFactors, 0, 1);
     }
 
     // Calculating how much output required for a given input amount
@@ -117,7 +119,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountOut(amountIn, reserves, weights, scalingFactors, 0, 1);
+        return getAmountOut(amountIn, reserves, weightOut, weightIn, scalingFactors, 0, 1);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
