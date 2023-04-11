@@ -5,6 +5,7 @@ import "@gammaswap/v1-core/contracts/strategies/LiquidationStrategy.sol";
 import "./BalancerBaseLongStrategy.sol";
 
 /// @title Liquidation Strategy concrete implementation contract for Balancer Weighted Pools
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by LiquidationStrategy and defines internal functions specific to Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer
 contract BalancerLiquidationStrategy is BalancerBaseLongStrategy, LiquidationStrategy {

@@ -6,6 +6,7 @@ import "../../interfaces/external/balancer/IVault.sol";
 import "./BalancerBaseStrategy.sol";
 
 /// @title Short Strategy concrete implementation contract for Balancer Weighted Pools
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by ShortStrategy and defines internal functions specific to Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer
 contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {

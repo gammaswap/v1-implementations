@@ -12,6 +12,7 @@ import "../../libraries/weighted/WeightedMath.sol";
 import "../../libraries/weighted/InputHelpers.sol";
 
 /// @title Base Strategy abstract contract for Balancer Weighted Pools
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Common functions used by all concrete strategy implementations for Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer and inherits LogDerivativeRateModel
 abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDerivativeRateModel {
