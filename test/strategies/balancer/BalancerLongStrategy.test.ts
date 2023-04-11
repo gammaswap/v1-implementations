@@ -452,7 +452,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
@@ -464,7 +465,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
@@ -476,7 +478,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
@@ -488,33 +491,10 @@ describe("BalancerLongStrategy", function () {
             1000000000,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
-
-        await expect(
-          strategy.testGetAmountIn(
-            40000,
-            1000000000,
-            WEIGHT0,
-            1000000000,
-            WEIGHT0,
-            SCALINGFACTOR,
-            SCALINGFACTOR
-          )
-        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
-
-        await expect(
-          strategy.testGetAmountIn(
-            40000,
-            1000000000,
-            WEIGHT1,
-            1000000000,
-            WEIGHT1,
-            SCALINGFACTOR,
-            SCALINGFACTOR
-          )
-        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Error GetAmountOut", async function () {
@@ -532,7 +512,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            true
           )
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
@@ -544,7 +525,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
@@ -556,7 +538,8 @@ describe("BalancerLongStrategy", function () {
             0,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
@@ -568,33 +551,10 @@ describe("BalancerLongStrategy", function () {
             1000000000,
             WEIGHT1,
             SCALINGFACTOR,
-            SCALINGFACTOR
+            SCALINGFACTOR,
+            false
           )
         ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
-
-        await expect(
-          strategy.testGetAmountOut(
-            40000,
-            1000000000,
-            WEIGHT0,
-            1000000000,
-            WEIGHT0,
-            SCALINGFACTOR,
-            SCALINGFACTOR
-          )
-        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
-
-        await expect(
-          strategy.testGetAmountOut(
-            40000,
-            1000000000,
-            WEIGHT1,
-            1000000000,
-            WEIGHT1,
-            SCALINGFACTOR,
-            SCALINGFACTOR
-          )
-        ).to.be.revertedWith("BAL308"); // Pool weights don't add to 1
       });
 
       it("Calculate GetAmountIn", async function () {
@@ -615,7 +575,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn,
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer1 = BigNumber.from("25357220663536529408");
@@ -629,7 +590,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(3),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer2 = BigNumber.from("80416298597382832128");
@@ -643,7 +605,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(3),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer3 = BigNumber.from("19876520058160660480");
@@ -657,7 +620,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(12),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer4 = BigNumber.from("121292623593009332224");
@@ -671,7 +635,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(3),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer5 = BigNumber.from("28205068727569096704");
@@ -706,7 +671,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn,
           WEIGHT1,
           SCALINGFACTOR1,
-          SCALINGFACTOR0
+          SCALINGFACTOR0,
+          false
         );
 
         let expectedAnswer1 = BigNumber.from("25357220663536529408");
@@ -738,7 +704,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn,
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer1 = BigNumber.from("287429996912549888000");
@@ -752,7 +719,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(3),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer2 = BigNumber.from("219815289395209764864");
@@ -766,7 +734,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(3),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer3 = BigNumber.from("1538707025766468550656");
@@ -780,7 +749,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(19),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer4 = BigNumber.from("313884305967069986816");
@@ -794,7 +764,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn.mul(15),
           WEIGHT1,
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const expectedAnswer5 = BigNumber.from("112060590249046573056");
@@ -828,7 +799,8 @@ describe("BalancerLongStrategy", function () {
           reserveIn,
           weightIn,
           SCALINGFACTOR1,
-          SCALINGFACTOR0
+          SCALINGFACTOR0,
+          false
         );
 
         let expectedAnswer1 = BigNumber.from("287429996912549888000");
@@ -897,7 +869,8 @@ describe("BalancerLongStrategy", function () {
           reserves1,
           WEIGHTS[1],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         expectEqualWithError(evt0.args.inAmts[0], delta);
@@ -918,7 +891,8 @@ describe("BalancerLongStrategy", function () {
           reserves0,
           WEIGHTS[0],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          true
         );
 
         expect(evt1.args.inAmts[0]).to.equal(0);
@@ -956,7 +930,8 @@ describe("BalancerLongStrategy", function () {
           reserves0,
           WEIGHTS[0],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          true
         );
 
         expect(evt0.args.inAmts[0]).to.equal(0);
@@ -977,7 +952,8 @@ describe("BalancerLongStrategy", function () {
           reserves1,
           WEIGHTS[1],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         expectEqualWithError(evt1.args.inAmts[0], amtIn1);
@@ -1032,7 +1008,8 @@ describe("BalancerLongStrategy", function () {
           reserves1,
           WEIGHTS[1],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         const strategyReserves0 = await getStrategyReserves(strategy, [
@@ -1088,7 +1065,8 @@ describe("BalancerLongStrategy", function () {
           reserves0.sub(delta),
           WEIGHTS[0],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          true
         );
 
         // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
@@ -1144,7 +1122,8 @@ describe("BalancerLongStrategy", function () {
           reserves0,
           WEIGHTS[0],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          true
         );
 
         const strategyReserves = await getStrategyReserves(strategy, [
@@ -1207,7 +1186,8 @@ describe("BalancerLongStrategy", function () {
           reserves0,
           WEIGHTS[0],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          true
         );
 
         // delta tokens are leaving the GammaPool in slot 0 and expectedAmountOut0 tokens are entering the GammaPool in slot 1
@@ -1288,7 +1268,8 @@ describe("BalancerLongStrategy", function () {
           reserves1,
           WEIGHTS[1],
           SCALINGFACTOR,
-          SCALINGFACTOR
+          SCALINGFACTOR,
+          false
         );
 
         // delta tokens are leaving the GammaPool in slot 1 and expectedAmountOut0 tokens are entering the GammaPool in slot 0

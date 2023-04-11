@@ -40,6 +40,9 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Stores weights passed to constructor as immutable variable
     uint256 immutable public weight0;
 
+    /// @dev Stores weights passed to constructor as immutable variable
+    uint256 immutable public weight1;
+
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
@@ -49,6 +52,7 @@ contract BalancerGammaPool is GammaPool {
         
         poolFactory = _poolFactory;
         weight0 = _weight0;
+        weight1 = 1e18 - weight0;
     }
 
     /// @dev Get poolId of Balancer CFMM in Vault
@@ -62,31 +66,17 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev Get factors to scale tokens according to their decimals. Used to in Balancer invariant calculation
-    function getScalingFactors() public view virtual returns(uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
-
-        scalingFactors[0] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
-        scalingFactors[1] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
-
-        return scalingFactors;
-    }
-
-    /// @dev Returns the normalized weights of a given Balancer pool.
-    function getWeights() internal virtual view returns(uint256[] memory) {
-        uint256[] memory weights = new uint256[](2);
-        weights[0] = weight0;
-        unchecked {
-            weights[1] = 1e18 - weight0;
-        }
-        return weights;
+    function getScalingFactors() public view virtual returns(uint256 factor0, uint256 factor1) {
+        factor0 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
+        factor1 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
     }
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
-        uint256[] memory _weights = getWeights();
-        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(_getLatestCFMMReserves()), getScalingFactors());
-        uint256 numerator = scaledReserves[1] * _weights[1] / _weights[0];
-        return numerator * 1e18 / scaledReserves[0];
+        (uint256 factor0, uint256 factor1) = getScalingFactors();
+        uint128[] memory reserves = _getLatestCFMMReserves();
+        uint256 numerator = reserves[1] * factor1 * weight1 / weight0;
+        return numerator * 1e18 / (reserves[0] * factor0);
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
@@ -97,7 +87,9 @@ contract BalancerGammaPool is GammaPool {
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMInvariant}
     function _getLatestCFMMInvariant() internal virtual override view returns(uint256 lastCFMMInvariant) {
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: getScalingFactors()}));
+        uint256[] memory factors = new uint256[](2);
+        (factors[0], factors[1]) = getScalingFactors();
+        bytes memory data = abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: factors}));
         return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(data);
     }
 
@@ -178,7 +170,7 @@ contract BalancerGammaPool is GammaPool {
             revert IncorrectTokens();
         }
 
-        if(_weights[0] != balancerPoolData.cfmmWeight0) {
+        if(_weights[0] != balancerPoolData.cfmmWeight0 || _weights[0] != weight0) {
             revert IncorrectWeights();
         }
     }

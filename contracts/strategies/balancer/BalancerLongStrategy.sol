@@ -5,6 +5,7 @@ import "@gammaswap/v1-core/contracts/strategies/LongStrategy.sol";
 import "./BalancerBaseLongStrategy.sol";
 
 /// @title Long Strategy concrete implementation contract for Balancer Weighted Pools
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by LongStrategy and defines internal functions specific to Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer
 contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
@@ -16,9 +17,8 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
 
     /// @dev See {BaseLongStrategy.getCurrentCFMMPrice}.
     function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
-        uint256[] memory _weights = getWeights();
-        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(s.CFMM_RESERVES), getScalingFactors());
-        uint256 numerator = scaledReserves[1] * _weights[1] / _weights[0];
-        return numerator * 1e18 / scaledReserves[0];
+        (uint256 factor0, uint256 factor1) = getScalingFactors();
+        uint256 numerator = s.CFMM_RESERVES[1] * factor1 * weight1 / weight0;
+        return numerator * 1e18 / (s.CFMM_RESERVES[0] * factor0);
     }
 }

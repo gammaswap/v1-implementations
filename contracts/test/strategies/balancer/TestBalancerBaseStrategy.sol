@@ -49,16 +49,19 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         return getSwapFeePercentage(cfmm);
     }
 
-    function testGetPoolReserves(address) public view returns(uint256[] memory) {
-        return getPoolReserves();
+    function testGetPoolReserves(address) public view returns(uint256[] memory _reserves) {
+        (,_reserves,) = IVault(getVault()).getPoolTokens(getPoolId());
     }
 
-    function testGetWeights() public virtual view returns(uint256[] memory) {
-        return getWeights();
+    function testGetWeights() public virtual view returns(uint256[] memory _weights) {
+        _weights = new uint256[](2);
+        _weights[0] = weight0;
+        _weights[1] = weight1;
     }
 
-    function testGetScalingFactors() public virtual view returns(uint256[] memory) {
-        return getScalingFactors();
+    function testGetScalingFactors() public virtual view returns(uint256[] memory factors) {
+        factors = new uint256[](2);
+        (factors[0], factors[1]) = getScalingFactors();
     }
 
     function testGetTokens(address) public virtual view returns(address[] memory) {
