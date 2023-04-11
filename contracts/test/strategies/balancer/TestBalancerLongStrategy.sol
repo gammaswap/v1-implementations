@@ -105,7 +105,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountIn(amountOut, reserves, weightOut, weightIn, scalingFactors, 0, 1);
+        return getAmountIn(amountOut, uint128(reserveOut), uint128(reserveIn), weightOut, weightIn, scalingFactorIn, scalingFactorOut);
     }
 
     // Calculating how much output required for a given input amount
@@ -119,7 +119,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountOut(amountIn, reserves, weightOut, weightIn, scalingFactors, 0, 1);
+        return getAmountOut(amountIn, uint128(reserveOut), uint128(reserveIn), weightOut, weightIn, scalingFactorIn, scalingFactorOut);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {

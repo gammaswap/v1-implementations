@@ -59,8 +59,9 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
         _weights[1] = weight1;
     }
 
-    function testGetScalingFactors() public virtual view returns(uint256[] memory) {
-        return getScalingFactors();
+    function testGetScalingFactors() public virtual view returns(uint256[] memory factors) {
+        factors = new uint256[](2);
+        (factors[0], factors[1]) = getScalingFactors();
     }
 
     function testGetTokens(address) public virtual view returns(address[] memory) {

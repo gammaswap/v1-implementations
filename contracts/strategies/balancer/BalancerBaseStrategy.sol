@@ -72,11 +72,9 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     }
 
     /// @dev Returns the scaling factors of a given Balancer pool based on stored values.
-    function getScalingFactors() internal virtual view returns(uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
-        scalingFactors[0] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR0));
-        scalingFactors[1] = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR1));
-        return scalingFactors;
+    function getScalingFactors() internal virtual view returns(uint256 factor0, uint256 factor1) {
+        factor0 = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR0));
+        factor1 = s.getUint256(uint256(StorageIndexes.SCALING_FACTOR1));
     }
 
     /// @dev Returns the quantities of reserve tokens held by the GammaPool contract.
@@ -159,7 +157,10 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev See {BaseStrategy-calcInvariant}.
     function calcInvariant(address, uint128[] memory amounts) internal virtual override view returns(uint256) {
-        uint256[] memory scaledReserves = InputHelpers.upscaleArray(InputHelpers.castToUint256Array(amounts), getScalingFactors());
+        (uint256 factor0, uint256 factor1) = getScalingFactors();
+        uint256[] memory scaledReserves = new uint256[](2);
+        scaledReserves[0] = amounts[0] * factor0;
+        scaledReserves[1] = amounts[1] * factor1;
         return calcScaledInvariant(scaledReserves);
     }
 
