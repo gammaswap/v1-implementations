@@ -44,16 +44,33 @@ describe("BalancerGammaPool", function () {
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
+    const fixedPointFactory = await ethers.getContractFactory("FixedPoint");
+    const fixedPoint = await fixedPointFactory.deploy();
+
     TestERC20 = await ethers.getContractFactory("TestERC20");
     BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool");
 
     // Fetch contract factories for strategies
-    shortStrategy = await ethers.getContractFactory("BalancerShortStrategy");
+    shortStrategy = await ethers.getContractFactory("BalancerShortStrategy", {
+      libraries: {
+        FixedPoint: fixedPoint.address,
+      },
+    });
     longStrategy = await ethers.getContractFactory(
-      "BalancerExternalLongStrategy"
+      "BalancerExternalLongStrategy",
+      {
+        libraries: {
+          FixedPoint: fixedPoint.address,
+        },
+      }
     );
     liquidationStrategy = await ethers.getContractFactory(
-      "BalancerExternalLiquidationStrategy"
+      "BalancerExternalLiquidationStrategy",
+      {
+        libraries: {
+          FixedPoint: fixedPoint.address,
+        },
+      }
     );
 
     [owner] = await ethers.getSigners();
