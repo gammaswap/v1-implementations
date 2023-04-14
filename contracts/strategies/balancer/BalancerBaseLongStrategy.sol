@@ -162,22 +162,22 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
                 inAmt0 = uint256(deltas0);
                 inAmt1 = 0;
                 outAmt0 = 0;
-                outAmt1 = getAmountIn(uint256(deltas0), reserves0, reserves1, weight0, weight1, factor0, factor1, false);
+                outAmt1 = getAmountIn(uint256(deltas0), reserves0, reserves1, factor0, factor1, false);
             } else {
                 inAmt0 = 0;
                 inAmt1 = uint256(deltas1);
-                outAmt0 = getAmountIn(uint256(deltas1), reserves1, reserves0, weight1, weight0, factor1, factor0, true);
+                outAmt0 = getAmountIn(uint256(deltas1), reserves1, reserves0, factor1, factor0, true);
                 outAmt1 = 0;
             }
         } else {
             // If the delta is negative, then we are selling a token to the Balancer pool
             if (deltas0 < 0) {
                 inAmt0 = 0;
-                inAmt1 = getAmountOut(uint256(-deltas0), reserves1, reserves0, weight1, weight0, factor1, factor0, true);
+                inAmt1 = getAmountOut(uint256(-deltas0), reserves1, reserves0, factor1, factor0, true);
                 outAmt0 = uint256(-deltas0);
                 outAmt1 = 0;
             } else {
-                inAmt0 = getAmountOut(uint256(-deltas1), reserves0, reserves1, weight0, weight1, factor0, factor1, false);
+                inAmt0 = getAmountOut(uint256(-deltas1), reserves0, reserves1, factor0, factor1, false);
                 inAmt1 = 0;
                 outAmt0 = 0;
                 outAmt1 = uint256(-deltas1);
@@ -189,13 +189,12 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param amountOut - The amount of token removed from the pool during the swap.
     /// @param reserves0 - The pool reserves for the token exiting the pool on the swap.
     /// @param reserves1 - The pool reserves for the token exiting the pool on the swap.
-    /// @param _weight0 - The normalised weight of the token exiting the pool on the swap.
-    /// @param _weight1 - The normalised weight of the token exiting the pool on the swap.
     /// @param factor0 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param factor1 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param flipWeights - flip weights
     /// @return amountIn - The normalised weight of the token entering the pool on the swap.
-    function getAmountIn(uint256 amountOut, uint128 reserves0, uint128 reserves1, uint256 _weight0, uint256 _weight1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+    function getAmountIn(uint256 amountOut, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+        (uint256 _weight0, uint256 _weight1) = flipWeights ? (weight1, weight0) : (weight0, weight1);
         // Upscale the input data to account for decimals
         uint256 rescaledReserveOut = reserves0 * factor0;
         uint256 rescaledReserveIn = reserves1 * factor1;
@@ -215,13 +214,12 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param amountIn The amount of token swapped into the pool.
     /// @param reserves0 - The pool reserves for the token exiting the pool on the swap.
     /// @param reserves1 - The pool reserves for the token exiting the pool on the swap.
-    /// @param _weight0 - The normalised weight of the token exiting the pool on the swap.
-    /// @param _weight1 - The normalised weight of the token exiting the pool on the swap.
     /// @param factor0 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param factor1 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param flipWeights - flip weights
     /// @return amountOut - The amount of token removed from the pool during the swap.
-    function getAmountOut(uint256 amountIn, uint128 reserves0, uint128 reserves1, uint256 _weight0, uint256 _weight1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+    function getAmountOut(uint256 amountIn, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+        (uint256 _weight0, uint256 _weight1) = flipWeights ? (weight1, weight0) : (weight0, weight1);
         // Upscale the input data to account for decimals
         uint256 rescaledReserveOut = reserves0 * factor0;
         uint256 rescaledReserveIn = reserves1 * factor1;

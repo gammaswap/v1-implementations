@@ -95,31 +95,25 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
     }
 
     // Calculating how much input required for a given output amount
-    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn, uint256 scalingFactorIn, uint256 scalingFactorOut, bool flipWeights) external virtual view returns (uint256) {
+    function testGetAmountIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn, uint256 scalingFactorIn, uint256 scalingFactorOut, bool flipWeights) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
-        uint256[] memory weights = new uint256[](2);
-        weights[0] = weightOut;
-        weights[1] = weightIn;
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountIn(amountOut, uint128(reserveOut), uint128(reserveIn), weightOut, weightIn, scalingFactorIn, scalingFactorOut, flipWeights);
+        return getAmountIn(amountOut, uint128(reserveOut), uint128(reserveIn), scalingFactorIn, scalingFactorOut, flipWeights);
     }
 
     // Calculating how much output required for a given input amount
-    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 weightOut, uint256 reserveIn, uint256 weightIn, uint256 scalingFactorIn, uint256 scalingFactorOut, bool flipWeights) external virtual view returns (uint256) {
+    function testGetAmountOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn, uint256 scalingFactorIn, uint256 scalingFactorOut, bool flipWeights) external virtual view returns (uint256) {
         uint128[] memory reserves = new uint128[](2);
         reserves[0] = uint128(reserveOut);
         reserves[1] = uint128(reserveIn);
-        uint256[] memory weights = new uint256[](2);
-        weights[0] = weightOut;
-        weights[1] = weightIn;
         uint256[] memory scalingFactors = new uint256[](2);
         scalingFactors[0] = scalingFactorIn;
         scalingFactors[1] = scalingFactorOut;
-        return getAmountOut(amountIn, uint128(reserveOut), uint128(reserveIn), weightOut, weightIn, scalingFactorIn, scalingFactorOut, flipWeights);
+        return getAmountOut(amountIn, uint128(reserveOut), uint128(reserveIn), scalingFactorIn, scalingFactorOut, flipWeights);
     }
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {

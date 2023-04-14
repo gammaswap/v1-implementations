@@ -117,7 +117,7 @@ describe("BalancerLongStrategy", function () {
       baseRate,
       factor,
       maxApy,
-      BigNumber.from(20).mul(HUNDRETH)
+      BigNumber.from(10).mul(HUNDRETH)
     );
 
     const _data = ethers.utils.defaultAbiCoder.encode(
@@ -149,7 +149,7 @@ describe("BalancerLongStrategy", function () {
       baseRate,
       factor,
       maxApy,
-      BigNumber.from(20).mul(HUNDRETH)
+      BigNumber.from(10).mul(HUNDRETH)
     );
 
     const _data0 = ethers.utils.defaultAbiCoder.encode(
@@ -193,8 +193,8 @@ describe("BalancerLongStrategy", function () {
     const HUNDRETH = BigNumber.from(10).pow(16);
 
     WEIGHTS = [
-      BigNumber.from(20).mul(HUNDRETH),
-      BigNumber.from(80).mul(HUNDRETH),
+      BigNumber.from(10).mul(HUNDRETH),
+      BigNumber.from(90).mul(HUNDRETH),
     ];
 
     const poolReturnData = await factory.create(
@@ -312,8 +312,8 @@ describe("BalancerLongStrategy", function () {
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
       const WEIGHTS = [
-        BigNumber.from(20).mul(HUNDRETH),
-        BigNumber.from(80).mul(HUNDRETH),
+        BigNumber.from(10).mul(HUNDRETH),
+        BigNumber.from(90).mul(HUNDRETH),
       ];
 
       expect(pool.address).to.equal(cfmm);
@@ -343,8 +343,8 @@ describe("BalancerLongStrategy", function () {
       // Check the strategy parameters align
       const HUNDRETH = BigNumber.from(10).pow(16);
       const WEIGHTS = [
-        BigNumber.from(20).mul(HUNDRETH),
-        BigNumber.from(80).mul(HUNDRETH),
+        BigNumber.from(10).mul(HUNDRETH),
+        BigNumber.from(90).mul(HUNDRETH),
       ];
 
       expect(decimalsPool.address).to.equal(cfmmDecimals);
@@ -445,32 +445,17 @@ describe("BalancerLongStrategy", function () {
 
     describe("Get Amount In/Out", function () {
       it("Error GetAmountIn", async function () {
-        const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT0 = ONE.div(10);
-        const WEIGHT1 = ONE.sub(WEIGHT0);
-
         const SCALINGFACTOR = BigNumber.from(1);
 
         await expect(
-          strategy.testGetAmountIn(
-            0,
-            0,
-            WEIGHT0,
-            0,
-            WEIGHT1,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
+          strategy.testGetAmountIn(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, false)
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
           strategy.testGetAmountIn(
             1000000000,
             0,
-            WEIGHT0,
             0,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -481,9 +466,7 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountIn(
             1000000000,
             1000000000,
-            WEIGHT0,
             0,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -494,9 +477,7 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountIn(
             1000000000,
             0,
-            WEIGHT0,
             1000000000,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -505,32 +486,17 @@ describe("BalancerLongStrategy", function () {
       });
 
       it("Error GetAmountOut", async function () {
-        const ONE = BigNumber.from(10).pow(18);
-        const WEIGHT0 = ONE.div(10);
-        const WEIGHT1 = ONE.sub(WEIGHT0);
-
         const SCALINGFACTOR = BigNumber.from(1);
 
         await expect(
-          strategy.testGetAmountOut(
-            0,
-            0,
-            WEIGHT0,
-            0,
-            WEIGHT1,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            true
-          )
+          strategy.testGetAmountOut(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, true)
         ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
         await expect(
           strategy.testGetAmountOut(
             1000000000,
             0,
-            WEIGHT0,
             0,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -541,9 +507,7 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountOut(
             1000000000,
             1000000000,
-            WEIGHT0,
             0,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -554,9 +518,7 @@ describe("BalancerLongStrategy", function () {
           strategy.testGetAmountOut(
             1000000000,
             0,
-            WEIGHT0,
             1000000000,
-            WEIGHT1,
             SCALINGFACTOR,
             SCALINGFACTOR,
             false
@@ -570,17 +532,12 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const WEIGHT0 = ONE.div(10);
-        const WEIGHT1 = ONE.sub(WEIGHT0);
-
         const SCALINGFACTOR = BigNumber.from(1);
 
         const answer1 = await strategy.testGetAmountIn(
           amountOut,
           reserveOut,
-          WEIGHT0,
           reserveIn,
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -593,9 +550,7 @@ describe("BalancerLongStrategy", function () {
         const answer2 = await strategy.testGetAmountIn(
           BigNumber.from(105).mul(ONE),
           reserveOut,
-          WEIGHT0,
           reserveIn.mul(3),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -608,9 +563,7 @@ describe("BalancerLongStrategy", function () {
         const answer3 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(7),
-          WEIGHT0,
           reserveIn.mul(3),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -623,9 +576,7 @@ describe("BalancerLongStrategy", function () {
         const answer4 = await strategy.testGetAmountIn(
           amountOut.mul(3),
           reserveOut.mul(7),
-          WEIGHT0,
           reserveIn.mul(12),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -638,9 +589,7 @@ describe("BalancerLongStrategy", function () {
         const answer5 = await strategy.testGetAmountIn(
           amountOut.mul(2),
           reserveOut.mul(5),
-          WEIGHT0,
           reserveIn.mul(3),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -661,9 +610,6 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = DECIMALS_ONE.mul(1000);
 
-        const WEIGHT0 = BigNumber.from(10).pow(18).div(10);
-        const WEIGHT1 = BigNumber.from(10).pow(18).sub(WEIGHT0);
-
         const SCALINGFACTOR0 = BigNumber.from(10).pow(
           18 - cfmmDecimalsTokenDecimals[0]
         );
@@ -674,9 +620,7 @@ describe("BalancerLongStrategy", function () {
         const answer1 = await strategy.testGetAmountIn(
           amountOut,
           reserveOut,
-          WEIGHT0,
           reserveIn,
-          WEIGHT1,
           SCALINGFACTOR1,
           SCALINGFACTOR0,
           false
@@ -699,17 +643,12 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE.mul(1000);
 
-        const WEIGHT0 = ONE.div(10);
-        const WEIGHT1 = ONE.sub(WEIGHT0);
-
         const SCALINGFACTOR = BigNumber.from(1);
 
         const amountOut1 = await strategy.testGetAmountOut(
           amountIn,
           reserveOut,
-          WEIGHT0,
           reserveIn,
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -722,9 +661,7 @@ describe("BalancerLongStrategy", function () {
         const amountOut2 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut,
-          WEIGHT0,
           reserveIn.mul(3),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -737,9 +674,7 @@ describe("BalancerLongStrategy", function () {
         const amountOut3 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut.mul(7),
-          WEIGHT0,
           reserveIn.mul(3),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -752,9 +687,7 @@ describe("BalancerLongStrategy", function () {
         const amountOut4 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut.mul(7),
-          WEIGHT0,
           reserveIn.mul(19),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -767,9 +700,7 @@ describe("BalancerLongStrategy", function () {
         const amountOut5 = await strategy.testGetAmountOut(
           amountIn.mul(2),
           reserveOut.mul(2),
-          WEIGHT0,
           reserveIn.mul(15),
-          WEIGHT1,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -789,9 +720,6 @@ describe("BalancerLongStrategy", function () {
         const reserveOut = ONE.mul(500);
         const reserveIn = ONE2.mul(1000);
 
-        const weightOut = BigNumber.from(10).pow(17);
-        const weightIn = BigNumber.from(10).pow(18).sub(weightOut);
-
         const SCALINGFACTOR0 = BigNumber.from(10).pow(
           18 - cfmmDecimalsTokenDecimals[0]
         );
@@ -802,9 +730,7 @@ describe("BalancerLongStrategy", function () {
         const amountOut1 = await strategy.testGetAmountOut(
           amountIn,
           reserveOut,
-          weightOut,
           reserveIn,
-          weightIn,
           SCALINGFACTOR1,
           SCALINGFACTOR0,
           false
@@ -872,9 +798,7 @@ describe("BalancerLongStrategy", function () {
         const amtOut0 = await strategy.testGetAmountIn(
           delta,
           reserves0,
-          WEIGHTS[0],
           reserves1,
-          WEIGHTS[1],
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -894,9 +818,7 @@ describe("BalancerLongStrategy", function () {
         const amtOut1 = await strategy.testGetAmountIn(
           delta,
           reserves1,
-          WEIGHTS[1],
           reserves0,
-          WEIGHTS[0],
           SCALINGFACTOR,
           SCALINGFACTOR,
           true
@@ -933,9 +855,7 @@ describe("BalancerLongStrategy", function () {
         const amtIn0 = await strategy.testGetAmountOut(
           delta,
           reserves1,
-          WEIGHTS[1],
           reserves0,
-          WEIGHTS[0],
           SCALINGFACTOR,
           SCALINGFACTOR,
           true
@@ -955,9 +875,7 @@ describe("BalancerLongStrategy", function () {
         const amtIn1 = await strategy.testGetAmountOut(
           delta,
           reserves0,
-          WEIGHTS[0],
           reserves1,
-          WEIGHTS[1],
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -1011,9 +929,7 @@ describe("BalancerLongStrategy", function () {
         const expAmtOut0 = await strategy.testGetAmountIn(
           delta,
           reserves0,
-          WEIGHTS[0],
           reserves1,
-          WEIGHTS[1],
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
@@ -1068,9 +984,7 @@ describe("BalancerLongStrategy", function () {
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
           reserves1.add(expAmtOut0),
-          WEIGHTS[1],
           reserves0.sub(delta),
-          WEIGHTS[0],
           SCALINGFACTOR,
           SCALINGFACTOR,
           true
@@ -1125,9 +1039,7 @@ describe("BalancerLongStrategy", function () {
         const expAmtOut1 = await strategy.testGetAmountIn(
           delta,
           reserves1,
-          WEIGHTS[1],
           reserves0,
-          WEIGHTS[0],
           SCALINGFACTOR,
           SCALINGFACTOR,
           true
@@ -1189,9 +1101,7 @@ describe("BalancerLongStrategy", function () {
         const expectedAmountOut0 = await strategy.testGetAmountOut(
           delta,
           reserves1,
-          WEIGHTS[1],
           reserves0,
-          WEIGHTS[0],
           SCALINGFACTOR,
           SCALINGFACTOR,
           true
@@ -1271,9 +1181,7 @@ describe("BalancerLongStrategy", function () {
         const expectedAmountOut0 = await strategy.testGetAmountOut(
           delta,
           reserves0,
-          WEIGHTS[0],
           reserves1,
-          WEIGHTS[1],
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
