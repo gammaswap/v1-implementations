@@ -21,4 +21,8 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
         uint256 numerator = s.CFMM_RESERVES[1] * factor1 * weight1 / weight0;
         return numerator * 1e18 / (s.CFMM_RESERVES[0] * factor0);
     }
+
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint256[] calldata ratio) public virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
+    }
 }
