@@ -43,7 +43,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         MAX_TOTAL_APY = _maxTotalApy;
         BLOCKS_PER_YEAR = _blocksPerYear;
         weight0 = _weight0;
-        weight1 = 1e18 - weight0;
+        weight1 = 1e18 - _weight0;
     }
 
     /// @dev See {BaseStrategy-blocksPerYear}.
@@ -80,8 +80,8 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev Returns the quantities of reserve tokens held by the GammaPool contract.
     function getStrategyReserves() internal virtual view returns(uint256 reserves0, uint256 reserves1) {
-        (reserves0, reserves1) = (GammaSwapLibrary.balanceOf(IERC20(s.tokens[0]), address(this)),
-            GammaSwapLibrary.balanceOf(IERC20(s.tokens[1]), address(this)));
+        reserves0 = GammaSwapLibrary.balanceOf(IERC20(s.tokens[0]), address(this));
+        reserves1 = GammaSwapLibrary.balanceOf(IERC20(s.tokens[1]), address(this));
     }
 
     /// @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
