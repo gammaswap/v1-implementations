@@ -17,11 +17,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     error BadDelta();
     error BadOutAmts();
     error ZeroReserves();
-    error BAL308();
-    error Bal304(); // Max In Ratio Error
-
-    uint256 internal constant _MAX_IN_RATIO = 0.3e18;
-    uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
     /// @return origFee Origination fee charged to every new loan that is issued.
     uint24 immutable public origFee;
