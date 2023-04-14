@@ -131,7 +131,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
         return !hasMargin(collateral, _loan.liquidity, ltvThreshold());
     }
 
-    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
         // Revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= s.LP_TOKEN_BALANCE) {
             revert ExcessiveBorrowing();
@@ -147,7 +147,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
         amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
 
         // Add withdrawn tokens as part of loan collateral
-        uint128[] memory tokensHeld = updateCollateral(_loan);
+        (uint128[] memory tokensHeld,) = updateCollateral(_loan);
 
         // Add liquidity debt to total pool debt and start tracking loan
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);

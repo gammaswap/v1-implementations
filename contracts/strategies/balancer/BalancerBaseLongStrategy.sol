@@ -54,6 +54,10 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         return origFee;
     }
 
+    function calcDeltasToClose(uint128[] memory tokensHeld, uint256 liquidity, uint256 collateralId) public virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
+    }
+
     /// @dev See {BaseLongStrategy.calcTokensToRepay}.
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
@@ -120,7 +124,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     /// @dev See {BaseLongStrategy.beforeSwapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
 

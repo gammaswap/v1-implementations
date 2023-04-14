@@ -377,7 +377,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
 
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -580,7 +580,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
 
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -777,7 +777,7 @@ describe("CPMMLiquidationStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -851,7 +851,7 @@ describe("CPMMLiquidationStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -925,7 +925,7 @@ describe("CPMMLiquidationStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -999,7 +999,7 @@ describe("CPMMLiquidationStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -1071,7 +1071,7 @@ describe("CPMMLiquidationStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -1167,7 +1167,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
 
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -1375,7 +1375,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(bal0.tokenBalance[1]).to.equal(ONE.mul(20));
 
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);

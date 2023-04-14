@@ -14,22 +14,22 @@ Platform:
   darwin x64
 
 Trace: 
-  Error: https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.4/06e48e645801407eac2ee468ddd2ea03ecc0363b: Request failed "401 Unauthorized"
-      at ResponseError.ExtendableBuiltin (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:696:66)
-      at new ResponseError (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:802:124)
-      at Request.<anonymous> (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:66215:16)
+  Error: https://npm.pkg.github.com/@gammaswap%2fv1-core: unauthenticated: User cannot be authenticated with the token provided.
+      at params.callback [as _callback] (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:66145:18)
+      at self.callback (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:140890:22)
       at Request.emit (node:events:513:28)
-      at module.exports.Request.onRequestResponse (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:141767:10)
-      at ClientRequest.emit (node:events:513:28)
-      at HTTPParser.parserOnIncomingClient (node:_http_client:693:27)
-      at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
-      at TLSSocket.socketOnData (node:_http_client:534:22)
-      at TLSSocket.emit (node:events:513:28)
+      at Request.<anonymous> (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:141862:10)
+      at Request.emit (node:events:513:28)
+      at IncomingMessage.<anonymous> (/Users/danielalcarraz/.nvm/versions/node/v18.12.1/lib/node_modules/yarn/lib/cli.js:141784:12)
+      at Object.onceWrapper (node:events:627:28)
+      at IncomingMessage.emit (node:events:525:35)
+      at endReadableNT (node:internal/streams/readable:1359:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
 
 npm manifest: 
   {
     "name": "@gammaswap/v1-implementations",
-    "version": "0.3.5",
+    "version": "0.4.2",
     "description": "Pool and strategies implementation contracts for GammaSwap",
     "homepage": "https://gammaswap.com",
     "main": "index.js",
@@ -79,7 +79,7 @@ npm manifest:
       "eslint-plugin-promise": "^5.2.0",
       "ethereum-waffle": "^3.4.4",
       "ethers": "^5.6.9",
-      "hardhat": "^2.9.9",
+      "hardhat": "^2.12.7",
       "hardhat-contract-sizer": "^2.6.1",
       "hardhat-gas-reporter": "^1.0.8",
       "prettier": "^2.7.1",
@@ -95,7 +95,7 @@ npm manifest:
       "@balancer-labs/v2-pool-weighted": "^2.0.1",
       "@balancer-labs/v2-solidity-utils": "^3.0.1",
       "@balancer-labs/v2-vault": "^3.0.1",
-      "@gammaswap/v1-core": "^0.3.4",
+      "@gammaswap/v1-core": "^0.4.2",
       "@openzeppelin/contracts": "^4.7.0",
       "@prb/math": "^3.1.0",
       "@uniswap/v2-core": "^1.0.1"
@@ -676,10 +676,10 @@ Lockfile:
       "@ethersproject/properties" "^5.7.0"
       "@ethersproject/strings" "^5.7.0"
   
-  "@gammaswap/v1-core@^0.3.4":
-    version "0.3.4"
-    resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.3.4/06e48e645801407eac2ee468ddd2ea03ecc0363b#06e48e645801407eac2ee468ddd2ea03ecc0363b"
-    integrity sha512-Q27nC1PdVslsgGUMBg24pG2NW0jGJvCN8U7MfVA6F9Skmi2r9YGRq5cSfz0/h8+bapoq8J/KHRGKnA03kbrNnQ==
+  "@gammaswap/v1-core@^0.4.1":
+    version "0.4.1"
+    resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.4.1/df570b1757cb093168bf259caf25a91c72a005b6#df570b1757cb093168bf259caf25a91c72a005b6"
+    integrity sha512-ioQj0zdQoCDNDpwS6PxCPndlzUs65rbQsQsS33wr+WrzqBXPFjAChvuQPSRG9JOp5TGKEnztezX2TeSBQBhKLw==
     dependencies:
       "@openzeppelin/contracts" "^4.7.0"
   
@@ -5520,10 +5520,10 @@ Lockfile:
       eth-gas-reporter "^0.2.25"
       sha1 "^1.1.1"
   
-  hardhat@^2.9.9:
-    version "2.12.0"
-    resolved "https://registry.npmjs.org/hardhat/-/hardhat-2.12.0.tgz"
-    integrity sha512-mNJFbVG479HwOzxiaLxobyvED2M1aEAuPPYhEo1+88yicMDSTrU2JIS7vV+V0GSNQKaDoiHCmV6bcKjiljT/dQ==
+  hardhat@^2.12.7:
+    version "2.13.0"
+    resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.13.0.tgz#d52a0ec9b733a651687e5b1c1b0ee9a11a30f3d0"
+    integrity sha512-ZlzBOLML1QGlm6JWyVAG8lVTEAoOaVm1in/RU2zoGAnYEoD1Rp4T+ZMvrLNhHaaeS9hfjJ1gJUBfiDr4cx+htQ==
     dependencies:
       "@ethersproject/abi" "^5.1.2"
       "@metamask/eth-sig-util" "^4.0.0"
@@ -5572,7 +5572,7 @@ Lockfile:
       source-map-support "^0.5.13"
       stacktrace-parser "^0.1.10"
       tsort "0.0.1"
-      undici "^5.4.0"
+      undici "^5.14.0"
       uuid "^8.3.2"
       ws "^7.4.6"
   
@@ -9834,6 +9834,13 @@ Lockfile:
     version "1.9.1"
     resolved "https://registry.npmjs.org/underscore/-/underscore-1.9.1.tgz"
     integrity sha512-5/4etnCkd9c8gwgowi5/om/mYO5ajCaOgdzj/oW+0eQV9WxKBDZw5+ycmKmeaTXjInS/W0BzpGLo2xR2aBwZdg==
+  
+  undici@^5.14.0:
+    version "5.20.0"
+    resolved "https://registry.yarnpkg.com/undici/-/undici-5.20.0.tgz#6327462f5ce1d3646bcdac99da7317f455bcc263"
+    integrity sha512-J3j60dYzuo6Eevbawwp1sdg16k5Tf768bxYK4TUJRH7cBM4kFCbf3mOnM/0E3vQYXvpxITbbWmBafaDbxLDz3g==
+    dependencies:
+      busboy "^1.6.0"
   
   undici@^5.4.0:
     version "5.11.0"
