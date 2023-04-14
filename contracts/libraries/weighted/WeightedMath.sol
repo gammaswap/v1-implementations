@@ -16,7 +16,6 @@ pragma solidity >=0.8.0;
 
 import "./InputHelpers.sol";
 import "./FixedPoint.sol";
-import "./BalancerMath.sol";
 
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
 // should be fixed.
