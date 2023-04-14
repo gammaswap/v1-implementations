@@ -17,7 +17,13 @@ describe("WeightedMath", function () {
   }
 
   before(async function () {
-    mathFactory = await ethers.getContractFactory("TestWeightedMath");
+    const fixedPointFactory = await ethers.getContractFactory("FixedPoint");
+    const fixedPoint = await fixedPointFactory.deploy();
+    mathFactory = await ethers.getContractFactory("TestWeightedMath", {
+      libraries: {
+        FixedPoint: fixedPoint.address,
+      },
+    });
     math = await mathFactory.deploy();
   });
 

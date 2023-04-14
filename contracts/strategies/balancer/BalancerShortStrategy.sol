@@ -13,6 +13,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     error ZeroDeposits();
     error NotOptimalDeposit();
     error ZeroReserves();
+    error LengthMismatch();
 
     /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
     constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
@@ -33,7 +34,13 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     function _getLatestCFMMInvariant(bytes memory _data) public virtual override view returns(uint256 cfmmInvariant) {
         BalancerInvariantRequest memory req = abi.decode(_data, (BalancerInvariantRequest));
         (,uint256[] memory reserves,) = IVault(req.cfmmVault).getPoolTokens(req.cfmmPoolId);
-        cfmmInvariant = calcScaledInvariant(InputHelpers.upscaleArray(reserves, req.scalingFactors));
+
+        if (reserves.length != req.scalingFactors.length) {
+            revert LengthMismatch();
+        }
+        reserves[0] *= req.scalingFactors[0];
+        reserves[1] *= req.scalingFactors[1];
+        cfmmInvariant = calcScaledInvariant(reserves);
     }
 
     /// @dev Returns the pool reserves of a given Balancer pool, obtained by querying the corresponding Balancer Vault.

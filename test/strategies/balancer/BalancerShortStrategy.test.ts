@@ -51,7 +51,17 @@ describe("BalancerShortStrategy", function () {
       owner
     );
 
-    TestStrategy = await ethers.getContractFactory("TestBalancerShortStrategy");
+    const fixedPointFactory = await ethers.getContractFactory("FixedPoint");
+    const fixedPoint = await fixedPointFactory.deploy();
+
+    TestStrategy = await ethers.getContractFactory(
+      "TestBalancerShortStrategy",
+      {
+        libraries: {
+          FixedPoint: fixedPoint.address,
+        },
+      }
+    );
 
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");

@@ -12,7 +12,8 @@
     "url": "https://github.com/gammaswap/v1-implementations"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "hardhat": "hardhat",
+    "test": "yarn hardhat test",
     "chain": "./scripts/startChain.sh"
   },
   "engines": {

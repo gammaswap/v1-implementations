@@ -13,3 +13,5 @@ artifacts
 
 #access tokens
 .npmrc
+
+yarn-error.log

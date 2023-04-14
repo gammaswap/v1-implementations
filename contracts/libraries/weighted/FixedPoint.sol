@@ -31,7 +31,7 @@ library FixedPoint {
     // Minimum base for the power function when the exponent is 'free' (larger than ONE).
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    function add(uint256 a, uint256 b) public pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
         unchecked {
             uint256 c = a + b;
@@ -40,7 +40,7 @@ library FixedPoint {
         }
     }
 
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    function sub(uint256 a, uint256 b) public pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
         unchecked {
             _require(b <= a, Errors.SUB_OVERFLOW);
@@ -48,7 +48,7 @@ library FixedPoint {
         }
     }
 
-    function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
+    function mulDown(uint256 a, uint256 b) public pure returns (uint256) {
         unchecked {
             uint256 product = a * b;
             _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
@@ -57,7 +57,7 @@ library FixedPoint {
         }
     }
 
-    function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
+    function mulUp(uint256 a, uint256 b) public pure returns (uint256 result) {
         unchecked {
             uint256 product = a * b;
             _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
@@ -76,7 +76,7 @@ library FixedPoint {
         }
     }
 
-    function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
+    function divDown(uint256 a, uint256 b) public pure returns (uint256) {
         unchecked {
             _require(b != 0, Errors.ZERO_DIVISION);
 
@@ -87,7 +87,7 @@ library FixedPoint {
         }
     }
 
-    function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
+    function divUp(uint256 a, uint256 b) public pure returns (uint256 result) {
         unchecked {
             _require(b != 0, Errors.ZERO_DIVISION);
 
@@ -112,7 +112,7 @@ library FixedPoint {
      * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
      * the true value (that is, the error function expected - actual is always positive).
      */
-    function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
+    function powDown(uint256 x, uint256 y) external pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
         unchecked { // reduces contract size
@@ -140,7 +140,7 @@ library FixedPoint {
      * @dev Returns x^y, assuming both are fixed point numbers, rounding up. The result is guaranteed to not be below
      * the true value (that is, the error function expected - actual is always negative).
      */
-    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
+    function powUp(uint256 x, uint256 y) external pure returns (uint256) {
         // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
         // and 80/20 Weighted Pools
         unchecked { // reduces contract size
