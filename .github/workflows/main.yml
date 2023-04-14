@@ -9,16 +9,16 @@ jobs:
   publish-gpr:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://npm.pkg.github.com/
           scope: '@gammaswap'
-      - run: npm install
+      - run: yarn install
         env:
           NODE_AUTH_TOKEN: ${{secrets.GS_TOKEN}}
-      - run: npx hardhat test
+      - run: yarn run test
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.GS_TOKEN}}
