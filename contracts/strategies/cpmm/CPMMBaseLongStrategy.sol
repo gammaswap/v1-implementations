@@ -52,6 +52,25 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         return origFee;
     }
 
+    /// dev See {IGammaPool.getRebalanceDeltas}.
+    // how much collateral to trade to have enough to close a position
+    // reserve and collateral have to be of the same token
+    // if > 0 => have to buy token to have exact amount of token to close position
+    // if < 0 => have to sell token to have exact amount of token to close position
+    function calcDeltasToClose(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity) public virtual pure returns(int256 delta) {
+        uint256 left = reserve * liquidity;
+        uint256 right = collateral * lastCFMMInvariant;
+        bool isNeg = right > left;
+        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity);
+        delta = isNeg ? -int256(_delta) : int256(_delta);
+    }
+
+    function calcDeltasToClose(uint128[] memory tokensHeld, uint256 liquidity, uint256 collateralId) public virtual override view returns(int256[] memory deltas) {
+        require(collateralId < 2);
+        deltas = new int256[](2);
+        deltas[collateralId] = calcDeltasToClose(s.lastCFMMInvariant, s.CFMM_RESERVES[collateralId], tokensHeld[collateralId], liquidity);
+    }
+
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
     function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
@@ -62,7 +81,10 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
     /// @dev See {BaseLongStrategy-beforeRepay}.
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory _amounts) internal virtual override {
-        sendTokens(_loan, s.cfmm, _amounts);
+        address[] memory tokens = s.tokens;
+        address cfmm = s.cfmm;
+        if(_amounts[0] > 0) sendToken(IERC20(tokens[0]), cfmm, _amounts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+        if(_amounts[1] > 0) sendToken(IERC20(tokens[1]), cfmm, _amounts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
@@ -71,7 +93,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] calldata deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);

@@ -100,7 +100,7 @@ contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
         lpInvariant = s.LP_INVARIANT;
     }
 
-    function _decreaseCollateral(uint256, uint256[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
+    function _decreaseCollateral(uint256, uint128[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
@@ -108,7 +108,7 @@ contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
         return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256, int256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 }

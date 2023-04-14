@@ -471,7 +471,7 @@ describe("CPMMLongStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -484,7 +484,13 @@ describe("CPMMLongStrategy", function () {
       const payLiquidity = res.liquidityBorrowed;
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
@@ -496,7 +502,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan3 = await strategyFee.getLoan(tokenId);
@@ -534,7 +546,7 @@ describe("CPMMLongStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -547,7 +559,13 @@ describe("CPMMLongStrategy", function () {
       const payLiquidity = res.liquidityBorrowed;
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
@@ -559,7 +577,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan2.tokensHeld[1]).lt(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan3 = await strategyFee.getLoan(tokenId);
@@ -571,7 +595,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan3.tokensHeld[1]).lt(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [1000, 1000])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [1000, 1000],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan4 = await strategyFee.getLoan(tokenId);
@@ -609,7 +639,7 @@ describe("CPMMLongStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -622,7 +652,13 @@ describe("CPMMLongStrategy", function () {
       const payLiquidity = res.liquidityBorrowed;
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
@@ -634,7 +670,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan3 = await strategyFee.getLoan(tokenId);
@@ -646,7 +688,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan3.tokensHeld[1]).lt(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [1000, 0])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [1000, 0],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan4 = await strategyFee.getLoan(tokenId);
@@ -684,7 +732,7 @@ describe("CPMMLongStrategy", function () {
       const lpTokensBorrowed = ONE;
       const res = await getBalanceChanges(lpTokensBorrowed, 0, 0);
       await (
-        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed)
+        await strategyFee._borrowLiquidity(tokenId, lpTokensBorrowed, [])
       ).wait();
       const loan1 = await strategyFee.getLoan(tokenId);
       expect(loan1.initLiquidity).to.equal(res.liquidityBorrowed);
@@ -697,7 +745,13 @@ describe("CPMMLongStrategy", function () {
       const payLiquidity = res.liquidityBorrowed;
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
@@ -709,7 +763,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan2.tokensHeld[1]).lt(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan3 = await strategyFee.getLoan(tokenId);
@@ -721,7 +781,13 @@ describe("CPMMLongStrategy", function () {
       expect(loan3.tokensHeld[1]).lt(tokensHeld1);
 
       await (
-        await strategyFee._repayLiquidity(tokenId, payLiquidity, [0, 1000])
+        await strategyFee._repayLiquidity(
+          tokenId,
+          payLiquidity,
+          [0, 1000],
+          0,
+          ethers.constants.AddressZero
+        )
       ).wait();
 
       const loan4 = await strategyFee.getLoan(tokenId);

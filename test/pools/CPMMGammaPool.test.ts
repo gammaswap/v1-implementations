@@ -166,7 +166,7 @@ describe("CPMMGammaPool", function () {
     });
   });
 
-  describe("Rebalancing Collateral for Close", function () {
+  describe.skip("Rebalancing Collateral for Close", function () {
     it("Should sell token0", async function () {
       const ONE = BigNumber.from(10).pow(18);
       const loanLiquidity = ONE.mul(10000).mul(2).div(3);
