@@ -4,6 +4,7 @@ import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers/types";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-foundry";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
