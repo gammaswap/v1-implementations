@@ -22,7 +22,7 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
 
     function calcDeltasForRatio(uint128[] memory tokensHeld, uint256[] calldata ratio) public virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
-        /*(uint128 reserve0, uint128 reserve1,) = ICPMM(s.cfmm).getReserves();
+        (uint128 reserve0, uint128 reserve1,) = ICPMM(s.cfmm).getReserves();
         uint256 factor = 10 ** s.decimals[1];
         uint256 desiredStrikePx = ratio[1] * factor / ratio[0];
         uint256 loanStrikePx = tokensHeld[1] * factor / tokensHeld[0];

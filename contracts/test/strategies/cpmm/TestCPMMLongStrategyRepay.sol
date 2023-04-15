@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "../../../strategies/cpmm/external/CPMMExternalLongStrategy.sol";
 
-contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
+contract TestCPMMLongStrategyRepay is CPMMExternalLongStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -18,6 +18,29 @@ contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
         s.initialize(_factory, _cfmm, _tokens, _decimals);
+    }
+
+    function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
+        uint256[] memory amounts = calcTokensToRepay(liquidity);
+        return(amounts[0], amounts[1]);
+    }
+
+    function testBeforeRepay(uint256 tokenId, uint256[] memory amounts) external virtual {
+        beforeRepay(s.loans[tokenId], amounts);
+    }
+
+    function getLoan(uint256 tokenId) external virtual view returns(LibStorage.Loan memory _loan) {
+        _loan = s.loans[tokenId];
+    }
+
+    function depositLPTokens(uint256 tokenId) external virtual {
+        // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
+        updateIndex();
+        updateCollateral(s.loans[tokenId]);
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
+        s.LP_TOKEN_BALANCE = lpTokenBalance;
+        s.LP_INVARIANT = lpInvariant;
     }
 
     function createLoan() external virtual returns(uint256 tokenId) {
@@ -37,35 +60,6 @@ contract TestCPMMLongStrategy is CPMMExternalLongStrategy {
         s.CFMM_RESERVES[0] = reserve0;
         s.CFMM_RESERVES[1] = reserve1;
         s.lastCFMMInvariant = lastCFMMInvariant;
-    }
-
-
-    // selling exactly amountOut
-    function testCalcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtIn(amountOut, reserveOut, reserveIn);
-    }
-
-    // buying exactly amountIn
-    function testCalcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtOut(amountIn, reserveOut, reserveIn);
-    }
-
-    function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(IERC20(token), to, amount, balance, collateral);
-        emit ActualOutAmount(actualOutAmount);
-    }/**/
-
-    function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (outAmts, inAmts) = beforeSwapTokens(loan, deltas);
-        emit CalcAmounts(outAmts, inAmts);
-    }
-
-    function testSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas);
-        swapTokens(loan, outAmts, inAmts);
-        emit CalcAmounts(outAmts, inAmts);
     }
 
     function _decreaseCollateral(uint256, uint128[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
