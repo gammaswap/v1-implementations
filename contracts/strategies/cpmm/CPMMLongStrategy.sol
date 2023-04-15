@@ -28,12 +28,12 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         uint256 desiredRatio = ratio[1] * factor / ratio[0];
         uint256 loanRatio = tokensHeld[1] * factor / tokensHeld[0];
 
-        // we're always going to buy
+        // we're always going to buy, therefore when desiredRatio > loanRatio, invert reserves, collaterals, and desiredRatio
         if(desiredRatio > loanRatio) { // sell token0, buy token1 (need more token1)
-            (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]);
-            desiredRatio = factor * (10 ** s.decimals[1]) / desiredRatio;
+            (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]); // invert collateral
+            desiredRatio = factor * (10 ** s.decimals[1]) / desiredRatio; // invert price
             deltas = calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, false); // always buying
-            deltas[1] = 0;
+            (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
         } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
             deltas = calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, false); // always buying
             deltas[1] = 0;
