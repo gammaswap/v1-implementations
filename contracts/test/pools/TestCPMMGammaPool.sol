@@ -28,14 +28,4 @@ contract TestCPMMGammaPool is CPMMGammaPool {
         cfmmReserves[0] = _reserve0;
         cfmmReserves[1] = _reserve1;
     }
-
-    function updateLiquidityDebt(uint256 liquidity, uint256 rateIndex, uint256 cfmmInvariant) internal virtual override view returns(uint256 _liquidity) {
-        _liquidity = liquidity;
-    }
-
-    function getLoan(uint256 tokenId) internal virtual override view returns(uint256 loanLiquidity, uint256 rateIndex, uint256 sqrtPx) {
-        loanLiquidity = _loanLiquidity;
-        rateIndex = 0;
-        sqrtPx = _sqrtPx;
-    }
 }
