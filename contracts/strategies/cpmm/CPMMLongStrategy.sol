@@ -20,51 +20,48 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
     }
 
+    /// @dev See {LongStrategy.calcDeltasForRatio}.
     function calcDeltasForRatio(uint128[] memory tokensHeld, uint256[] calldata ratio) public virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
         (uint128 reserve0, uint128 reserve1,) = ICPMM(s.cfmm).getReserves();
-        uint256 factor = 10 ** s.decimals[1];
-        uint256 desiredStrikePx = ratio[1] * factor / ratio[0];
-        uint256 loanStrikePx = tokensHeld[1] * factor / tokensHeld[0];
+        uint256 factor = 10 ** s.decimals[0];
+        uint256 desiredRatio = ratio[1] * factor / ratio[0];
+        uint256 loanRatio = tokensHeld[1] * factor / tokensHeld[0];
 
-        // we're always going to buy
-        if(desiredStrikePx > loanStrikePx) { // buy token1, sell token0 (need more token1)
-            (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]);
-            deltas = calcDeltasForRatio(desiredStrikePx, reserve1, reserve0, tokensHeld, false);
-            // of the two roots, which one makes sense
-            // the negative root doesn't make sense
-            // the root that requires more than you can purchase doesn't make sense either. So need to transform
-            //if(deltas[0] < 0 || deltas[1] > ) deltas[0] = 0;
-
-        } else if(desiredStrikePx < loanStrikePx) { // sell token1, buy token0 (need more token0)
-            deltas = calcDeltasForRatio(desiredStrikePx, reserve0, reserve1, tokensHeld, false);
-            if(deltas[0] < 0) deltas[0] = 0;
-            if(deltas[1] < 0) deltas[1] = 0;
+        // we're always going to buy, therefore when desiredRatio > loanRatio, invert reserves, collaterals, and desiredRatio
+        if(desiredRatio > loanRatio) { // sell token0, buy token1 (need more token1)
+            (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]); // invert collateral
+            desiredRatio = factor * (10 ** s.decimals[1]) / desiredRatio; // invert price
+            deltas = calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, false); // always buying
+            (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
+        } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
+            deltas = calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, false); // always buying
+            deltas[1] = 0;
         } else {
-
+            (deltas[0], deltas[1]) = (0, 0); // no trade
         }
-        //if(strikePx < loanStrikePx) // sell token1, buy token0
-        deltas = calcDeltasForRatio(desiredStrikePx, reserve0, reserve1, tokensHeld, false);
-        if(deltas[0] < 0) deltas[0] = 0;
-        if(deltas[1] < 0) deltas[1] = 0;/**/
     }
 
-
-    /// dev See {IGammaPool.getRebalanceDeltas2}.
-    // default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
-    // buying should always give us a positive number, if the response is a negative number, then the result is not good
-    // result should be
-    //  0 index = buying quantity
-    //  1 index = selling quantity
-    //  we can flip the reserves, tokensHeld, and strikePx to make a buy a sell or a sell a buy
-    // side = 0 (false) => buy
-    // side = 1 (true)  => sell
-    function calcDeltasForRatio(uint256 strikePx, uint128 reserves0, uint128 reserves1, uint128[] memory tokensHeld, bool side) public virtual view returns(int256[] memory deltas) {
+    /// @dev See calculate quantities to trade to rebalance collateral (`tokensHeld`) to the desired `ratio`
+    /// @notice The calculation takes into consideration the market impact the transaction would have
+    /// @notice The eqution is derived from solving the quadratic root formula taking into account trading fees
+    /// @notice default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
+    /// @notice buying should always give us a positive number, if the response is a negative number, then the result is not good
+    /// @notice A positive quadratic root means buying, a negative quadratic root means selling
+    /// @notice We can flip the reserves, tokensHeld, and ratio to make a buy a sell or a sell a buy
+    /// @notice side = 0 (false) => buy, side = 1 (true)  => sell
+    /// @param ratio - desired ratio we wish collateral (`tokensHeld`) to have
+    /// @param reserve0 - reserve quantity of token0 in CFMM
+    /// @param reserve1 - reserve quantity of token1 in CFMM
+    /// @param tokensHeld - collateral to rebalance
+    /// @param side - side of token to rebalance
+    /// @return deltas - quadratic roots (quantities to trade). The first quadratic root (index 0) is the only feasible trade
+    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, bool side) public virtual view returns(int256[] memory deltas) {
         uint256 fee1 = tradingFee1;
         uint256 fee2 = tradingFee2;
         uint256 factor = 10 ** s.decimals[0];
         // must negate
-        uint256 a = fee1 * strikePx / fee2;
+        uint256 a = fee1 * ratio / fee2;
         // must negate
         bool bIsNeg;
         uint256 b;
@@ -72,11 +69,11 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
             uint256 leftVal;
             {
                 uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
-                uint256 A_hat_times_Phi = side ? reserves0 : reserves0 * fee1 / fee2;
+                uint256 A_hat_times_Phi = side ? reserve0 : reserve0 * fee1 / fee2;
                 bIsNeg = A_hat_times_Phi < A_times_Phi;
-                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * strikePx / factor;
+                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * ratio / factor;
             }
-            uint256 rightVal = side ? (tokensHeld[1] + reserves1) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserves1;
+            uint256 rightVal = side ? (tokensHeld[1] + reserve1) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserve1;
             if(bIsNeg) { // leftVal < 0
                 bIsNeg = leftVal < rightVal;
                 if(bIsNeg) {
@@ -93,9 +90,9 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
 
         uint256 det;
         {
-            uint256 leftVal = tokensHeld[0] * strikePx / factor;
+            uint256 leftVal = tokensHeld[0] * ratio / factor;
             bool cIsNeg = leftVal < tokensHeld[1];
-            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserves0 * (side ? 1 : fee1 ); // B*A decimals
+            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserve0 * (side ? 1 : fee1 ); // B*A decimals
             c = side ? c : c / fee2;
             uint256 ac4 = 4 * c * a / factor;
             det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number

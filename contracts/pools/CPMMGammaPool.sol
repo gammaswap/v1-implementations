@@ -44,41 +44,6 @@ contract CPMMGammaPool is GammaPool {
         return _reserves[1] * (10 ** s.decimals[0]) / _reserves[0];
     }
 
-    /// @dev Update liquidity debt to include accrued trading fees and interest
-    /// @param liquidity - liquidity debt
-    /// @param rateIndex - loan's interest rate index of last update
-    /// @param cfmmInvariant - total liquidity invariant of CFMM
-    /// @return _liquidity - updated liquidity debt
-    function updateLiquidityDebt(uint256 liquidity, uint256 rateIndex, uint256 cfmmInvariant) internal virtual view returns(uint256 _liquidity) {
-        uint256 lastFeeIndex;
-        (, lastFeeIndex,,) = IShortStrategy(shortStrategy)
-        .getLastFees(s.BORROWED_INVARIANT, s.LP_TOKEN_BALANCE, cfmmInvariant, _getLatestCFMMTotalSupply(),
-            s.lastCFMMInvariant, s.lastCFMMTotalSupply, s.LAST_BLOCK_NUMBER);
-        uint256 accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
-
-        // accrue interest
-        _liquidity = liquidity * accFeeIndex / rateIndex;
-    }
-
-    /// @dev Get loan information relevant to delta calculation
-    /// @param tokenId - unique identifier of loan in GammaPool
-    /// @return loanLiquidity - last loan liquidity debt (as it was after last update)
-    /// @return rateIndex - loan's interest rate index of last update
-    /// @return sqrtPx - square root of loan collateral ratio
-    function getLoan(uint256 tokenId) internal virtual view returns(uint256 loanLiquidity, uint256 rateIndex, uint256 sqrtPx) {
-        LibStorage.Loan storage _loan = s.loans[tokenId];
-        loanLiquidity = _loan.liquidity;
-        require(_loan.id > 0 && loanLiquidity > 0);
-        uint128[] memory tokensHeld = _loan.tokensHeld;
-        rateIndex = _loan.rateIndex;
-        uint256 strikePx = tokensHeld[1] * (10 ** s.decimals[1]) / tokensHeld[0];
-        sqrtPx = Math.sqrt(strikePx * (10 ** s.decimals[1]));
-    }
-
-    /// @dev See {IGammaPool.getRebalanceDeltas}.
-    function getRebalanceDeltas(uint256 tokenId) external virtual override view returns(int256[] memory deltas) {
-    }
-
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
         if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
