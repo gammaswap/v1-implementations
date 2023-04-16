@@ -10,6 +10,7 @@ contract UniswapSetup is Test {
 
     IUniswapV2Factory uniFactory;
     IUniswapV2Router02 uniRouter;
+    IUniswapV2Pair uniPair;
 
     function initUniswap(address owner, address weth) public {
         // Let's do the same thing with `getCode`
@@ -31,4 +32,9 @@ contract UniswapSetup is Test {
         uniFactory = IUniswapV2Factory(factoryAddress);
         uniRouter = IUniswapV2Router02(routerAddress);
     }
+
+    function createPair(address token0, address token1) public returns(address) {
+        return IUniswapV2Factory(uniFactory).createPair(token0, token1);
+    }
+
 }

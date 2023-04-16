@@ -15,8 +15,10 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
     CPMMLongStrategy longStrategy;
     CPMMShortStrategy shortStrategy;
     CPMMLiquidationStrategy liquidationStrategy;
+    CPMMGammaPool protocol;
     CPMMGammaPool pool;
 
+    address cfmm;
     address owner;
 
     function initCPMMGammaSwap() public {
@@ -37,9 +39,18 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
         liquidationStrategy = new CPMMLiquidationStrategy(9500, 9750, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
 
         bytes32 cfmmHash = hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'; // UniV2Pair init_code_hash
-        pool = new CPMMGammaPool(PROTOCOL_ID, address(factory), address(longStrategy), address(shortStrategy),
+        protocol = new CPMMGammaPool(PROTOCOL_ID, address(factory), address(longStrategy), address(shortStrategy),
             address(liquidationStrategy), address(uniFactory), cfmmHash);
 
-        factory.addProtocol(address(pool));
+        factory.addProtocol(address(protocol));
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(weth);
+        tokens[1] = address(usdc);
+
+        cfmm = createPair(tokens[0], tokens[1]);
+
+        pool = CPMMGammaPool(factory.createPool(PROTOCOL_ID, cfmm, tokens, new bytes(0)));
     }
+
 }
