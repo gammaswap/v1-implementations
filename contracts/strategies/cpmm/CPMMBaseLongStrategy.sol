@@ -52,7 +52,6 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         return origFee;
     }
 
-    /// dev See {IGammaPool.getRebalanceDeltas}.
     // how much collateral to trade to have enough to close a position
     // reserve and collateral have to be of the same token
     // if > 0 => have to buy token to have exact amount of token to close position
@@ -65,18 +64,20 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         delta = isNeg ? -int256(_delta) : int256(_delta);
     }
 
-    function calcDeltasToClose(uint128[] memory tokensHeld, uint256 liquidity, uint256 collateralId) public virtual override view returns(int256[] memory deltas) {
+    /// @dev See {BaseLongStrategy-_calcDeltasToClose}.
+    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) internal virtual override view returns(int256[] memory deltas) {
         require(collateralId < 2);
         deltas = new int256[](2);
-        deltas[collateralId] = calcDeltasToClose(s.lastCFMMInvariant, s.CFMM_RESERVES[collateralId], tokensHeld[collateralId], liquidity);
+        uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
+        deltas[collateralId] = calcDeltasToClose(lastCFMMInvariant, reserves[collateralId], tokensHeld[collateralId], liquidity);
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
-    function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
-        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
-        amounts[0] = liquidity * s.CFMM_RESERVES[0] / lastCFMMInvariant;
-        amounts[1] = liquidity * s.CFMM_RESERVES[1] / lastCFMMInvariant;
+        uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
+        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant;
+        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant;
     }
 
     /// @dev See {BaseLongStrategy-beforeRepay}.

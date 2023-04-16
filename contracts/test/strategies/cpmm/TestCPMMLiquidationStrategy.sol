@@ -65,7 +65,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
         uint256[] memory amounts;
-        amounts = calcTokensToRepay(liquidity);
+        amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity);
         return(amounts[0], amounts[1]);
     }
 

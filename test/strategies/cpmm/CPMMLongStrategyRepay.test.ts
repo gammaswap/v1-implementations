@@ -295,36 +295,57 @@ describe("CPMMLongStrategyRepay", function () {
       const ONE = BigNumber.from(10).pow(18);
       const reserves0 = ONE.mul(500);
       const reserves1 = ONE.mul(1000);
-      const lastCFMMInvariant = ONE.mul(1000);
+      const lastCFMMInvariant = await strategy.testCalcInvariant([
+        reserves0,
+        reserves1,
+      ]);
       const liquidity = ONE.mul(100);
       await (
         await strategy.setCFMMReserves(reserves0, reserves1, lastCFMMInvariant)
       ).wait();
+      const expToken0 = liquidity.mul(reserves0).div(lastCFMMInvariant);
+      const expToken1 = liquidity.mul(reserves1).div(lastCFMMInvariant);
       const res0 = await strategy.testCalcTokensToRepay(liquidity);
-      expect(res0[0]).to.equal(ONE.mul(50));
-      expect(res0[1]).to.equal(ONE.mul(100));
+      expect(res0[0]).to.equal(expToken0);
+      expect(res0[1]).to.equal(expToken1);
 
+      const reserves0a = reserves0;
+      const reserves1a = reserves1.mul(2);
+      const lastCFMMInvariant1 = await strategy.testCalcInvariant([
+        reserves0a,
+        reserves1a,
+      ]);
       await (
         await strategy.setCFMMReserves(
-          reserves0,
-          reserves1.mul(2),
-          lastCFMMInvariant
+          reserves0a,
+          reserves1a,
+          lastCFMMInvariant1
         )
       ).wait();
+      const expToken0a = liquidity.mul(reserves0a).div(lastCFMMInvariant1);
+      const expToken1a = liquidity.mul(reserves1a).div(lastCFMMInvariant1);
       const res1 = await strategy.testCalcTokensToRepay(liquidity);
-      expect(res1[0]).to.equal(ONE.mul(50));
-      expect(res1[1]).to.equal(ONE.mul(200));
+      expect(res1[0]).to.equal(expToken0a);
+      expect(res1[1]).to.equal(expToken1a);
 
+      const reserves0b = reserves0.mul(2);
+      const reserves1b = reserves1;
+      const lastCFMMInvariant2 = await strategy.testCalcInvariant([
+        reserves0b,
+        reserves1b,
+      ]);
       await (
         await strategy.setCFMMReserves(
-          reserves0.mul(2),
-          reserves1,
-          lastCFMMInvariant
+          reserves0b,
+          reserves1b,
+          lastCFMMInvariant2
         )
       ).wait();
+      const expToken0b = liquidity.mul(reserves0b).div(lastCFMMInvariant2);
+      const expToken1b = liquidity.mul(reserves1b).div(lastCFMMInvariant2);
       const res2 = await strategy.testCalcTokensToRepay(liquidity);
-      expect(res2[0]).to.equal(ONE.mul(100));
-      expect(res2[1]).to.equal(ONE.mul(100));
+      expect(res2[0]).to.equal(expToken0b);
+      expect(res2[1]).to.equal(expToken1b);
     });
 
     it("Error Before Repay", async function () {

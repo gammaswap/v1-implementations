@@ -639,10 +639,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@gammaswap/v1-core@^0.4.4":
-  version "0.4.4"
-  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.4.4/7cb6c90bc7465ecf0973f9ce26104f02202dc919#7cb6c90bc7465ecf0973f9ce26104f02202dc919"
-  integrity sha512-nJeQbVXRPzf8Aj+VTA003RF4X5ot4a1KuY2nLMslONPueIcCQKMmjStxAvoATPanXQCC7CuZH39WVgNXGe1RTQ==
+"@gammaswap/v1-core@^0.4.6":
+  version "0.4.6"
+  resolved "https://npm.pkg.github.com/download/@gammaswap/v1-core/0.4.6/bf53c4d78a72057624ec01ade9a15734df3e342c#bf53c4d78a72057624ec01ade9a15734df3e342c"
+  integrity sha512-6nymNiDPdOloy0KS/qf21bj6m89YS94k+Af858tkYyONQgQlPJzsmekGCC3ojBxC4hZxcE5qcUhGEolvLYZLxQ==
   dependencies:
     "@openzeppelin/contracts" "^4.7.0"
 
@@ -853,6 +853,13 @@
     ethereum-cryptography "0.1.3"
     mcl-wasm "^0.7.1"
     rustbn.js "~0.2.0"
+
+"@nomicfoundation/hardhat-foundry@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-foundry/-/hardhat-foundry-1.0.1.tgz#22b11a78a179ec7ed6840ee8c10add888fd23dc8"
+  integrity sha512-sQEaX3rik6Gclmek4MqCyOc9+vOM0ZS40eUARrB6K9t6wthqCwJ29CClfxLdbrjn/3MM5hX8ioD+/9OqdGVxSQ==
+  dependencies:
+    chalk "^2.4.2"
 
 "@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.1":
   version "0.1.1"

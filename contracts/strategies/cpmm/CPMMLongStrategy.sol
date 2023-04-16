@@ -15,15 +15,25 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         CPMMBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
     }
 
-    /// @dev See {BaseLongStrategy.getCurrentCFMMPrice}.
+    /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
     function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
         return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
     }
 
-    /// @dev See {LongStrategy.calcDeltasForRatio}.
-    function calcDeltasForRatio(uint128[] memory tokensHeld, uint256[] calldata ratio) public virtual override view returns(int256[] memory deltas) {
+    /// @dev See {ILongStrategy-calcDeltasToClose}.
+    function calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) external virtual override view returns(int256[] memory deltas) {
+        return _calcDeltasToClose(tokensHeld, reserves, liquidity, collateralId);
+    }
+
+    /// @dev See {ILongStrategy-calcDeltasForRatio}.
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external virtual override view returns(int256[] memory deltas) {
+        return _calcDeltasForRatio(tokensHeld, reserves, ratio);
+    }
+
+    /// @dev See {LongStrategy-_calcDeltasForRatio}.
+    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
-        (uint128 reserve0, uint128 reserve1,) = ICPMM(s.cfmm).getReserves();
+        (uint128 reserve0, uint128 reserve1) = (reserves[0], reserves[1]);
         uint256 factor = 10 ** s.decimals[0];
         uint256 desiredRatio = ratio[1] * factor / ratio[0];
         uint256 loanRatio = tokensHeld[1] * factor / tokensHeld[0];
