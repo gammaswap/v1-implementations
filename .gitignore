@@ -8,6 +8,10 @@ typechain
 cache
 artifacts
 
+#foundry files
+cache_forge
+out
+
 #IDE
 .idea
 .vscode
