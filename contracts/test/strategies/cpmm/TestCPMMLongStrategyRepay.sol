@@ -21,8 +21,12 @@ contract TestCPMMLongStrategyRepay is CPMMExternalLongStrategy {
     }
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        uint256[] memory amounts = calcTokensToRepay(liquidity);
+        uint256[] memory amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity);
         return(amounts[0], amounts[1]);
+    }
+
+    function testCalcInvariant(uint128[] calldata reserves) external virtual view returns(uint256) {
+        return calcInvariant(address(0),reserves);
     }
 
     function testBeforeRepay(uint256 tokenId, uint256[] memory amounts) external virtual {

@@ -87,12 +87,4 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
             revert NotOptimalDeposit();
         }
     }
-
-    /// @dev Get reserve token quantities in CFMM. UniswapV2 returns uint112, but we return array of uint128
-    /// @param cfmm - address of CFMM we're reading reserve quantities from
-    /// @return reserves - reserve token quantities in CFMM
-    function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
-        reserves = new uint128[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
-    }
 }

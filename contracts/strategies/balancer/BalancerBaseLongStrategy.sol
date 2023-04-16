@@ -49,18 +49,19 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         return origFee;
     }
 
-    function calcDeltasToClose(uint128[] memory tokensHeld, uint256 liquidity, uint256 collateralId) public virtual override view returns(int256[] memory deltas) {
+    /// @dev See {BaseLongStrategy._calcDeltasToClose}.
+    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
     }
 
     /// @dev See {BaseLongStrategy.calcTokensToRepay}.
-    function calcTokensToRepay(uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
         amounts = new uint256[](2);
-        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
+        uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
 
         // This has been unmodified from the Uniswap implementation
-        amounts[0] = (liquidity * s.CFMM_RESERVES[0] / lastCFMMInvariant);
-        amounts[1] = (liquidity * s.CFMM_RESERVES[1] / lastCFMMInvariant);
+        amounts[0] = (liquidity * reserves[0] / lastCFMMInvariant);
+        amounts[1] = (liquidity * reserves[1] / lastCFMMInvariant);
     }
 
     /// @dev Empty implementation for Balancer. See {BaseLongStrategy.beforeRepay} for a discussion on the purpose of this function.
