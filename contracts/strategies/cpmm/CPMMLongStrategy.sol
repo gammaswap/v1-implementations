@@ -31,7 +31,7 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
     }
 
     /// @dev See {LongStrategy-_calcDeltasForRatio}.
-    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) public virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
         (uint128 reserve0, uint128 reserve1) = (reserves[0], reserves[1]);
         uint256 factor = 10 ** s.decimals[0];

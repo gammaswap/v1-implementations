@@ -96,11 +96,6 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         }
     }
 
-    /// @dev See {BaseStrategy-updateReserves}.
-    function updateReserves(address) internal virtual override {
-        s.CFMM_RESERVES = getReserves(address(0));
-    }
-
     /// @dev See {BaseStrategy-getReserves}.
     function getReserves(address) internal virtual override view returns(uint128[] memory reserves) {
         (,uint256[] memory _reserves,) = IVault(getVault()).getPoolTokens(getPoolId());
