@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-implementations",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
@@ -41,6 +41,8 @@
     "@types/node": "^12.20.55",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "chai": "^4.3.6",
     "dotenv": "^16.0.1",
     "eslint": "^7.32.0",
@@ -68,9 +70,8 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^3.0.1",
     "@balancer-labs/v2-vault": "^3.0.1",
-    "@gammaswap/v1-core": "^0.4.6",
+    "@gammaswap/v1-core": "^0.4.9",
     "@openzeppelin/contracts": "^4.7.0",
-    "@prb/math": "^3.1.0",
-    "@uniswap/v2-core": "^1.0.1"
+    "@prb/math": "^3.1.0"
   }
 }

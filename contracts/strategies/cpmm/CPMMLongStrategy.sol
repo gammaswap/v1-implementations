@@ -27,25 +27,26 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
 
     /// @dev See {ILongStrategy-calcDeltasForRatio}.
     function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external virtual override view returns(int256[] memory deltas) {
-        return _calcDeltasForRatio(tokensHeld, reserves, ratio);
+        deltas = _calcDeltasForRatio(tokensHeld, reserves, ratio);
     }
 
     /// @dev See {LongStrategy-_calcDeltasForRatio}.
     function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
         (uint128 reserve0, uint128 reserve1) = (reserves[0], reserves[1]);
-        uint256 factor = 10 ** s.decimals[0];
-        uint256 desiredRatio = ratio[1] * factor / ratio[0];
-        uint256 loanRatio = tokensHeld[1] * factor / tokensHeld[0];
+        uint256 factor0 = 10 ** s.decimals[0];
+        uint256 desiredRatio = ratio[1] * factor0 / ratio[0];
+        uint256 loanRatio = tokensHeld[1] * factor0 / tokensHeld[0];
 
         // we're always going to buy, therefore when desiredRatio > loanRatio, invert reserves, collaterals, and desiredRatio
         if(desiredRatio > loanRatio) { // sell token0, buy token1 (need more token1)
             (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]); // invert collateral
-            desiredRatio = factor * (10 ** s.decimals[1]) / desiredRatio; // invert price
-            deltas = calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, false); // always buying
+            uint256 factor1 = 10 ** s.decimals[1];
+            desiredRatio = factor0 * factor1 / desiredRatio; // invert price
+            deltas = calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, factor1, false); // always buying
             (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
         } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
-            deltas = calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, false); // always buying
+            deltas = calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, factor0, false); // always buying
             deltas[1] = 0;
         } else {
             (deltas[0], deltas[1]) = (0, 0); // no trade
@@ -64,16 +65,17 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
     /// @param reserve0 - reserve quantity of token0 in CFMM
     /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param tokensHeld - collateral to rebalance
+    /// @param factor - decimals expansion number of first token (e.g. 10^(token0's decimals))
     /// @param side - side of token to rebalance
     /// @return deltas - quadratic roots (quantities to trade). The first quadratic root (index 0) is the only feasible trade
-    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, bool side) public virtual view returns(int256[] memory deltas) {
+    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, uint256 factor, bool side) public virtual view returns(int256[] memory deltas) {
         uint256 fee1 = tradingFee1;
         uint256 fee2 = tradingFee2;
-        uint256 factor = 10 ** s.decimals[0];
         // must negate
         uint256 a = fee1 * ratio / fee2;
         // must negate
         bool bIsNeg;
+        deltas = new int256[](2);
         uint256 b;
         {
             uint256 leftVal;

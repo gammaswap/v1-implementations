@@ -8,6 +8,12 @@ contract TestCPMMLongStrategyRepay is CPMMExternalLongStrategy {
     using LibStorage for LibStorage.Storage;
     using Math for uint;
 
+    error RebalanceExternally();
+    error CheckLPTokens();
+    error SwapExternally();
+    error SendAndCalcCollateralLPTokens();
+    error CalcExternalSwapFee();
+
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
@@ -76,5 +82,28 @@ contract TestCPMMLongStrategyRepay is CPMMExternalLongStrategy {
 
     function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
+    }
+
+    function sendAndCalcCollateralLPTokens(address to, uint128[] calldata amounts, uint256 lastCFMMTotalSupply) internal virtual override returns(uint256 swappedCollateralAsLPTokens) {
+        revert SendAndCalcCollateralLPTokens();
+    }
+
+    function externalSwap(LibStorage.Loan storage _loan, address _cfmm, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) internal override virtual returns(uint256 liquiditySwapped, uint128[] memory tokensHeld) {
+        revert SwapExternally();
+    }
+
+    function calcExternalSwapFee(uint256 liquiditySwapped, uint256 loanLiquidity) internal view override virtual returns(uint256 fee) {
+        revert CalcExternalSwapFee();
+    }
+
+    function _rebalanceExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual returns(uint256 loanLiquidity, uint128[] memory tokensHeld) {
+        revert RebalanceExternally();
+    }
+
+    function checkLPTokens(address _cfmm, uint256 prevLpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual override {
+        revert CheckLPTokens();
+    }
+
+    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, uint256 factor, bool side) public virtual override view returns(int256[] memory deltas) {
     }
 }
