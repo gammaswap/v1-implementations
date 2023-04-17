@@ -12,6 +12,10 @@ contract TestERC20 is ERC20 {
         _mint(msg.sender, 100000 * 1e18);
     }
 
+    function getSender() public virtual view returns(address) {
+        return msg.sender;
+    }
+
     function mint(address to, uint256 amount) public virtual {
         _mint(to, amount);
     }

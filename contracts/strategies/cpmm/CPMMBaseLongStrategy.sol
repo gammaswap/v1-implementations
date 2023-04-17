@@ -94,10 +94,10 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas, uint128[] memory reserves) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], deltas[0], deltas[1]);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, reserves[0], reserves[1], deltas[0], deltas[1]);
     }
 
     /// @dev Calculate expected bought and sold amounts given reserves in CFMM

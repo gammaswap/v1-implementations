@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
@@ -8,9 +9,9 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract UniswapSetup is Test {
 
-    IUniswapV2Factory uniFactory;
-    IUniswapV2Router02 uniRouter;
-    IUniswapV2Pair uniPair;
+    IUniswapV2Factory public uniFactory;
+    IUniswapV2Router02 public uniRouter;
+    IUniswapV2Pair public uniPair;
 
     function initUniswap(address owner, address weth) public {
         // Let's do the same thing with `getCode`
@@ -34,7 +35,28 @@ contract UniswapSetup is Test {
     }
 
     function createPair(address token0, address token1) public returns(address) {
-        return IUniswapV2Factory(uniFactory).createPair(token0, token1);
+        return uniFactory.createPair(token0, token1);
     }
 
+    function addLiquidity(address token0, address token1, uint256 amount0, uint256 amount1, address to) public returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+        (amountA, amountB, liquidity) = uniRouter.addLiquidity(token0, token1, amount0, amount1, 0, 0, to, type(uint256).max);
+    }
+
+    function removeLiquidity(address token0, address token1, uint liquidity) external returns (uint256 amount0, uint256 amount1) {
+        return uniRouter.removeLiquidity(token0, token1, liquidity, 0, 0, msg.sender, type(uint256).max);
+    }
+
+    function buyTokenOut(uint256 amountOut, address tokenIn, address tokenOut) public returns(uint256[] memory amounts) {
+        address[] memory path = new address[](2);
+        path[0] = tokenIn;
+        path[1] = tokenOut;
+        return uniRouter.swapTokensForExactTokens(amountOut, type(uint256).max, path, msg.sender, type(uint256).max);
+    }
+
+    function sellTokenIn(uint256 amountIn, address tokenIn, address tokenOut, address to) public returns(uint256[] memory amounts) {
+        address[] memory path = new address[](2);
+        path[0] = tokenIn;
+        path[1] = tokenOut;
+        return uniRouter.swapExactTokensForTokens(amountIn, 0, path, to, type(uint256).max);
+    }
 }

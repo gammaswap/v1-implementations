@@ -122,13 +122,13 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
 
     function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
         LibStorage.Loan storage loan = s.loans[tokenId];
-        (outAmts, inAmts) = beforeSwapTokens(loan, deltas);
+        (outAmts, inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
         emit CalcAmounts(outAmts, inAmts);
     }
 
     function testSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual {
         LibStorage.Loan storage loan = s.loans[tokenId];
-        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas);
+        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
         swapTokens(loan, outAmts, inAmts);
         emit CalcAmounts(outAmts, inAmts);
     }
