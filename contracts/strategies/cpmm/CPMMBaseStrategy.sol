@@ -52,7 +52,7 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
 
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
     function withdrawFromCFMM(address cfmm, address to, uint256 lpTokens) internal virtual override returns(uint256[] memory amounts) {
-        GammaSwapLibrary.safeTransfer(IERC20(cfmm), cfmm, lpTokens);
+        GammaSwapLibrary.safeTransfer(cfmm, cfmm, lpTokens);
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);
     }
