@@ -84,8 +84,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function beforeRepay(LibStorage.Loan storage _loan, uint256[] memory _amounts) internal virtual override {
         address[] memory tokens = s.tokens;
         address cfmm = s.cfmm;
-        if(_amounts[0] > 0) sendToken(IERC20(tokens[0]), cfmm, _amounts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
-        if(_amounts[1] > 0) sendToken(IERC20(tokens[1]), cfmm, _amounts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
+        if(_amounts[0] > 0) sendToken(tokens[0], cfmm, _amounts[0], s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+        if(_amounts[1] > 0) sendToken(tokens[1], cfmm, _amounts[1], s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
@@ -123,7 +123,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             if(inAmt0 > 0) {
                 outAmt0 = 0;
                 outAmt1 = calcAmtOut(inAmt0, reserve1, reserve0); // calc what you'll send
-                uint256 _outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
+                uint256 _outAmt1 = calcActualOutAmt(s.tokens[1], s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 if(_outAmt1 != outAmt1) {
                     outAmt1 = _outAmt1;
                     inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
@@ -131,7 +131,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             } else {
                 outAmt0 = calcAmtOut(inAmt1, reserve0, reserve1); // calc what you'll send
                 outAmt1 = 0;
-                uint256 _outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+                uint256 _outAmt0 = calcActualOutAmt(s.tokens[0], s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 if(_outAmt0 != outAmt0) {
                     outAmt0 = _outAmt0;
                     inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
@@ -141,11 +141,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             outAmt0 = uint256(-delta0); // sell exact token0 (what you'll send)
             outAmt1 = uint256(-delta1); // sell exact token1 (what you'll send) (here we can send then calc how much to ask)
             if(outAmt0 > 0) {
-                outAmt0 = calcActualOutAmt(IERC20(s.tokens[0]), s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
+                outAmt0 = calcActualOutAmt(s.tokens[0], s.cfmm, outAmt0, s.TOKEN_BALANCE[0], _loan.tokensHeld[0]);
                 inAmt0 = 0;
                 inAmt1 = calcAmtIn(outAmt0, reserve0, reserve1); // calc what you'll ask
             } else {
-                outAmt1 = calcActualOutAmt(IERC20(s.tokens[1]), s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
+                outAmt1 = calcActualOutAmt(s.tokens[1], s.cfmm, outAmt1, s.TOKEN_BALANCE[1], _loan.tokensHeld[1]);
                 inAmt0 = calcAmtIn(outAmt1, reserve1, reserve0); // calc what you'll ask
                 inAmt1 = 0;
             }
@@ -159,7 +159,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param balance - total balance of `token` in GammaPool
     /// @param collateral - `token` collateral available in loan
     /// @return outAmt - amount of `token` actually sent to recipient (`to`)
-    function calcActualOutAmt(IERC20 token, address to, uint256 amount, uint256 balance, uint256 collateral) internal returns(uint256) {
+    function calcActualOutAmt(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal returns(uint256) {
         uint256 balanceBefore = GammaSwapLibrary.balanceOf(token, to); // check balance before transfer
         sendToken(token, to, amount, balance, collateral); // perform transfer
         return GammaSwapLibrary.balanceOf(token, to) - balanceBefore; // check balance after transfer

@@ -47,7 +47,7 @@ contract TestCPMMLongStrategyRepay is CPMMExternalLongStrategy {
         // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
         updateIndex();
         updateCollateral(s.loans[tokenId]);
-        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
         uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         s.LP_TOKEN_BALANCE = lpTokenBalance;
         s.LP_INVARIANT = lpInvariant;

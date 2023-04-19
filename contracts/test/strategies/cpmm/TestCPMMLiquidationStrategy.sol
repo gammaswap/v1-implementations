@@ -84,7 +84,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
     }
 
     function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(IERC20(token), to, amount, balance, collateral);
+        uint256 actualOutAmount = calcActualOutAmt(token, to, amount, balance, collateral);
         emit ActualOutAmount(actualOutAmount);
     }
 
@@ -105,7 +105,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
         // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
         updateIndex();
         updateCollateral(s.loans[tokenId]);
-        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(IERC20(s.cfmm), address(this));
+        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
         uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         s.LP_TOKEN_BALANCE = lpTokenBalance;
         s.LP_INVARIANT = lpInvariant;

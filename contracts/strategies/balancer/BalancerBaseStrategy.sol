@@ -80,8 +80,8 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
 
     /// @dev Returns the quantities of reserve tokens held by the GammaPool contract.
     function getStrategyReserves() internal virtual view returns(uint256 reserves0, uint256 reserves1) {
-        reserves0 = GammaSwapLibrary.balanceOf(IERC20(s.tokens[0]), address(this));
-        reserves1 = GammaSwapLibrary.balanceOf(IERC20(s.tokens[1]), address(this));
+        reserves0 = GammaSwapLibrary.balanceOf(s.tokens[0], address(this));
+        reserves1 = GammaSwapLibrary.balanceOf(s.tokens[1], address(this));
     }
 
     /// @dev Checks whether the GammaPool contract has sufficient allowance to interact with the Balancer Vault contract.
@@ -114,7 +114,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         addVaultApproval(tokens[1], amounts[1]);
 
         // Log the LP token balance of the GammaPool
-        uint256 initialBalance = GammaSwapLibrary.balanceOf(IERC20(_cfmm), address(this));
+        uint256 initialBalance = GammaSwapLibrary.balanceOf(_cfmm, address(this));
 
         IVault(getVault()).joinPool(getPoolId(),
             address(this), // The GammaPool is sending the reserve tokens
@@ -128,7 +128,7 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
             );
 
         // Return the difference in LP token balance of the GammaPool
-        return GammaSwapLibrary.balanceOf(IERC20(_cfmm), address(this)) - initialBalance;
+        return GammaSwapLibrary.balanceOf(_cfmm, address(this)) - initialBalance;
     }
 
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
