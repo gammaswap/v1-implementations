@@ -56,17 +56,17 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev Get poolId of Balancer CFMM in Vault
-    function getPoolId() public view virtual returns(bytes32) {
+    function getPoolId() internal view virtual returns(bytes32) {
         return s.getBytes32(uint256(IBalancerStrategy.StorageIndexes.POOL_ID));
     }
 
     /// @dev Get vault address used for Balancer CFMM
-    function getVault() public view virtual returns(address) {
+    function getVault() internal view virtual returns(address) {
         return s.getAddress(uint256(IBalancerStrategy.StorageIndexes.VAULT));
     }
 
     /// @dev Get factors to scale tokens according to their decimals. Used to in Balancer invariant calculation
-    function getScalingFactors() public view virtual returns(uint256[] memory factors) {
+    function getScalingFactors() internal view virtual returns(uint256[] memory factors) {
         factors = new uint256[](2);
         factors[0] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
         factors[1] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
@@ -74,10 +74,10 @@ contract BalancerGammaPool is GammaPool {
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
-        uint256[] memory factors = getScalingFactors();
+        /*uint256[] memory factors = getScalingFactors();
         uint128[] memory reserves = _getLatestCFMMReserves();
         uint256 numerator = reserves[1] * factors[1] * weight1 / weight0;
-        return numerator * 1e18 / (reserves[0] * factors[0]);
+        return numerator * 1e18 / (reserves[0] * factors[0]);/**/
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
