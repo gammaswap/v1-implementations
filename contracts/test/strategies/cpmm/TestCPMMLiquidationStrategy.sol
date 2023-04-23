@@ -124,13 +124,6 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
         return (1e19,1e19);
     }
 
-    function canLiquidate(uint256 tokenId) external virtual view returns(bool) {
-        // Get loan for tokenId, revert if not loan creator
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-        uint256 collateral = calcInvariant(s.cfmm, _loan.tokensHeld);
-        return !hasMargin(collateral, _loan.liquidity, ltvThreshold());
-    }
-
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
         // Revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= s.LP_TOKEN_BALANCE) {
@@ -158,7 +151,7 @@ contract TestCPMMLiquidationStrategy is CPMMExternalLiquidationStrategy {
     }
 
     function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {
-        if(!hasMargin(collateral, liquidity, ltvThreshold())) { // Revert if loan does not have enough collateral
+        if(!hasMargin(collateral, liquidity, _ltvThreshold())) { // Revert if loan does not have enough collateral
             revert HasMargin();
         }
     }

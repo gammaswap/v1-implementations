@@ -66,31 +66,30 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev Get factors to scale tokens according to their decimals. Used to in Balancer invariant calculation
-    function getScalingFactors() public view virtual returns(uint256 factor0, uint256 factor1) {
-        factor0 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
-        factor1 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
+    function getScalingFactors() public view virtual returns(uint256[] memory factors) {
+        factors = new uint256[](2);
+        factors[0] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
+        factors[1] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
     }
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
-        (uint256 factor0, uint256 factor1) = getScalingFactors();
+        uint256[] memory factors = getScalingFactors();
         uint128[] memory reserves = _getLatestCFMMReserves();
-        uint256 numerator = reserves[1] * factor1 * weight1 / weight0;
-        return numerator * 1e18 / (reserves[0] * factor0);
+        uint256 numerator = reserves[1] * factors[1] * weight1 / weight0;
+        return numerator * 1e18 / (reserves[0] * factors[0]);
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
     function _getLatestCFMMReserves() internal virtual override view returns(uint128[] memory cfmmReserves) {
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()}));
-        return IShortStrategy(shortStrategy)._getLatestCFMMReserves(data);
+        return IShortStrategy(shortStrategy)._getLatestCFMMReserves(
+            abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()})));
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMInvariant}
     function _getLatestCFMMInvariant() internal virtual override view returns(uint256 lastCFMMInvariant) {
-        uint256[] memory factors = new uint256[](2);
-        (factors[0], factors[1]) = getScalingFactors();
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: factors}));
-        return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(data);
+        return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(
+            abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: getScalingFactors()})));
     }
 
     /// @dev See {IGammaPool-createLoan}
