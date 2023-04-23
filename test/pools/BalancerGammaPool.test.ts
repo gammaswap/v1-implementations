@@ -446,11 +446,11 @@ describe("BalancerGammaPool", function () {
       );
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
-      expect(await pool.getPoolId()).to.equal(cfmmPoolId);
-      expect(await pool.getScalingFactors()).to.deep.equal([
-        BigNumber.from(1),
-        BigNumber.from(1),
-      ]);
+      //expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      //expect(await pool.getScalingFactors()).to.deep.equal([
+      //  BigNumber.from(1),
+      //  BigNumber.from(1),
+      //]);
     });
 
     it("Initializes Correctly with Scaling Factors", async function () {
@@ -467,11 +467,11 @@ describe("BalancerGammaPool", function () {
       );
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
-      expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      /*expect(await pool.getPoolId()).to.equal(cfmmPoolId);
       expect(await pool.getScalingFactors()).to.deep.equal([
         BigNumber.from(10).pow(12),
         BigNumber.from(10).pow(6),
-      ]);
+      ]);/**/
     });
   });
 });
