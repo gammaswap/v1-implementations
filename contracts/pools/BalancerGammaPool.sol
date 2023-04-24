@@ -47,9 +47,9 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
-        require(_weight0 == IBalancerStrategy(_longStrategy).weight0());//, "weight0 long strategy");
-        require(_weight0 == IBalancerStrategy(_shortStrategy).weight0());//, "weight0 short strategy");
-        require(_weight0 == IBalancerStrategy(_liquidationStrategy).weight0());//, "weight0 liquidation strategy");
+        require(_weight0 == IBalancerStrategy(_longStrategy).weight0(), "weight0 long strategy");
+        require(_weight0 == IBalancerStrategy(_shortStrategy).weight0(), "weight0 short strategy");
+        require(_weight0 == IBalancerStrategy(_liquidationStrategy).weight0(), "weight0 liquidation strategy");
         
         poolFactory = _poolFactory;
         weight0 = _weight0;
