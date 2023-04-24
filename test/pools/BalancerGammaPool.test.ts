@@ -48,7 +48,11 @@ describe("BalancerGammaPool", function () {
     const fixedPoint = await fixedPointFactory.deploy();
 
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool");
+    BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool",{
+      libraries: {
+        FixedPoint: fixedPoint.address,
+      },
+    });
 
     // Fetch contract factories for strategies
     shortStrategy = await ethers.getContractFactory("BalancerShortStrategy", {
