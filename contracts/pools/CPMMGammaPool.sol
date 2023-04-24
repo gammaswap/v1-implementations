@@ -38,6 +38,11 @@ contract CPMMGammaPool is GammaPool {
         emit LoanCreated(msg.sender, tokenId);
     }
 
+    /// @dev See {GammaPoolERC4626._calcInvariant}.
+    function _calcInvariant(uint128[] memory tokensHeld) internal virtual override view returns(uint256) {
+        return Math.sqrt(uint256(tokensHeld[0]) * tokensHeld[1]);
+    }
+
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256) {
         uint128[] memory _reserves = _getLatestCFMMReserves();

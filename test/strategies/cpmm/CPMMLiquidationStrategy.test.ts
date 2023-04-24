@@ -446,7 +446,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -651,7 +651,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -798,6 +798,7 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -805,7 +806,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -874,6 +875,7 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -881,7 +883,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -950,6 +952,7 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -957,7 +960,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -1026,6 +1029,7 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -1033,7 +1037,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       await expect(strategy._liquidate(tokenId, [], [])).to.be.revertedWith(
@@ -1100,6 +1104,7 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
@@ -1107,7 +1112,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
@@ -1250,7 +1255,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       await (await tokenA.transfer(cfmm.address, ONE.mul(50))).wait();
@@ -1460,7 +1465,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
       expect(
-        await strategyFee.canLiquidate(loan2.liquidity, loan2.tokensHeld)
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
       await (await tokenA.transfer(cfmm.address, ONE.mul(50))).wait();
