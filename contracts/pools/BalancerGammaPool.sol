@@ -46,9 +46,9 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
         GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
-        require(_weight0 == IBalancerStrategy(_longStrategy).weight0(), "weight0 long strategy");
-        require(_weight0 == IBalancerStrategy(_shortStrategy).weight0(), "weight0 short strategy");
-        require(_weight0 == IBalancerStrategy(_liquidationStrategy).weight0(), "weight0 liquidation strategy");
+        require(_weight0 == IBalancerStrategy(_longStrategy).weight0());//, "weight0 long strategy");
+        require(_weight0 == IBalancerStrategy(_shortStrategy).weight0());//, "weight0 short strategy");
+        require(_weight0 == IBalancerStrategy(_liquidationStrategy).weight0());//, "weight0 liquidation strategy");
         
         poolFactory = _poolFactory;
         weight0 = _weight0;
@@ -167,4 +167,14 @@ contract BalancerGammaPool is GammaPool {
         }
     }
 
+    /// @dev See {IGammaPool-getRates}
+    function getRates() external virtual override view returns(uint256, uint256, uint256) {
+        return(0,0,0);
+    }
+
+    /// @dev See {IGammaPool-getPoolBalances}
+    function getPoolBalances() external virtual override view returns(uint128[] memory tokenBalances, uint256 lpTokenBalance, uint256 lpTokenBorrowed,
+        uint256 lpTokenBorrowedPlusInterest, uint256 borrowedInvariant, uint256 lpInvariant) {
+        return(new uint128[](0), s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.BORROWED_INVARIANT, s.LP_INVARIANT);
+    }
 }
