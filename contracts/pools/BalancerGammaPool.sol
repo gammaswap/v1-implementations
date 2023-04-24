@@ -30,6 +30,7 @@ contract BalancerGammaPool is GammaPool {
     error IncorrectSwapFee();
 
     using LibStorage for LibStorage.Storage;
+    using FixedPoint for uint256;
 
     /// @return tokenCount - number of tokens expected in CFMM
     uint8 constant public tokenCount = 2;
@@ -96,6 +97,22 @@ contract BalancerGammaPool is GammaPool {
     function createLoan() external lock virtual override returns(uint256 tokenId) {
         tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
         emit LoanCreated(msg.sender, tokenId);
+    }
+
+    /// @dev See {GammaPoolERC4626._calcInvariant}.
+    function _calcInvariant(uint128[] memory amounts) internal virtual override view returns(uint256) {
+        uint256[] memory factors = getScalingFactors();
+        uint256[] memory scaledReserves = new uint256[](2);
+        scaledReserves[0] = amounts[0] * factors[0];
+        scaledReserves[1] = amounts[1] * factors[1];
+        return calcScaledInvariant(scaledReserves);
+    }
+
+    /// @dev Calculated invariant from amounts scaled to 18 decimals
+    /// @param amounts - reserve amounts used to calculate invariant
+    /// @return invariant - calculated invariant for Balancer AMM
+    function calcScaledInvariant(uint256[] memory amounts) internal virtual view returns(uint256 invariant) {
+        invariant = FixedPoint.ONE.mulDown(amounts[0].powDown(weight0)).mulDown(amounts[1].powDown(weight1));
     }
 
     /// @dev See {IGammaPool-initialize}
@@ -176,5 +193,19 @@ contract BalancerGammaPool is GammaPool {
     function getPoolBalances() external virtual override view returns(uint128[] memory tokenBalances, uint256 lpTokenBalance, uint256 lpTokenBorrowed,
         uint256 lpTokenBorrowedPlusInterest, uint256 borrowedInvariant, uint256 lpInvariant) {
         return(new uint128[](0), s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.BORROWED_INVARIANT, s.LP_INVARIANT);
+    }
+
+    /// @dev See {IGammaPool-getLoans}
+    function getLoans(uint256 start, uint256 end, bool active) external virtual override view returns(LoanData[] memory _loans) {
+        _loans = new LoanData[](0);
+    }
+
+    /// @dev See {IGammaPool-getCFMMBalances}
+    function getCFMMBalances() external virtual override view returns(uint128[] memory cfmmReserves, uint256 cfmmInvariant, uint256 cfmmTotalSupply) {
+        return(new uint128[](0), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
+    }
+
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external override virtual view returns(int256[] memory deltas) {
+        deltas = new int256[](0);
     }
 }
