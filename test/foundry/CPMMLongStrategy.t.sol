@@ -102,7 +102,6 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertLt(desiredRatio,price);
 
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, ratio);
-
         assertGt(liquidityBorrowed, 0);
         assertGt(amounts[0], 0);
         assertGt(amounts[1], 0);
@@ -1055,5 +1054,65 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertGt(weth.balanceOf(addr1), wethBal0);
 
         vm.stopPrank();
+    }
+
+    function testRebalanceBuyCollateral(uint256 collateralId, int256 amount) public {
+        collateralId = bound(collateralId, 0, 1);
+        if (collateralId == 0) {    // if WETH rebalance
+            amount = bound(amount, 1e16, 100*1e18);
+        } else {    // if USDC rebalance
+            amount = bound(amount, 10*1e18, 1_000_000*1e18);
+        }
+        if (amount == 0) return;
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan();
+        assertGt(tokenId, 0);
+
+        uint128[] memory tokensHeldBefore = new uint128[](2);
+        tokensHeldBefore[0] = 2000 * 1e18;
+        tokensHeldBefore[1] = 2_000_000 * 1e18;
+
+        weth.transfer(address(pool), tokensHeldBefore[0]);
+        usdc.transfer(address(pool), tokensHeldBefore[1]);
+
+        pool.increaseCollateral(tokenId);
+
+        int256[] memory deltas = new int256[](2);
+        deltas[collateralId] = amount;
+        deltas[1 - collateralId] = 0;
+
+        uint128[] memory tokensHeldAfter = pool.rebalanceCollateral(tokenId, deltas, new uint256[](0));
+        assertEq(tokensHeldAfter[collateralId], tokensHeldBefore[collateralId] + uint256(amount));
+    }
+
+    function testRebalanceSellCollateral(uint256 collateralId, int256 amount) public {
+        collateralId = bound(collateralId, 0, 1);
+        if (collateralId == 0) {    // if WETH rebalance
+            amount = bound(amount, 1e16, 100*1e18);
+        } else {    // if USDC rebalance
+            amount = bound(amount, 10*1e18, 1_000_000*1e18);
+        }
+        if (amount == 0) return;
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan();
+        assertGt(tokenId, 0);
+
+        uint128[] memory tokensHeldBefore = new uint128[](2);
+        tokensHeldBefore[0] = 2000 * 1e18;
+        tokensHeldBefore[1] = 2_000_000 * 1e18;
+
+        weth.transfer(address(pool), tokensHeldBefore[0]);
+        usdc.transfer(address(pool), tokensHeldBefore[1]);
+
+        pool.increaseCollateral(tokenId);
+
+        int256[] memory deltas = new int256[](2);
+        deltas[collateralId] = -amount;
+        deltas[1 - collateralId] = 0;
+
+        uint128[] memory tokensHeldAfter = pool.rebalanceCollateral(tokenId, deltas, new uint256[](0));
+        assertEq(tokensHeldAfter[collateralId], tokensHeldBefore[collateralId] - uint256(amount));
     }
 }
