@@ -74,7 +74,7 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategy = await TestStrategy.deploy(
       9500,
-      9750,
+      250,
       maxTotalApy,
       2252571,
       997,
@@ -141,7 +141,7 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategyFee = await TestStrategy.deploy(
       9500,
-      9750,
+      250,
       maxTotalApy,
       2252571,
       997,
@@ -330,8 +330,9 @@ describe("CPMMLiquidationStrategy", function () {
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
-      expect(await strategy.LIQUIDATION_FEE_THRESHOLD()).to.equal(9750);
+      expect(await strategy.LIQUIDATION_FEE()).to.equal(250);
       expect(await strategy.LTV_THRESHOLD()).to.equal(9500);
+      expect(await strategy.liquidationFee()).to.equal(250);
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);
@@ -444,7 +445,9 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -647,7 +650,9 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -793,13 +798,16 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -867,13 +875,16 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -941,13 +952,16 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -1015,13 +1029,16 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       await expect(strategy._liquidate(tokenId, [], [])).to.be.revertedWith(
         "NotEnoughCollateral"
@@ -1087,13 +1104,16 @@ describe("CPMMLiquidationStrategy", function () {
       await (await strategyFee.updateLoanData(tokenId)).wait();
 
       const loan2 = await strategyFee.getLoan(tokenId);
+      const collateral = sqrt(loan2.tokensHeld[0].mul(loan2.tokensHeld[1]));
       expect(loan2.initLiquidity).to.equal(res.liquidityBorrowed);
       expect(loan2.liquidity).gt(res.liquidityBorrowed);
       expect(loan2.lpTokens).to.equal(lpTokensBorrowed);
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(loan1.tokensHeld[0]);
       expect(loan2.tokensHeld[1]).to.equal(loan1.tokensHeld[1]);
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
@@ -1234,7 +1254,9 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       await (await tokenA.transfer(cfmm.address, ONE.mul(50))).wait();
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();
@@ -1442,7 +1464,9 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loan2.tokensHeld.length).to.equal(2);
       expect(loan2.tokensHeld[0]).to.equal(tokensHeld0.add(res.tokenAChange));
       expect(loan2.tokensHeld[1]).to.equal(tokensHeld1.add(res.tokenBChange));
-      expect(await strategyFee.canLiquidate(tokenId)).to.equal(true);
+      expect(
+        await strategyFee.canLiquidate(loan2.liquidity, collateral)
+      ).to.equal(true);
 
       await (await tokenA.transfer(cfmm.address, ONE.mul(50))).wait();
       await (await tokenB.transfer(cfmm.address, ONE.mul(100))).wait();

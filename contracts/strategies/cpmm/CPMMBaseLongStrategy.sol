@@ -42,8 +42,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         return MIN_BORROW;
     }
 
-    /// @dev See {BaseLongStrategy-ltvThreshold}.
-    function ltvThreshold() internal virtual override view returns(uint16) {
+    /// @dev See {BaseLongStrategy-_ltvThreshold}.
+    function _ltvThreshold() internal virtual override view returns(uint16) {
         return LTV_THRESHOLD;
     }
 

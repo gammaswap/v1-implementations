@@ -30,6 +30,7 @@ contract BalancerGammaPool is GammaPool {
     error IncorrectSwapFee();
 
     using LibStorage for LibStorage.Storage;
+    using FixedPoint for uint256;
 
     /// @return tokenCount - number of tokens expected in CFMM
     uint8 constant public tokenCount = 2;
@@ -56,47 +57,62 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev Get poolId of Balancer CFMM in Vault
-    function getPoolId() public view virtual returns(bytes32) {
+    function getPoolId() internal view virtual returns(bytes32) {
         return s.getBytes32(uint256(IBalancerStrategy.StorageIndexes.POOL_ID));
     }
 
     /// @dev Get vault address used for Balancer CFMM
-    function getVault() public view virtual returns(address) {
+    function getVault() internal view virtual returns(address) {
         return s.getAddress(uint256(IBalancerStrategy.StorageIndexes.VAULT));
     }
 
     /// @dev Get factors to scale tokens according to their decimals. Used to in Balancer invariant calculation
-    function getScalingFactors() public view virtual returns(uint256 factor0, uint256 factor1) {
-        factor0 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
-        factor1 = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
+    function getScalingFactors() internal view virtual returns(uint256[] memory factors) {
+        factors = new uint256[](2);
+        factors[0] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR0));
+        factors[1] = s.getUint256(uint256(IBalancerStrategy.StorageIndexes.SCALING_FACTOR1));
     }
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
-        (uint256 factor0, uint256 factor1) = getScalingFactors();
+        /*uint256[] memory factors = getScalingFactors();
         uint128[] memory reserves = _getLatestCFMMReserves();
-        uint256 numerator = reserves[1] * factor1 * weight1 / weight0;
-        return numerator * 1e18 / (reserves[0] * factor0);
+        uint256 numerator = reserves[1] * factors[1] * weight1 / weight0;
+        return numerator * 1e18 / (reserves[0] * factors[0]);/**/
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
     function _getLatestCFMMReserves() internal virtual override view returns(uint128[] memory cfmmReserves) {
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()}));
-        return IShortStrategy(shortStrategy)._getLatestCFMMReserves(data);
+        return IShortStrategy(shortStrategy)._getLatestCFMMReserves(
+            abi.encode(IBalancerStrategy.BalancerReservesRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault()})));
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMInvariant}
     function _getLatestCFMMInvariant() internal virtual override view returns(uint256 lastCFMMInvariant) {
-        uint256[] memory factors = new uint256[](2);
-        (factors[0], factors[1]) = getScalingFactors();
-        bytes memory data = abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: factors}));
-        return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(data);
+        return IShortStrategy(shortStrategy)._getLatestCFMMInvariant(
+            abi.encode(IBalancerStrategy.BalancerInvariantRequest({cfmmPoolId: getPoolId(), cfmmVault: getVault(), scalingFactors: getScalingFactors()})));
     }
 
     /// @dev See {IGammaPool-createLoan}
     function createLoan() external lock virtual override returns(uint256 tokenId) {
         tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
         emit LoanCreated(msg.sender, tokenId);
+    }
+
+    /// @dev See {GammaPoolERC4626._calcInvariant}.
+    function _calcInvariant(uint128[] memory amounts) internal virtual override view returns(uint256) {
+        uint256[] memory factors = getScalingFactors();
+        uint256[] memory scaledReserves = new uint256[](2);
+        scaledReserves[0] = amounts[0] * factors[0];
+        scaledReserves[1] = amounts[1] * factors[1];
+        return calcScaledInvariant(scaledReserves);
+    }
+
+    /// @dev Calculated invariant from amounts scaled to 18 decimals
+    /// @param amounts - reserve amounts used to calculate invariant
+    /// @return invariant - calculated invariant for Balancer AMM
+    function calcScaledInvariant(uint256[] memory amounts) internal virtual view returns(uint256 invariant) {
+        invariant = FixedPoint.ONE.mulDown(amounts[0].powDown(weight0)).mulDown(amounts[1].powDown(weight1));
     }
 
     /// @dev See {IGammaPool-initialize}
@@ -168,4 +184,28 @@ contract BalancerGammaPool is GammaPool {
         }
     }
 
+    /// @dev See {IGammaPool-getRates}
+    function getRates() external virtual override view returns(uint256, uint256, uint256) {
+        return(0,0,0);
+    }
+
+    /// @dev See {IGammaPool-getPoolBalances}
+    function getPoolBalances() external virtual override view returns(uint128[] memory tokenBalances, uint256 lpTokenBalance, uint256 lpTokenBorrowed,
+        uint256 lpTokenBorrowedPlusInterest, uint256 borrowedInvariant, uint256 lpInvariant) {
+        return(new uint128[](0), s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.BORROWED_INVARIANT, s.LP_INVARIANT);
+    }
+
+    /// @dev See {IGammaPool-getLoans}
+    function getLoans(uint256 start, uint256 end, bool active) external virtual override view returns(LoanData[] memory _loans) {
+        _loans = new LoanData[](0);
+    }
+
+    /// @dev See {IGammaPool-getCFMMBalances}
+    function getCFMMBalances() external virtual override view returns(uint128[] memory cfmmReserves, uint256 cfmmInvariant, uint256 cfmmTotalSupply) {
+        return(new uint128[](0), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
+    }
+
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external override virtual view returns(int256[] memory deltas) {
+        deltas = new int256[](0);
+    }
 }
