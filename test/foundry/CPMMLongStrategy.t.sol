@@ -99,7 +99,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[1] = reserve1 * 210; // Margin error
 
         uint256 desiredRatio = ratio[1] * 1e18 / ratio[0];
-        assertLt(desiredRatio,price);
+        assertGt(desiredRatio,price);
 
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, ratio);
         assertGt(liquidityBorrowed, 0);
