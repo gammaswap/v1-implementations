@@ -73,7 +73,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(diff/1e12,0);
     }
 
-    function testFailBorrowAndRebalance() public {
+    function testFailBorrowAndRebalanceMargin() public {
         (uint128 reserve0, uint128 reserve1,) = IUniswapV2Pair(cfmm).getReserves();
 
         uint256 price = uint256(reserve1) * (1e18) / reserve0;
