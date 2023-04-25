@@ -378,11 +378,10 @@ describe("BalancerGammaPool", function () {
           tokenA.address,
           cfmmPoolWeights[0]
         )
-      ).to.be.revertedWithCustomError(cfmm, "IncorrectVault");
+      ).to.be.revertedWithCustomError(pool, "IncorrectVaultAddress");
     });
 
     it("Error Incorrect Weights", async function () {
-      console.log("###", cfmm);
       await expect(
         validateCFMM(
           tokenA,
