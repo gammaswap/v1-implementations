@@ -192,7 +192,7 @@ contract BalancerGammaPool is GammaPool {
     /// @dev See {IGammaPool-getPoolBalances}
     function getPoolBalances() external virtual override view returns(uint128[] memory tokenBalances, uint256 lpTokenBalance, uint256 lpTokenBorrowed,
         uint256 lpTokenBorrowedPlusInterest, uint256 borrowedInvariant, uint256 lpInvariant) {
-        return(new uint128[](0), s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.BORROWED_INVARIANT, s.LP_INVARIANT);
+        return(new uint128[](0), s.LP_TOKEN_BALANCE, 0, 0, 0, 0);
     }
 
     /// @dev See {IGammaPool-getLoans}

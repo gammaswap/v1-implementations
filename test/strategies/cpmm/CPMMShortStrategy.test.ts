@@ -109,7 +109,7 @@ describe("CPMMShortStrategy", function () {
 
       await expect(
         strategy.testCheckOptimalAmt(amountOptimal, amountMin)
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
 
       expect(
         await strategy.testCheckOptimalAmt(amountOptimal, amountMin.sub(1))
@@ -161,13 +161,13 @@ describe("CPMMShortStrategy", function () {
     it("Error Calc Deposit Amounts, 0 amt", async function () {
       await expect(
         strategy.testCalcDeposits([0, 0], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
       await expect(
         strategy.testCalcDeposits([1, 0], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
       await expect(
         strategy.testCalcDeposits([0, 1], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
     });
 
     it("Error Calc Deposit Amounts, 0 reserve tokenA", async function () {
@@ -175,7 +175,7 @@ describe("CPMMShortStrategy", function () {
       await (await cfmm.sync()).wait();
       await expect(
         strategy.testCalcDeposits([1, 1], [0, 0])
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
     });
 
     it("Error Calc Deposit Amounts, 0 reserve tokenB", async function () {
@@ -183,7 +183,7 @@ describe("CPMMShortStrategy", function () {
       await (await cfmm.sync()).wait();
       await expect(
         strategy.testCalcDeposits([1, 1], [0, 0])
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
     });
 
     it("Error Calc Deposit Amounts, < minAmt", async function () {
@@ -192,13 +192,13 @@ describe("CPMMShortStrategy", function () {
       await (await cfmm.sync()).wait();
       await expect(
         strategy.testCalcDeposits([1, 1], [0, 2])
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
 
       await (await tokenB.transfer(cfmm.address, 1)).wait();
       await (await cfmm.sync()).wait();
       await expect(
         strategy.testCalcDeposits([1, 1], [2, 0])
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
     });
 
     it("Empty reserves", async function () {

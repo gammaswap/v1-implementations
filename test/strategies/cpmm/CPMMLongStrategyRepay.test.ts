@@ -356,7 +356,7 @@ describe("CPMMLongStrategyRepay", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 1])
-      ).to.be.revertedWith("NotEnoughBalance");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughBalance");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -365,7 +365,7 @@ describe("CPMMLongStrategyRepay", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [11, 1])
-      ).to.be.revertedWith("NotEnoughCollateral");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -378,7 +378,7 @@ describe("CPMMLongStrategyRepay", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 11])
-      ).to.be.revertedWith("NotEnoughBalance");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughBalance");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -387,7 +387,7 @@ describe("CPMMLongStrategyRepay", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 11])
-      ).to.be.revertedWith("NotEnoughCollateral");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
