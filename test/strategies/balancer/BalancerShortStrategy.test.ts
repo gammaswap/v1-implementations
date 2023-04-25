@@ -329,7 +329,7 @@ describe("BalancerShortStrategy", function () {
 
       await expect(
         strategy.testCheckOptimalAmt(amountOptimal, amountMin)
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
 
       expect(
         await strategy.testCheckOptimalAmt(amountOptimal, amountMin.sub(1))
@@ -385,13 +385,13 @@ describe("BalancerShortStrategy", function () {
     it("Error Calc Deposit Amounts, 0 amt", async function () {
       await expect(
         strategy.testCalcDeposits([0, 0], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
       await expect(
         strategy.testCalcDeposits([1, 0], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
       await expect(
         strategy.testCalcDeposits([0, 1], [0, 0])
-      ).to.be.revertedWith("ZeroDeposits");
+      ).to.be.revertedWithCustomError(strategy, "ZeroDeposits");
     });
 
     it("Error Calc Deposit Amounts, 0 reserve tokens", async function () {
@@ -410,11 +410,11 @@ describe("BalancerShortStrategy", function () {
 
       await expect(
         strategy.testCalcDeposits([amtA.div(2), amtB], [0, amtB.mul(2)])
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
 
       await expect(
         strategy.testCalcDeposits([amtA, amtB.div(2)], [amtA.mul(2), 0])
-      ).to.be.revertedWith("NotOptimalDeposit");
+      ).to.be.revertedWithCustomError(strategy, "NotOptimalDeposit");
     });
 
     it("Empty reserves", async function () {

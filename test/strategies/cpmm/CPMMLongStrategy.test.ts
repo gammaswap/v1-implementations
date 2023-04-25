@@ -249,33 +249,33 @@ describe("CPMMLongStrategy", function () {
 
   describe("Calc Amt In/Out", function () {
     it("Error Calc Amt In", async function () {
-      await expect(strategy.testCalcAmtIn(0, 0, 0)).to.be.revertedWith(
-        "ZeroReserves"
-      );
-      await expect(strategy.testCalcAmtIn(1000000000, 0, 0)).to.be.revertedWith(
-        "ZeroReserves"
-      );
+      await expect(
+        strategy.testCalcAmtIn(0, 0, 0)
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
+      await expect(
+        strategy.testCalcAmtIn(1000000000, 0, 0)
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
       await expect(
         strategy.testCalcAmtIn(1000000000, 1000000000, 0)
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
       await expect(
         strategy.testCalcAmtIn(1000000000, 0, 1000000000)
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
     });
 
     it("Error Calc Amt Out", async function () {
-      await expect(strategy.testCalcAmtOut(0, 0, 0)).to.be.revertedWith(
-        "ZeroReserves"
-      );
+      await expect(
+        strategy.testCalcAmtOut(0, 0, 0)
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
       await expect(
         strategy.testCalcAmtOut(1000000000, 0, 0)
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
       await expect(
         strategy.testCalcAmtOut(1000000000, 1000000000, 0)
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
       await expect(
         strategy.testCalcAmtOut(1000000000, 0, 1000000000)
-      ).to.be.revertedWith("ZeroReserves");
+      ).to.be.revertedWithCustomError(strategy, "ZeroReserves");
     });
 
     it("Calc Amt In", async function () {
@@ -429,7 +429,7 @@ describe("CPMMLongStrategy", function () {
           amt.sub(1),
           amt
         )
-      ).to.be.revertedWith("NotEnoughBalance");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughBalance");
       await expect(
         strategy.testCalcActualOutAmount(
           tokenA.address,
@@ -438,7 +438,7 @@ describe("CPMMLongStrategy", function () {
           amt,
           amt.sub(1)
         )
-      ).to.be.revertedWith("NotEnoughCollateral");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
     });
 
     it("Calc Actual Out Amount", async function () {
@@ -472,19 +472,19 @@ describe("CPMMLongStrategy", function () {
       const tokenId = res1.events[0].args.tokenId;
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [0, 0])
-      ).to.be.revertedWith("BadDelta");
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [1, 1])
-      ).to.be.revertedWith("BadDelta");
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [-1, -1])
-      ).to.be.revertedWith("BadDelta");
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [1, -1])
-      ).to.be.revertedWith("BadDelta");
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [-1, 1])
-      ).to.be.revertedWith("BadDelta");
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
     });
 
     it("Calc Exact Tokens to Buy", async function () {

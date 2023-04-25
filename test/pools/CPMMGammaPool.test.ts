@@ -234,7 +234,7 @@ describe("CPMMGammaPool", function () {
       const data = ethers.utils.defaultAbiCoder.encode([], []);
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], owner.address, data)
-      ).to.be.revertedWith("NotContract");
+      ).to.be.revertedWithCustomError(pool, "NotContract");
     });
 
     it("Error Not Right Contract", async function () {
@@ -245,14 +245,14 @@ describe("CPMMGammaPool", function () {
           uniFactory.address,
           data
         )
-      ).to.be.revertedWith("BadProtocol");
+      ).to.be.revertedWithCustomError(pool, "BadProtocol");
     });
 
     it("Error Not Right Tokens", async function () {
       const data = ethers.utils.defaultAbiCoder.encode([], []);
       await expect(
         pool.validateCFMM([tokenA.address, tokenC.address], cfmm.address, data)
-      ).to.be.revertedWith("BadProtocol");
+      ).to.be.revertedWithCustomError(pool, "BadProtocol");
     });
 
     it("Error Bad Hash", async function () {
@@ -265,7 +265,7 @@ describe("CPMMGammaPool", function () {
           cfmm.address,
           data
         )
-      ).to.be.revertedWith("BadProtocol");
+      ).to.be.revertedWithCustomError(pool, "BadProtocol");
     });
 
     it("Error Bad Factory", async function () {
@@ -278,7 +278,7 @@ describe("CPMMGammaPool", function () {
           cfmm.address,
           data
         )
-      ).to.be.revertedWith("BadProtocol");
+      ).to.be.revertedWithCustomError(badPool2, "BadProtocol");
     });
 
     it("Correct Validation", async function () {
