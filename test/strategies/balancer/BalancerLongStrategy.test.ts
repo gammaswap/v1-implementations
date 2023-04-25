@@ -776,23 +776,23 @@ describe("BalancerLongStrategy", function () {
 
         await expect(
           strategy.testBeforeSwapTokens(tokenId, [0, 0])
-        ).to.be.revertedWith("BadDelta");
+        ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
         await expect(
           strategy.testBeforeSwapTokens(tokenId, [1, 1])
-        ).to.be.revertedWith("BadDelta");
+        ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
         await expect(
           strategy.testBeforeSwapTokens(tokenId, [-1, -1])
-        ).to.be.revertedWith("BadDelta");
+        ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
         await expect(
           strategy.testBeforeSwapTokens(tokenId, [1, -1])
-        ).to.be.revertedWith("BadDelta");
+        ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
         await expect(
           strategy.testBeforeSwapTokens(tokenId, [-1, 1])
-        ).to.be.revertedWith("BadDelta");
+        ).to.be.revertedWithCustomError(strategy, "BadDelta");
       });
 
       it("Calculate Exact Tokens to Buy", async function () {

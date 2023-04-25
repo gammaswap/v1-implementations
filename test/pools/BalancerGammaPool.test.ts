@@ -48,7 +48,7 @@ describe("BalancerGammaPool", function () {
     const fixedPoint = await fixedPointFactory.deploy();
 
     TestERC20 = await ethers.getContractFactory("TestERC20");
-    BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool",{
+    BalancerGammaPool = await ethers.getContractFactory("BalancerGammaPool", {
       libraries: {
         FixedPoint: fixedPoint.address,
       },
@@ -326,7 +326,7 @@ describe("BalancerGammaPool", function () {
 
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], owner.address, data)
-      ).to.be.revertedWith("NotContract");
+      ).to.be.revertedWithCustomError(pool, "NotContract");
     });
 
     it("Error Incorrect Token Length", async function () {
@@ -338,7 +338,7 @@ describe("BalancerGammaPool", function () {
 
       await expect(
         pool.validateCFMM([tokenA.address, tokenB.address], weighted3Pool, data)
-      ).to.be.revertedWith("IncorrectTokenLength");
+      ).to.be.revertedWithCustomError(pool, "IncorrectTokenLength");
     });
 
     it("Error Incorrect Tokens", async function () {
@@ -350,7 +350,7 @@ describe("BalancerGammaPool", function () {
 
       await expect(
         pool.validateCFMM([tokenA.address, tokenC.address], cfmm, data)
-      ).to.be.revertedWith("IncorrectTokens");
+      ).to.be.revertedWithCustomError(pool, "IncorrectTokens");
     });
 
     it("Error Incorrect Pool ID", async function () {
@@ -364,7 +364,7 @@ describe("BalancerGammaPool", function () {
           vault.address,
           cfmmPoolWeights[0]
         )
-      ).to.be.revertedWith("IncorrectPoolId");
+      ).to.be.revertedWithCustomError(pool, "IncorrectPoolId");
     });
 
     it("Error Incorrect Vault", async function () {
@@ -378,10 +378,11 @@ describe("BalancerGammaPool", function () {
           tokenA.address,
           cfmmPoolWeights[0]
         )
-      ).to.be.revertedWith("IncorrectVault");
+      ).to.be.revertedWithCustomError(cfmm, "IncorrectVault");
     });
 
     it("Error Incorrect Weights", async function () {
+      console.log("###", cfmm);
       await expect(
         validateCFMM(
           tokenA,
@@ -392,7 +393,7 @@ describe("BalancerGammaPool", function () {
           vault.address,
           cfmmWeighted3PoolWeights[0]
         )
-      ).to.be.revertedWith("IncorrectWeights");
+      ).to.be.revertedWithCustomError(pool, "IncorrectWeights");
     });
 
     it("Correct Validation #1", async function () {
@@ -450,11 +451,11 @@ describe("BalancerGammaPool", function () {
       );
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
-      //expect(await pool.getPoolId()).to.equal(cfmmPoolId);
-      //expect(await pool.getScalingFactors()).to.deep.equal([
+      // expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      // expect(await pool.getScalingFactors()).to.deep.equal([
       //  BigNumber.from(1),
       //  BigNumber.from(1),
-      //]);
+      // ]);
     });
 
     it("Initializes Correctly with Scaling Factors", async function () {
@@ -471,7 +472,7 @@ describe("BalancerGammaPool", function () {
       );
 
       expect(await pool.weight0()).to.equal(cfmmPoolWeights[0]);
-      /*expect(await pool.getPoolId()).to.equal(cfmmPoolId);
+      /* expect(await pool.getPoolId()).to.equal(cfmmPoolId);
       expect(await pool.getScalingFactors()).to.deep.equal([
         BigNumber.from(10).pow(12),
         BigNumber.from(10).pow(6),
