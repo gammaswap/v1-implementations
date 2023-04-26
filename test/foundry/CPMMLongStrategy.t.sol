@@ -1232,8 +1232,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         uint256 tokenId = pool.createLoan();
         assertGt(tokenId, 0);
 
-        usdc.transfer(address(pool), 200_000 * 1e18);
-        weth.transfer(address(pool), 200 * 1e18);
+        usdc.transfer(address(pool), 130_000 * 1e18);
+        weth.transfer(address(pool), 130 * 1e18);
 
         pool.increaseCollateral(tokenId);
         (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
@@ -1241,9 +1241,12 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         IGammaPool.LoanData memory loanData = pool.loan(tokenId);
         assertEq(loanData.liquidity, liquidityBorrowed);
 
-        vm.roll(1000);  // After a while
+        vm.roll(100000000);  // After a while
 
         loanData = pool.loan(tokenId);
         assertGt(loanData.liquidity, liquidityBorrowed);
+
+        vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
+        pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 2, addr1);
     }
 }
