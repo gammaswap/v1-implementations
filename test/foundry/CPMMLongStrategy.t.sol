@@ -1138,6 +1138,28 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq((tokensHeldAfter[0] * desiredRatio / 1e18) / 1e15, tokensHeldAfter[1] / 1e15); // Precision of 3 decimals, good enough
     }
 
+    function testRebalanceMarginError() public {
+        (uint128 reserve0, uint128 reserve1,) = IUniswapV2Pair(cfmm).getReserves();
+        uint256[] memory ratio = new uint256[](2);
+        ratio[0] = reserve0 * 200;
+        ratio[1] = reserve1 * 10;
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan();
+        assertGt(tokenId, 0);
+
+        weth.transfer(address(pool), 1000 * 1e18);
+        usdc.transfer(address(pool), 1_000_000 * 1e18);
+
+        pool.increaseCollateral(tokenId);
+
+        uint256 lpTokens = IERC20(cfmm).totalSupply();
+        pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
+
+        vm.expectRevert(bytes4(keccak256("Margin()")));
+        pool.rebalanceCollateral(tokenId, new int256[](0), ratio);
+    }
+
     function testRepayLiquidityWrongCollateral(uint256 collateralId) public {
         collateralId = bound(collateralId, 3, 1000);
         uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
