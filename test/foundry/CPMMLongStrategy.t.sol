@@ -1074,6 +1074,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         uint128[] memory tokensHeldAfter = pool.rebalanceCollateral(tokenId, deltas, new uint256[](0));
         assertEq(tokensHeldAfter[collateralId], tokensHeldBefore[collateralId] + uint256(amount));
+        assertLt(tokensHeldAfter[1-collateralId], tokensHeldBefore[1-collateralId]);
     }
 
     function testRebalanceSellCollateral(uint256 collateralId, int256 amount) public {
@@ -1104,6 +1105,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         uint128[] memory tokensHeldAfter = pool.rebalanceCollateral(tokenId, deltas, new uint256[](0));
         assertEq(tokensHeldAfter[collateralId], tokensHeldBefore[collateralId] - uint256(amount));
+        assertGt(tokensHeldAfter[1-collateralId], tokensHeldBefore[1-collateralId]);
     }
 
     function testRebalanceWithRatio(uint256 r0, uint256 r1) public {
@@ -1186,7 +1188,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
     }
 
     /// @dev Try to repay loan debt with huge fees
-    function testRepayLiquidityBadDebt() public {
+    function testRepayLiquidityExcessiveFees() public {
         (uint128 reserve0, uint128 reserve1,) = IUniswapV2Pair(cfmm).getReserves();
 
         uint256 price = uint256(reserve1) * (1e18) / reserve0;
@@ -1221,10 +1223,13 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
         pool.repayLiquidity(tokenId, loanData.liquidity, fees, 1, addr1);
+
+        vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
+        pool.repayLiquidity(tokenId, loanData.liquidity, fees, 2, addr1);
     }
 
     /// @dev Loan debt increases as time passes
-    function testLoanDebtIncrease() public {
+    function testRepayLiquidityBadDebt() public {
         uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
         assertGt(lpTokens, 0);
 
