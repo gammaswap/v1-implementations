@@ -1247,6 +1247,9 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertGt(loanData.liquidity, liquidityBorrowed);
 
         vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
+        pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 1, addr1);
+
+        vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
         pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 2, addr1);
     }
 }
