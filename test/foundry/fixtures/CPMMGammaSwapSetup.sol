@@ -11,6 +11,12 @@ import "../../../contracts/strategies/cpmm/CPMMShortStrategy.sol";
 
 contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
 
+    struct LogRateParams {
+        uint64 baseRate;
+        uint80 factor;
+        uint80 maxApy;
+    }
+
     GammaPoolFactory public factory;
 
     CPMMLongStrategy public longStrategy;
