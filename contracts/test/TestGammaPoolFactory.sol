@@ -2,8 +2,9 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/interfaces/IGammaPoolFactory.sol";
+import "@gammaswap/v1-core/contracts/rates/storage/AbstractRateParamsStore.sol";
 
-contract TestGammaPoolFactory is IGammaPoolFactory {
+contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
     address private protocol;
 
     mapping(bytes32 => address) public override getPool; // all GS Pools addresses can be predetermined
@@ -63,4 +64,9 @@ contract TestGammaPoolFactory is IGammaPoolFactory {
 
     function getPools(uint256 start, uint256 end) external virtual override view returns(address[] memory _pools) {
     }
+
+    function _rateParamsStoreOwner() internal override virtual view returns(address) {
+        return owner;
+    }
+
 }
