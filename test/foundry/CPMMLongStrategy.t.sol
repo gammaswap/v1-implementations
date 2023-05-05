@@ -1257,4 +1257,44 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
         pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 2, addr1);
     }
+
+    /// @dev Interest on loan changes if rate params change
+    function testBorrowChangeRateParams() public {
+        uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
+        assertGt(lpTokens, 0);
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan();
+        assertGt(tokenId, 0);
+
+        usdc.transfer(address(pool), 130_000 * 1e18);
+        weth.transfer(address(pool), 130 * 1e18);
+
+        pool.increaseCollateral(tokenId);
+        (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
+
+        IGammaPool.LoanData memory loanData = pool.loan(tokenId);
+        assertEq(loanData.liquidity, liquidityBorrowed);
+
+        vm.roll(100000000);  // After a while
+
+        loanData = pool.loan(tokenId);
+        assertGt(loanData.liquidity, liquidityBorrowed);
+        vm.stopPrank();
+
+        IGammaPool.LoanData memory loanData2 = pool.loan(tokenId);
+        assertEq(loanData2.liquidity, loanData.liquidity);
+
+        LogRateParams memory params = LogRateParams({ baseRate: 2 * 1e16, factor: 4 * 1e17, maxApy: 75 * 1e16});
+        factory.setRateParams(address(pool), abi.encode(params), true);
+
+        loanData2 = pool.loan(tokenId);
+        assertGt(loanData2.liquidity, loanData.liquidity);
+
+        params = LogRateParams({ baseRate: 2 * 1e16, factor: 4 * 1e17, maxApy: 75 * 1e16});
+        factory.setRateParams(address(pool), abi.encode(params), false);
+
+        loanData2 = pool.loan(tokenId);
+        assertEq(loanData2.liquidity, loanData.liquidity);
+    }
 }
