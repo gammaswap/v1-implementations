@@ -35,9 +35,8 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
         BalancerInvariantRequest memory req = abi.decode(_data, (BalancerInvariantRequest));
         (,uint256[] memory reserves,) = IVault(req.cfmmVault).getPoolTokens(req.cfmmPoolId);
 
-        if (reserves.length != req.scalingFactors.length) {
-            revert LengthMismatch();
-        }
+        if (reserves.length != req.scalingFactors.length) revert LengthMismatch();
+
         reserves[0] *= req.scalingFactors[0];
         reserves[1] *= req.scalingFactors[1];
         cfmmInvariant = calcScaledInvariant(reserves);
@@ -47,18 +46,14 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     /// @param amountOptimal Optimal deposit amount.
     /// @param amountMin Minimum deposit amount.
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
-        if(amountOptimal < amountMin) {
-            revert NotOptimalDeposit();
-        }
+        if(amountOptimal < amountMin) revert NotOptimalDeposit();
     }
 
     /// @dev See {ShortStrategy-calcDepositAmounts}.
     function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override view returns (uint256[] memory amounts, address payee) {
         // Function used to determine the amounts that must be deposited in order to get the LP token one desires
-        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) {
-            revert ZeroDeposits();
-        }
+        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) revert ZeroDeposits();
 
         uint128[] memory reserves = getReserves(address(0));
 
@@ -69,9 +64,7 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
             return(amountsDesired, payee);
         }
 
-        if(reserves[0] == 0 || reserves[1] == 0) {
-            revert ZeroReserves();
-        }
+        if(reserves[0] == 0 || reserves[1] == 0) revert ZeroReserves();
 
         amounts = new uint256[](2);
 

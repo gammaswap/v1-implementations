@@ -13,6 +13,7 @@ contract CPMMGammaPool is GammaPool {
 
     error NotContract();
     error BadProtocol();
+    error InvalidTokensLength();
 
     using LibStorage for LibStorage.Storage;
 
@@ -51,9 +52,8 @@ contract CPMMGammaPool is GammaPool {
 
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
-        if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
-            revert NotContract();
-        }
+        if(!GammaSwapLibrary.isContract(_cfmm)) revert NotContract(); // Not a smart contract (hence not a CFMM) or not instantiated yet
+        if(_tokens.length != tokenCount) revert InvalidTokensLength();
 
         // Order tokens to match order of tokens in CFMM
         _tokensOrdered = new address[](2);

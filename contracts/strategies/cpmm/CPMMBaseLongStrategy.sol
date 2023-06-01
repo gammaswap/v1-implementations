@@ -113,9 +113,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
         internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         // can only have one non zero delta
-        if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) {
-            revert BadDelta();
-        }
+        if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) revert BadDelta();
+
         // inAmt is what GS is getting, outAmt is what GS is sending
         if(delta0 > 0 || delta1 > 0) {
             inAmt0 = uint256(delta0); // buy exact token0 (what you'll ask)
@@ -171,9 +170,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param reserveIn - amount in CFMM of token being bought
     /// @return amtIn - amount expected to receive in GammaPool (calculated bought amount)
     function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
-        if(reserveOut == 0 || reserveIn == 0) { // revert if either reserve quantity in CFMM is zero
-            revert ZeroReserves();
-        }
+        if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
+
         uint256 amountOutWithFee = amountOut * tradingFee1;
         uint256 denominator = (reserveOut * tradingFee2) + amountOutWithFee;
         return amountOutWithFee * reserveIn / denominator;
@@ -185,9 +183,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param reserveIn - amount in CFMM of token being bought
     /// @return amtOut - amount expected to send to GammaPool (calculated sold amount)
     function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
-        if(reserveOut == 0 || reserveIn == 0) { // revert if either reserve quantity in CFMM is zero
-            revert ZeroReserves();
-        }
+        if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
+
         uint256 denominator = (reserveIn - amountIn) * tradingFee1;
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
     }

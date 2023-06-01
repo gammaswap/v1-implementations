@@ -36,9 +36,7 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
     /// @dev See {IShortStrategy-calcDepositAmounts}.
     function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
             internal virtual override view returns (uint256[] memory amounts, address payee) {
-        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) { // revert if not depositing one or both sides
-            revert ZeroDeposits();
-        }
+        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) revert ZeroDeposits(); // revert if not depositing one or both sides
 
         (uint256 reserve0, uint256 reserve1,) = ICPMM(s.cfmm).getReserves();
 
@@ -50,9 +48,7 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
         }
 
         // revert if one side is zero
-        if(reserve0 == 0 || reserve1 == 0) {
-            revert ZeroReserves();
-        }
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
 
         amounts = new uint256[](2);
 
@@ -83,8 +79,6 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
     /// @param amountOptimal - optimal deposit amount
     /// @param amountMin - minimum deposit amount
     function checkOptimalAmt(uint256 amountOptimal, uint256 amountMin) internal virtual pure {
-        if(amountOptimal < amountMin) {
-            revert NotOptimalDeposit();
-        }
+        if(amountOptimal < amountMin) revert NotOptimalDeposit();
     }
 }

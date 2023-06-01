@@ -10,7 +10,6 @@ const PROTOCOL_ID = 1;
 describe("CPMMGammaPool", function () {
   let TestERC20: any;
   let CPMMGammaPool: any;
-  let TestCPMMGammaPool: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -21,7 +20,6 @@ describe("CPMMGammaPool", function () {
   let addr2: any;
   let addr3: any;
   let pool: any;
-  let testPool: any;
   let gsFactoryAddress: any;
   let cfmmHash: any;
   let longStrategyAddr: any;
@@ -38,7 +36,6 @@ describe("CPMMGammaPool", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     CPMMGammaPool = await ethers.getContractFactory("CPMMGammaPool");
-    TestCPMMGammaPool = await ethers.getContractFactory("TestCPMMGammaPool");
     [owner, addr1, addr2, addr3] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
@@ -67,16 +64,6 @@ describe("CPMMGammaPool", function () {
     longStrategyAddr = addr1.address;
     shortStrategyAddr = addr2.address;
     liquidationStrategyAddr = addr3.address;
-
-    testPool = await TestCPMMGammaPool.deploy(
-      PROTOCOL_ID,
-      owner.address,
-      longStrategyAddr,
-      shortStrategyAddr,
-      liquidationStrategyAddr,
-      uniFactory.address,
-      cfmmHash
-    );
 
     pool = await CPMMGammaPool.deploy(
       PROTOCOL_ID,
@@ -139,21 +126,6 @@ describe("CPMMGammaPool", function () {
     expect(tokensOrdered[1]).to.equal(token1Addr);
   }
 
-  const sqrt = (y: BigNumber): BigNumber => {
-    let z = BigNumber.from(0);
-    if (y.gt(3)) {
-      z = y;
-      let x = y.div(2).add(1);
-      while (x.lt(z)) {
-        z = x;
-        x = y.div(x).add(x).div(2);
-      }
-    } else if (!y.isZero()) {
-      z = BigNumber.from(1);
-    }
-    return z;
-  };
-
   describe("Deployment", function () {
     it("Should set right init params", async function () {
       expect(await pool.protocolId()).to.equal(1);
@@ -163,69 +135,6 @@ describe("CPMMGammaPool", function () {
       expect(await pool.factory()).to.equal(owner.address);
       expect(await pool.cfmmFactory()).to.equal(uniFactory.address);
       expect(await pool.cfmmInitCodeHash()).to.equal(cfmmHash);
-    });
-  });
-
-  describe.skip("Rebalancing Collateral for Close", function () {
-    it("Should sell token0", async function () {
-      const ONE = BigNumber.from(10).pow(18);
-      const loanLiquidity = ONE.mul(10000).mul(2).div(3);
-      const sqrtPx = sqrt(ONE.mul(ONE));
-      const reserve0 = ONE.mul(235702).div(100);
-      const reserve1 = reserve0.mul(2);
-      await (
-        await testPool.setData(loanLiquidity, sqrtPx, reserve0, reserve1)
-      ).wait();
-
-      const resp = await testPool.getRebalanceDeltas(0);
-      expect(resp[0].div(ONE)).to.eq(BigNumber.from("-571"));
-      expect(resp[1]).to.eq(0);
-    });
-
-    it("Should sell token0", async function () {
-      const ONE = BigNumber.from(10).pow(18);
-      const loanLiquidity = ONE.mul(10000).mul(2).div(3);
-      const strikePx = ethers.utils.parseUnits("2", 18);
-      const sqrtPx = sqrt(strikePx.mul(ONE));
-      const reserve0 = ONE.mul(166667).div(100);
-      const reserve1 = reserve0.mul(4);
-      await (
-        await testPool.setData(loanLiquidity, sqrtPx, reserve0, reserve1)
-      ).wait();
-
-      const resp = await testPool.getRebalanceDeltas(0);
-      expect(resp[0].div(ONE)).to.eq(BigNumber.from("-404"));
-      expect(resp[1]).to.eq(0);
-    });
-
-    it("Should buy token0", async function () {
-      const ONE = BigNumber.from(10).pow(18);
-      const loanLiquidity = ONE.mul(10000).mul(2).div(3);
-      const strikePx = ethers.utils.parseUnits("2", 18);
-      const sqrtPx = sqrt(strikePx.mul(ONE));
-      const reserve0 = ONE.mul(471405).div(100);
-      const reserve1 = reserve0.div(2);
-      await (
-        await testPool.setData(loanLiquidity, sqrtPx, reserve0, reserve1)
-      ).wait();
-      const resp = await testPool.getRebalanceDeltas(0);
-      expect(resp[0].div(ONE)).to.eq(BigNumber.from("1885"));
-      expect(resp[1]).to.eq(0);
-    });
-
-    it("Should buy token0", async function () {
-      const ONE = BigNumber.from(10).pow(18);
-      const loanLiquidity = ONE.mul(10000).mul(2).div(3);
-      const strikePx = ethers.utils.parseUnits("1", 18);
-      const sqrtPx = sqrt(strikePx.mul(ONE));
-      const reserve0 = ONE.mul(471405).div(100);
-      const reserve1 = reserve0.div(2);
-      await (
-        await testPool.setData(loanLiquidity, sqrtPx, reserve0, reserve1)
-      ).wait();
-      const resp = await testPool.getRebalanceDeltas(0);
-      expect(resp[0].div(ONE)).to.eq(BigNumber.from("1020"));
-      expect(resp[1]).to.eq(0);
     });
   });
 
