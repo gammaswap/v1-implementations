@@ -76,9 +76,7 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         uint256 amountOut = inAmts[0];
         uint256 amountIn0 = outAmts[0];
 
-        if(amountIn != 0 && amountIn0 != 0) {
-            revert BadOutAmts();
-        }
+        if(amountIn != 0 && amountIn0 != 0) revert BadOutAmts();
 
         if(amountIn == 0) {
             (assetIn, assetOut, amountIn, amountOut) = (assetOut, assetIn, amountIn0, inAmts[1]);
@@ -110,12 +108,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param collateral - total collateral in loan
     /// @return _amount - same as `amount` if transaction did not revert
     function checkAvailableCollateral(uint256 amount, uint256 balance, uint256 collateral) internal virtual pure returns(uint256){
-        if(amount > balance) { // Check enough in pool's accounted balance
-            revert NotEnoughBalance();
-        }
-        if(amount > collateral) { // Check enough collateral in loan
-            revert NotEnoughCollateral();
-        }
+        if(amount > balance) revert NotEnoughBalance(); // Check enough in pool's accounted balance
+        if(amount > collateral) revert NotEnoughCollateral(); // Check enough collateral in loan
+
         return amount;
     }
 
@@ -145,13 +140,8 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
     function calcInAndOutAmounts(uint128 reserves0, uint128 reserves1, int256 deltas0, int256 deltas1)
         internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
-        if(!((deltas0 != 0 && deltas1 == 0) || (deltas0 == 0 && deltas1 != 0))) {
-            revert BadDelta();
-        }
-
-        if(reserves0 == 0 || reserves1 == 0) {
-            revert ZeroReserves();
-        }
+        if(!((deltas0 != 0 && deltas1 == 0) || (deltas0 == 0 && deltas1 != 0))) revert BadDelta();
+        if(reserves0 == 0 || reserves1 == 0) revert ZeroReserves();
 
         (uint256 factor0, uint256 factor1) = getScalingFactors();
 

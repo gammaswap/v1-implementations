@@ -22,12 +22,13 @@ contract BalancerGammaPool is GammaPool {
     error BadPoolId();
     error BadPoolAddress();
     error BadProtocol();
-    error IncorrectTokenLength();
+    error IncorrectVaultTokenLength();
     error IncorrectTokens();
     error IncorrectWeights();
     error IncorrectPoolId();
     error IncorrectVaultAddress();
     error IncorrectSwapFee();
+    error InvalidTokensLength();
 
     using LibStorage for LibStorage.Storage;
     using FixedPoint for uint256;
@@ -117,8 +118,7 @@ contract BalancerGammaPool is GammaPool {
 
     /// @dev See {IGammaPool-initialize}
     function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals, bytes calldata _data) external virtual override {
-        if(msg.sender != factory) // only factory is allowed to initialize
-            revert Forbidden();
+        if(msg.sender != factory) revert Forbidden();// only factory is allowed to initialize
 
         s.initialize(factory, _cfmm, _tokens, _decimals);
 
@@ -139,14 +139,10 @@ contract BalancerGammaPool is GammaPool {
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata _data) external virtual override view returns(address[] memory _tokensOrdered) {
         IBalancerStrategy.BalancerPoolData memory balancerPoolData = abi.decode(_data, (IBalancerStrategy.BalancerPoolData));
-        
-        if(!GammaSwapLibrary.isContract(_cfmm)) { // Not a smart contract (hence not a CFMM) or not instantiated yet
-            revert NotContract();
-        }
 
-        if(!IBasePoolFactory(poolFactory).isPoolFromFactory(_cfmm)) {
-            revert BadProtocol();
-        }
+        if(_tokens.length != tokenCount) revert InvalidTokensLength();
+        if(!GammaSwapLibrary.isContract(_cfmm)) revert NotContract(); // Not a smart contract (hence not a CFMM) or not instantiated yet
+        if(!IBasePoolFactory(poolFactory).isPoolFromFactory(_cfmm)) revert BadProtocol();
 
         // Order tokens to match order of tokens in CFMM
         _tokensOrdered = new address[](2);
@@ -159,20 +155,13 @@ contract BalancerGammaPool is GammaPool {
 
         // Validate that all parameters match
         
-        if (_poolId != balancerPoolData.cfmmPoolId) {
-            revert IncorrectPoolId();
-        }
-
-        if (vault != balancerPoolData.cfmmVault) {
-            revert IncorrectVaultAddress();
-        }
+        if (_poolId != balancerPoolData.cfmmPoolId) revert IncorrectPoolId();
+        if (vault != balancerPoolData.cfmmVault) revert IncorrectVaultAddress();
 
         (IERC20[] memory vaultTokens, ,) = IVault(balancerPoolData.cfmmVault).getPoolTokens(balancerPoolData.cfmmPoolId);
 
         // Verify the number of tokens in the CFMM matches the number of tokens given in the constructor
-        if(vaultTokens.length != tokenCount) {
-            revert IncorrectTokenLength();
-        }
+        if(vaultTokens.length != tokenCount) revert IncorrectVaultTokenLength();
 
         // Verify the tokens in the CFMM match the tokens given in the constructor
         if(_tokensOrdered[0] != address(vaultTokens[0]) || _tokensOrdered[1] != address(vaultTokens[1])) {
