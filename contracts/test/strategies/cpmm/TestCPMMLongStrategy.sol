@@ -85,23 +85,23 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         return new uint128[](2);
     }
 
-    /**function sendAndCalcCollateralLPTokens(address to, uint128[] calldata amounts, uint256 lastCFMMTotalSupply) internal virtual override returns(uint256 swappedCollateralAsLPTokens) {
-        revert SendAndCalcCollateralLPTokens();
+    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
+        internal virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
     }
 
-    function externalSwap(LibStorage.Loan storage _loan, address _cfmm, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) internal override virtual returns(uint256 liquiditySwapped, uint128[] memory tokensHeld) {
-        revert SwapExternally();
+    function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
+        uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
     }
 
-    function calcExternalSwapFee(uint256 liquiditySwapped, uint256 loanLiquidity) internal view override virtual returns(uint256 fee) {
-        revert CalcExternalSwapFee();
+    function _calcDeltasForRatioStaticCall(uint256 desiredRatio, uint128 reserve0, uint128 reserve1,
+        uint128[] memory tokensHeld, uint256 factor) internal virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
     }
 
-    function _rebalanceExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual returns(uint256 loanLiquidity, uint128[] memory tokensHeld) {
-        revert RebalanceExternally();
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint128 tokensheld0, uint128 tokensheld1, uint128 reserve0,
+        uint128 reserve1, uint256 ratio0, uint256 ratio1) internal virtual override view returns(int256[] memory deltas) {
+        deltas = new int256[](2);
     }
-
-    function checkLPTokens(address _cfmm, uint256 prevLpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual override {
-        revert CheckLPTokens();
-    }/**/
 }
