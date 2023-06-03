@@ -69,6 +69,12 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
     function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
         uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
 
-        deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts, tokensHeld, reserves, ratio, tradingFee1, tradingFee2);
+        if(amounts[0] > 0) {
+            deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[0], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1],
+                ratio[0], ratio[1], tradingFee1, tradingFee2);
+        } else {
+            deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[1], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0],
+                ratio[1], ratio[0], tradingFee1, tradingFee2);
+        }
     }
 }

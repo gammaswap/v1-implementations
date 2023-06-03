@@ -29,13 +29,16 @@ interface ICPMMMath {
         uint256 factor, bool side, uint256 fee1, uint256 fee2) external pure returns(int256[] memory deltas);
 
     /// @dev Calculate deltas to rebalance collateral for withdrawal while maintaining desired ratio
-    /// @param amounts - amounts requesting to withdraw
-    /// @param tokensHeld - quantities of collateral available in loan
-    /// @param reserves - reserve quantities of collaterla tokens in CFMM
-    /// @param ratio - desired ratio to maintain after withdrawal
+    /// @param amount - amount of token0 requesting to withdraw
+    /// @param tokensHeld0 - quantities of collateral available in loan
+    /// @param tokensHeld1 - quantities of collateral available in loan
+    /// @param reserve0 - reserve quantities of collateral of token0 in CFMM
+    /// @param reserve1 - reserve quantities of collateral of token1 in CFMM
+    /// @param ratio0 - desired ratio to maintain after withdrawal
+    /// @param ratio1 - desired ratio to maintain after withdrawal
     /// @param fee1 - trading fee numerator
     /// @param fee2 - trading fee denominator
     /// @return deltas - quantities of reserve tokens to rebalance after withdrawal
-    function calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
-        uint256[] calldata ratio, uint256 fee1, uint256 fee2) external pure returns(int256[] memory deltas);
+    function calcDeltasForWithdrawal(uint128 amount, uint128 tokensHeld0, uint128 tokensHeld1, uint128 reserve0, uint128 reserve1,
+        uint256 ratio0, uint256 ratio1, uint256 fee1, uint256 fee2) external pure returns(int256[] memory deltas);
 }

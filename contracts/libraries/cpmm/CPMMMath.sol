@@ -38,7 +38,6 @@ contract CPMMMath is ICPMMMath {
         uint256 a = fee1 * ratio / fee2;
         // must negate
         bool bIsNeg;
-        deltas = new int256[](2);
         uint256 b;
         {
             uint256 leftVal;
@@ -73,6 +72,7 @@ contract CPMMMath is ICPMMMath {
             det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
         }
 
+        deltas = new int256[](2);
         // remember that a is always negative
         // root = (-b +/- det)/(2a)
         if(bIsNeg) { // b < 0
@@ -108,9 +108,79 @@ contract CPMMMath is ICPMMMath {
     }
 
     /// @dev See {ICPMMMath-calcDeltasForWithdrawal}.
-    function calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
-        uint256[] calldata ratio, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+    function calcDeltasForWithdrawal(uint128 amount, uint128 tokensHeld0, uint128 tokensHeld1, uint128 reserve0, uint128 reserve1,
+        uint256 ratio0, uint256 ratio1, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+        // a = 1
+        bool bIsNeg;
+        uint256 b;
+        {
+            // b = -[C + A_hat - A + (1/P)*(B + B_hat/fee)]
+            //   = -C - A_hat + A - [(B/P) + B_hat/(fee*P)]
+            //   = -[C + A_hat] + A - [(B/P) + B_hat/(fee*P)]
+            //   = -[C + A_hat] + A - [(B + B_hat/fee)(1/P)]
+            //   = -[C + A_hat] + A - [(B + B_hat*fee2/fee1)*ratio0/ratio1]
+            //   = -[C + A_hat] + A - [(B*ratio0 + B_hat*fee2*ratio0/fee1)/ratio1]
+            //   = A - [(B*ratio0 + B_hat*fee2*ratio0/fee1)/ratio1] - [C + A_hat]
+            //   = A - ([(B*ratio0 + B_hat*fee2*ratio0/fee1)/ratio1] + [C + A_hat])
+            uint256 rightVal = (tokensHeld1 * ratio0 + reserve1 * fee2 * ratio0 / fee1) / ratio1 + (amount + reserve0);
+            bIsNeg = rightVal > reserve0;
+            b = bIsNeg ? rightVal - reserve0 : reserve0 - rightVal;
+        }
+
+        bool cIsNeg;
+        uint256 c;
+        {
+            // c = -A_hat*(A - C - B/P)
+            //   = -A_hat*A + A_hat*C + A_hat*B/P
+            //   = -A_hat*A + A_hat*C + A_hat*B*ratio0/ratio1
+            //   = A_hat*C + A_hat*B*ratio0/ratio1 - A_hat*A
+            uint256 leftVal = reserve0 * amount + reserve0 * tokensHeld1 * ratio0 / ratio1;
+            uint256 rightVal = reserve0 * tokensHeld0;
+            cIsNeg = rightVal > leftVal;
+            c = cIsNeg ? rightVal - leftVal : leftVal - rightVal; // remains expanded
+        }
 
         deltas = new int256[](2);
+        uint256 det;
+        {
+            // sqrt(b^2 - 4*c)
+            uint256 leftVal = b**2; // expanded
+            uint256 rightVal = 4*c; // previously expanded
+            if(cIsNeg) {
+                // add
+                det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
+            } else if(leftVal > rightVal) {
+                // subtract
+                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
+            } else {
+                return deltas; // leads to imaginary number, don't trade
+            }
+        }
+
+        // a is not needed since it's just 1
+        // [-b +/- det] / 2
+        if(bIsNeg) {
+            // [b +/- det] / 2
+            // plus version: (b + det) / 2
+            deltas[0] = int256((b + det) / 2);
+
+            // minus version: (b - det) / 2
+            if(b > det) {
+                deltas[1] = int256((b - det) / 2);
+            } else {
+                deltas[1] = -int256((det - b) / 2);
+            }
+        } else {
+            // [-b +/- det] / 2
+            // plus version: (det - b) / 2
+            if(det > b) {
+                deltas[0] = int256((det - b) / 2);
+            } else {
+                deltas[0] = -int256((b - det) / 2);
+            }
+
+            // minus version: -(b + det) / 2
+            deltas[1] = -int256((b + det) / 2);
+        }
     }
 }
