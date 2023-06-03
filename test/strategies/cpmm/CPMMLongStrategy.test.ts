@@ -25,6 +25,7 @@ describe("CPMMLongStrategy", function () {
   let owner: any;
   let addr1: any;
   let addr2: any;
+  let addr3: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -32,7 +33,7 @@ describe("CPMMLongStrategy", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner, addr1, addr2, addr3] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -71,6 +72,7 @@ describe("CPMMLongStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategy = await TestStrategy.deploy(
+      addr3.address,
       0,
       997,
       1000,
@@ -134,6 +136,7 @@ describe("CPMMLongStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategyFee = await TestStrategy.deploy(
+      addr3.address,
       0,
       997,
       1000,

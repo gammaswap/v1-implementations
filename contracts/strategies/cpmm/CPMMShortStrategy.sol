@@ -15,16 +15,16 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
     error NotOptimalDeposit();
     error ZeroReserves();
 
-    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `factor`, and `maxApy`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
     }
 
     /// @dev See {IShortStrategy-_getLatestCFMMReserves}.
     function _getLatestCFMMReserves(bytes memory _cfmm) public virtual override view returns(uint128[] memory reserves) {
         address cfmm_ = abi.decode(_cfmm, (address));
         reserves = new uint128[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm_).getReserves(); // get uint112 reserves but return uint256 to avoid casting
+        (reserves[0], reserves[1],) = ICPMM(cfmm_).getReserves(); // return uint256 to avoid casting
     }
 
     /// @dev See {IShortStrategy-_getLatestCFMMInvariant}.
@@ -34,9 +34,10 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
     }
 
     /// @dev See {IShortStrategy-calcDepositAmounts}.
-    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
-            internal virtual override view returns (uint256[] memory amounts, address payee) {
-        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) revert ZeroDeposits(); // revert if not depositing one or both sides
+    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual
+        override view returns (uint256[] memory amounts, address payee) {
+
+        if(amountsDesired[0] == 0 || amountsDesired[1] == 0) revert ZeroDeposits(); // revert if not depositing anything
 
         (uint256 reserve0, uint256 reserve1,) = ICPMM(s.cfmm).getReserves();
 

@@ -2,25 +2,34 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/external/ExternalLongStrategy.sol";
-import "../CPMMLongStrategy.sol";
+import "../CPMMBaseLongStrategy.sol";
 
 /// @title External Long Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract CPMMExternalLongStrategy is CPMMLongStrategy, ExternalLongStrategy {
+contract CPMMExternalLongStrategy is CPMMBaseLongStrategy, ExternalLongStrategy {
 
     /// @return EXTERNAL_SWAP_FEE - fees charged to flash loans
-    uint256 public immutable EXTERNAL_SWAP_FEE;
+    uint256 immutable public EXTERNAL_SWAP_FEE;
 
-    /// @dev Initializes the contract by setting `_extSwapFee`, `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _extSwapFee, uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
-        EXTERNAL_SWAP_FEE = _extSwapFee;
+    /// @dev Initializes the contract by setting `EXTERNAL_SWAP_FEE`, `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`,
+    /// @dev `BLOCKS_PER_YEAR`, `origFee`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
+    constructor(uint256 extSwapFee_, address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_,
+        uint16 origFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMBaseLongStrategy(mathLib_, ltvThreshold_, maxTotalApy_, blocksPerYear_, origFee_, tradingFee1_,
+        tradingFee2_, baseRate_, factor_, maxApy_) {
+
+        EXTERNAL_SWAP_FEE = extSwapFee_;
     }
 
     /// @dev See {ExternalBaseStrategy-externalSwapFee}
     function externalSwapFee() internal view virtual override returns(uint256) {
         return EXTERNAL_SWAP_FEE;
+    }
+
+    /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
+    function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
+        return 0;
     }
 }

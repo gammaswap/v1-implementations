@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/CPMMLongStrategy.sol";
+import "../../../strategies/cpmm/external/CPMMExternalLongStrategy.sol";
 
-contract TestCPMMLongStrategy is CPMMLongStrategy {
+contract TestCPMMExternalLongStrategy is CPMMExternalLongStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -19,7 +19,7 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint16 originationFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMLongStrategy(mathLib_, 8000, 1e19, 2252571, originationFee_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+        CPMMExternalLongStrategy(10, mathLib_, 8000, 1e19, 2252571, originationFee_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
@@ -73,19 +73,19 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _decreaseCollateral(uint256, uint128[] memory, address, uint256[] calldata) external virtual override returns(uint128[] memory) {
+    /*function _decreaseCollateral(uint256, uint128[] memory, address, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _increaseCollateral(uint256, uint256[] calldata) external virtual override returns(uint128[] memory) {
+    function _increaseCollateral(uint256, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
-    }
+    }/**/
 
-    /**function sendAndCalcCollateralLPTokens(address to, uint128[] calldata amounts, uint256 lastCFMMTotalSupply) internal virtual override returns(uint256 swappedCollateralAsLPTokens) {
+    function sendAndCalcCollateralLPTokens(address to, uint128[] calldata amounts, uint256 lastCFMMTotalSupply) internal virtual override returns(uint256 swappedCollateralAsLPTokens) {
         revert SendAndCalcCollateralLPTokens();
     }
 
@@ -103,5 +103,5 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
 
     function checkLPTokens(address _cfmm, uint256 prevLpTokenBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) internal virtual override {
         revert CheckLPTokens();
-    }/**/
+    }
 }

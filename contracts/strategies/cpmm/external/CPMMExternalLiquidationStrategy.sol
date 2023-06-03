@@ -2,21 +2,34 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/external/ExternalLiquidationStrategy.sol";
-import "../CPMMLiquidationStrategy.sol";
+import "../CPMMBaseLongStrategy.sol";
 
 /// @title External Liquidation Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice LiquidationStrategy implementation for Constant Product Market Maker that also allows external swaps (flash loans) during liquidations
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract CPMMExternalLiquidationStrategy is CPMMLiquidationStrategy, ExternalLiquidationStrategy {
+contract CPMMExternalLiquidationStrategy is CPMMBaseLongStrategy, ExternalLiquidationStrategy {
+
+    /// @return LIQUIDATION_FEE - liquidation penalty charged from collateral
+    uint16 immutable public LIQUIDATION_FEE;
 
     /// @return EXTERNAL_SWAP_FEE - fees charged to flash loans
-    uint256 public immutable EXTERNAL_SWAP_FEE;
+    uint256 immutable public EXTERNAL_SWAP_FEE;
 
-    /// @dev Initializes the contract by setting `_extSwapFee`, `_liquidationThreshold`, `_liquidationFeeThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _extSwapFee, uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMLiquidationStrategy(_liquidationThreshold, _liquidationFeeThreshold, _maxTotalApy, _blocksPerYear, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
-        EXTERNAL_SWAP_FEE = _extSwapFee;
+    /// @dev Initializes the contract by setting `EXTERNAL_SWAP_FEE`, `mathLib`, `LTV_THRESHOLD`, `LIQUIDATION_FEE`,
+    /// @dev `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
+    constructor(uint256 extSwapFee_, address mathLib_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_,
+        uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_,
+        uint80 factor_, uint80 maxApy_) CPMMBaseLongStrategy(mathLib_, liquidationThreshold_, maxTotalApy_,
+        blocksPerYear_, 0, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+
+        EXTERNAL_SWAP_FEE = extSwapFee_;
+        LIQUIDATION_FEE = liquidationFeeThreshold_;
+    }
+
+    /// @dev returns liquidation fee threshold
+    function _liquidationFee() internal virtual override view returns(uint16) {
+        return LIQUIDATION_FEE;
     }
 
     /// @dev See {ExternalBaseStrategy-externalSwapFee}

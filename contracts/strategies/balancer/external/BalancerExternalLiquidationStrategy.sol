@@ -2,21 +2,34 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/external/ExternalLiquidationStrategy.sol";
-import "../BalancerLiquidationStrategy.sol";
+import "../BalancerBaseLongStrategy.sol";
 
 /// @title External Liquidation Strategy concrete implementation contract for Balancer AMM
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice LiquidationStrategy implementation for Balancer AMM that also allows external swaps (flash loans) during liquidations
 /// @dev This implementation was specifically designed to work with Balancer
-contract BalancerExternalLiquidationStrategy is BalancerLiquidationStrategy, ExternalLiquidationStrategy {
+contract BalancerExternalLiquidationStrategy is BalancerBaseLongStrategy, ExternalLiquidationStrategy {
+
+    /// @return LIQUIDATION_FEE - liquidation penalty charged from collateral
+    uint16 immutable public LIQUIDATION_FEE;
 
     /// @return EXTERNAL_SWAP_FEE - fees charged to flash loans
-    uint256 public immutable EXTERNAL_SWAP_FEE;
+    uint256 immutable public EXTERNAL_SWAP_FEE;
 
-    /// @dev Initializes the contract by setting `_extSwapFee`, `_liquidationThreshold`, `_liquidationFeeThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint256 _extSwapFee, uint16 _liquidationThreshold, uint16 _liquidationFeeThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerLiquidationStrategy(_liquidationThreshold, _liquidationFeeThreshold, _maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
-        EXTERNAL_SWAP_FEE = _extSwapFee;
+    /// @dev Initializes the contract by setting `EXTERNAL_SWAP_FEE`, `LTV_THRESHOLD`, `LIQUIDATION_FEE`, `MAX_TOTAL_APY`,
+    /// @dev `BLOCKS_PER_YEAR`, `baseRate`, `factor`, `maxApy`, and `weight0`
+    constructor(uint256 extSwapFee_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_,
+        uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
+        BalancerBaseLongStrategy(liquidationThreshold_, maxTotalApy_, blocksPerYear_, 0, baseRate_, factor_, maxApy_,
+        weight0_) {
+
+        EXTERNAL_SWAP_FEE = extSwapFee_;
+        LIQUIDATION_FEE = liquidationFeeThreshold_;
+    }
+
+    /// @return Returns the liquidation fee threshold.
+    function _liquidationFee() internal virtual override view returns(uint16) {
+        return LIQUIDATION_FEE;
     }
 
     /// @dev See {ExternalBaseStrategy-externalSwapFee}

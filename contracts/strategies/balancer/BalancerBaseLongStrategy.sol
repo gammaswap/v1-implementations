@@ -27,11 +27,14 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @return Returns the minimum liquidity borrowed amount.
     uint256 constant public MIN_BORROW = 1e3;
 
-    /// @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint16 _ltvThreshold,  uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
-        LTV_THRESHOLD = _ltvThreshold;
-        origFee = _originationFee;
+    /// @dev Initializes the contract by setting `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `origFee`,
+    /// @dev `baseRate`, `factor`, `maxApy`, and `weight0`
+    constructor(uint16 ltvThreshold_,  uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 originationFee_,
+        uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseStrategy(maxTotalApy_,
+        blocksPerYear_, baseRate_, factor_, maxApy_, weight0_) {
+
+        LTV_THRESHOLD = ltvThreshold_;
+        origFee = originationFee_;
     }
 
     /// @dev See {BaseLongStrategy.minBorrow}.
@@ -50,12 +53,16 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     /// @dev See {BaseLongStrategy._calcDeltasToClose}.
-    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) internal virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId)
+        internal virtual override view returns(int256[] memory deltas) {
+
         deltas = new int256[](2);
     }
 
     /// @dev See {BaseLongStrategy.calcTokensToRepay}.
-    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view
+        returns(uint256[] memory amounts) {
+
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
 
@@ -107,7 +114,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param balance - total pool balance
     /// @param collateral - total collateral in loan
     /// @return _amount - same as `amount` if transaction did not revert
-    function checkAvailableCollateral(uint256 amount, uint256 balance, uint256 collateral) internal virtual pure returns(uint256){
+    function checkAvailableCollateral(uint256 amount, uint256 balance, uint256 collateral) internal virtual pure
+        returns(uint256) {
+
         if(amount > balance) revert NotEnoughBalance(); // Check enough in pool's accounted balance
         if(amount > collateral) revert NotEnoughCollateral(); // Check enough collateral in loan
 
@@ -115,7 +124,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     }
 
     /// @dev See {BaseLongStrategy.beforeSwapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas, uint128[] memory reserves) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas, uint128[] memory reserves) internal
+        virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
 
@@ -138,8 +149,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @return inAmt1 The expected amount of token1 to receive from the Balancer pool (corresponding to a buy)
     /// @return outAmt0 The expected amount of token0 to send to the Balancer pool (corresponding to a sell)
     /// @return outAmt1 The expected amount of token1 to send to the Balancer pool (corresponding to a sell)
-    function calcInAndOutAmounts(uint128 reserves0, uint128 reserves1, int256 deltas0, int256 deltas1)
-        internal view returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
+    function calcInAndOutAmounts(uint128 reserves0, uint128 reserves1, int256 deltas0, int256 deltas1) internal view
+        returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
+
         if(!((deltas0 != 0 && deltas1 == 0) || (deltas0 == 0 && deltas1 != 0))) revert BadDelta();
         if(reserves0 == 0 || reserves1 == 0) revert ZeroReserves();
 
@@ -183,7 +195,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param factor1 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param flipWeights - flip weights
     /// @return amountIn - The normalised weight of the token entering the pool on the swap.
-    function getAmountIn(uint256 amountOut, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+    function getAmountIn(uint256 amountOut, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1,
+        bool flipWeights) internal view returns (uint256) {
+
         (uint256 _weight0, uint256 _weight1) = flipWeights ? (weight1, weight0) : (weight0, weight1);
         // Upscale the input data to account for decimals
         uint256 rescaledReserveOut = reserves0 * factor0;
@@ -208,7 +222,9 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @param factor1 - The pool's scaling factors (10 ** (18 - decimals))
     /// @param flipWeights - flip weights
     /// @return amountOut - The amount of token removed from the pool during the swap.
-    function getAmountOut(uint256 amountIn, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1, bool flipWeights) internal view returns (uint256) {
+    function getAmountOut(uint256 amountIn, uint128 reserves0, uint128 reserves1, uint256 factor0, uint256 factor1,
+        bool flipWeights) internal view returns (uint256) {
+
         (uint256 _weight0, uint256 _weight1) = flipWeights ? (weight1, weight0) : (weight0, weight1);
         // Upscale the input data to account for decimals
         uint256 rescaledReserveOut = reserves0 * factor0;

@@ -15,9 +15,9 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     error ZeroReserves();
     error LengthMismatch();
 
-    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy, _weight0) {
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `factor`, `maxApy_`, and `weight0`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
+        BalancerBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_, weight0_) {
     }
 
     /// @dev See {IShortStrategy-_getLatestCFMMReserves}.
@@ -50,8 +50,8 @@ contract BalancerShortStrategy is BalancerBaseStrategy, ShortStrategySync {
     }
 
     /// @dev See {ShortStrategy-calcDepositAmounts}.
-    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin)
-            internal virtual override view returns (uint256[] memory amounts, address payee) {
+    function calcDepositAmounts(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) internal virtual
+        override view returns (uint256[] memory amounts, address payee) {
         // Function used to determine the amounts that must be deposited in order to get the LP token one desires
         if(amountsDesired[0] == 0 || amountsDesired[1] == 0) revert ZeroDeposits();
 

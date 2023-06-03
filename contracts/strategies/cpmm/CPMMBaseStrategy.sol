@@ -20,12 +20,14 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
-    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
-        if(_maxTotalApy < _maxApy) revert MaxTotalApy(); // maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `factor`, and `maxApy`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        LogDerivativeRateModel(baseRate_, factor_, maxApy_) {
+        // maxTotalApy (CFMM Fees + GammaSwap interest rate) can't be >= maxApy (max GammaSwap interest rate)
+        if(maxTotalApy_ < maxApy_) revert MaxTotalApy();
 
-        MAX_TOTAL_APY = _maxTotalApy;
-        BLOCKS_PER_YEAR = _blocksPerYear;
+        MAX_TOTAL_APY = maxTotalApy_;
+        BLOCKS_PER_YEAR = blocksPerYear_;
     }
 
     /// @dev See {BaseStrategy-maxTotalApy}.
@@ -50,7 +52,8 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     }
 
     /// @dev See {BaseStrategy-withdrawFromCFMM}.
-    function withdrawFromCFMM(address cfmm, address to, uint256 lpTokens) internal virtual override returns(uint256[] memory amounts) {
+    function withdrawFromCFMM(address cfmm, address to, uint256 lpTokens) internal virtual override
+        returns(uint256[] memory amounts) {
         GammaSwapLibrary.safeTransfer(cfmm, cfmm, lpTokens);
         amounts = new uint256[](2);
         (amounts[0], amounts[1]) = ICPMM(cfmm).burn(to);

@@ -3,15 +3,17 @@ pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
+import "../../interfaces/math/ICPMMMath.sol";
 
 /// @title Base Long Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
-/// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker that need access to loans
+/// @notice Common functions used by all concrete strategy implementations for CPMM that need access to loans
 /// @dev This implementation was specifically designed to work with UniswapV2.
 abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
     error BadDelta();
     error ZeroReserves();
+    error CollateralIdGte2();
 
     /// @return LTV_THRESHOLD - max ltv ratio acceptable before a loan is eligible for liquidation
     uint16 immutable public LTV_THRESHOLD;
@@ -25,16 +27,23 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return tradingFee2 - denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 immutable public tradingFee2;
 
+    /// @return mathLib - contract containing complex mathematical functions
+    address immutable public mathLib;
+
     /// @return Returns the minimum liquidity borrowed amount.
     uint256 constant public MIN_BORROW = 1e3;
 
-    /// @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseStrategy(_maxTotalApy, _blocksPerYear, _baseRate, _factor, _maxApy) {
-        LTV_THRESHOLD = _ltvThreshold;
-        origFee = _originationFee;
-        tradingFee1 = _tradingFee1;
-        tradingFee2 = _tradingFee2;
+    /// @dev Initializes the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
+    /// @dev `origFee`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
+    constructor(address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 origFee_,
+        uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
+
+        mathLib = mathLib_;
+        LTV_THRESHOLD = ltvThreshold_;
+        origFee = origFee_;
+        tradingFee1 = tradingFee1_;
+        tradingFee2 = tradingFee2_;
     }
 
     /// @return Returns the minimum liquidity borrowed amount.
@@ -52,28 +61,26 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         return origFee;
     }
 
-    // how much collateral to trade to have enough to close a position
-    // reserve and collateral have to be of the same token
-    // if > 0 => have to buy token to have exact amount of token to close position
-    // if < 0 => have to sell token to have exact amount of token to close position
-    function calcDeltasToClose(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity) public virtual pure returns(int256 delta) {
-        uint256 left = reserve * liquidity;
-        uint256 right = collateral * lastCFMMInvariant;
-        bool isNeg = right > left;
-        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity);
-        delta = isNeg ? -int256(_delta) : int256(_delta);
-    }
-
     /// @dev See {BaseLongStrategy-_calcDeltasToClose}.
-    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) internal virtual override view returns(int256[] memory deltas) {
-        require(collateralId < 2);
+    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId)
+        internal virtual override view returns(int256[] memory deltas) {
+
+        if(collateralId >= 2) revert CollateralIdGte2();
+
         deltas = new int256[](2);
-        uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
-        deltas[collateralId] = calcDeltasToClose(lastCFMMInvariant, reserves[collateralId], tokensHeld[collateralId], liquidity);
+
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
+            calcDeltasToClose.selector, calcInvariant(address(0), reserves), reserves[collateralId],
+            tokensHeld[collateralId], liquidity));
+        require(success && data.length >= 1);
+
+        deltas[collateralId] = abi.decode(data, (int256));
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
-    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view returns(uint256[] memory amounts) {
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view
+        returns(uint256[] memory amounts) {
+
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
         amounts[0] = liquidity * reserves[0] / lastCFMMInvariant;
@@ -90,14 +97,17 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
     /// @dev See {BaseLongStrategy-swapTokens}.
     function swapTokens(LibStorage.Loan storage, uint256[] memory, uint256[] memory inAmts) internal virtual override {
-        ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0)); // out amounts were already sent in beforeSwapTokens
+        ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0)); // out amounts already sent in beforeSwapTokens
     }
 
     /// @dev See {BaseLongStrategy-swapTokens}.
-    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas, uint128[] memory reserves) internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+    function beforeSwapTokens(LibStorage.Loan storage _loan, int256[] memory deltas, uint128[] memory reserves)
+        internal virtual override returns(uint256[] memory outAmts, uint256[] memory inAmts) {
+
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
-        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, reserves[0], reserves[1], deltas[0], deltas[1]);
+        (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, reserves[0], reserves[1],
+            deltas[0], deltas[1]);
     }
 
     /// @dev Calculate expected bought and sold amounts given reserves in CFMM
@@ -158,7 +168,9 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param balance - total balance of `token` in GammaPool
     /// @param collateral - `token` collateral available in loan
     /// @return outAmt - amount of `token` actually sent to recipient (`to`)
-    function calcActualOutAmt(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal returns(uint256) {
+    function calcActualOutAmt(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal
+        returns(uint256) {
+
         uint256 balanceBefore = GammaSwapLibrary.balanceOf(token, to); // check balance before transfer
         sendToken(token, to, amount, balance, collateral); // perform transfer
         return GammaSwapLibrary.balanceOf(token, to) - balanceBefore; // check balance after transfer

@@ -73,6 +73,7 @@ describe("CPMMLiquidationStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategy = await TestStrategy.deploy(
+      ethers.constants.AddressZero,
       9500,
       250,
       maxTotalApy,
@@ -140,6 +141,7 @@ describe("CPMMLiquidationStrategy", function () {
     const maxApy = ONE.mul(75).div(100);
 
     strategyFee = await TestStrategy.deploy(
+      ethers.constants.AddressZero,
       9500,
       250,
       maxTotalApy,

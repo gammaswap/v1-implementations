@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/CPMMLiquidationStrategy.sol";
+import "../../../strategies/cpmm/external/CPMMExternalLiquidationStrategy.sol";
 
-contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
+contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -14,7 +14,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMLiquidationStrategy(mathLib_, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+        CPMMExternalLiquidationStrategy(10, mathLib_, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {

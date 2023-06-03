@@ -49,7 +49,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 2_000_000 * 1e18);
         weth.transfer(address(pool), 2000 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = uint256(reserve0) * num1;
@@ -92,7 +92,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = reserve0 * 20;
@@ -118,7 +118,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](1);
         ratio[0] = reserve0 * 3;
@@ -144,7 +144,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = reserve0 * 3;
@@ -170,7 +170,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[1] = reserve0 * 3;
@@ -202,7 +202,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = reserve0 * 3;
@@ -245,7 +245,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        uint128[] memory collateral = pool.increaseCollateral(tokenId);
+        uint128[] memory collateral = pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = reserve0 * 2;
@@ -290,7 +290,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -352,7 +352,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -414,7 +414,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -476,7 +476,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -538,7 +538,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -600,7 +600,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -662,7 +662,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -724,7 +724,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -785,7 +785,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         {
             (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
@@ -860,7 +860,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -925,7 +925,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -990,7 +990,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 200_000 * 1e18);
         weth.transfer(address(pool), 200 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         {
             (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
@@ -1066,7 +1066,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), tokensHeldBefore[0]);
         usdc.transfer(address(pool), tokensHeldBefore[1]);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
 
         int256[] memory deltas = new int256[](2);
         deltas[collateralId] = amount;
@@ -1097,7 +1097,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), tokensHeldBefore[0]);
         usdc.transfer(address(pool), tokensHeldBefore[1]);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
 
         int256[] memory deltas = new int256[](2);
         deltas[collateralId] = -amount;
@@ -1129,7 +1129,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), tokensHeldBefore[0]);
         usdc.transfer(address(pool), tokensHeldBefore[1]);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
 
         if (r0 == r1) {
             vm.expectRevert(bytes4(keccak256("BadDelta()")));
@@ -1153,7 +1153,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), 1000 * 1e18);
         usdc.transfer(address(pool), 1_000_000 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
 
         uint256 lpTokens = IERC20(cfmm).totalSupply();
         pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
@@ -1173,7 +1173,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), 200 * 1e18);
         usdc.transfer(address(pool), 200_000 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -1207,7 +1207,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 150_000 * 1e18);
         weth.transfer(address(pool), 150 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         assertGt(liquidityBorrowed, 0);
@@ -1240,7 +1240,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 130_000 * 1e18);
         weth.transfer(address(pool), 130 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         IGammaPool.LoanData memory loanData = pool.loan(tokenId);
@@ -1270,7 +1270,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         usdc.transfer(address(pool), 130_000 * 1e18);
         weth.transfer(address(pool), 130 * 1e18);
 
-        pool.increaseCollateral(tokenId);
+        pool.increaseCollateral(tokenId, new uint256[](0));
         (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         IGammaPool.LoanData memory loanData = pool.loan(tokenId);
