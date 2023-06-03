@@ -30,12 +30,12 @@ interface ICPMMMath {
 
     /// @dev Calculate deltas to rebalance collateral for withdrawal while maintaining desired ratio
     /// @param amount - amount of token0 requesting to withdraw
-    /// @param tokensHeld0 - quantities of collateral available in loan
-    /// @param tokensHeld1 - quantities of collateral available in loan
-    /// @param reserve0 - reserve quantities of collateral of token0 in CFMM
-    /// @param reserve1 - reserve quantities of collateral of token1 in CFMM
-    /// @param ratio0 - desired ratio to maintain after withdrawal
-    /// @param ratio1 - desired ratio to maintain after withdrawal
+    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
+    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantities of token0 in CFMM
+    /// @param reserve1 - reserve quantities of token1 in CFMM
+    /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
+    /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
     /// @param fee1 - trading fee numerator
     /// @param fee2 - trading fee denominator
     /// @return deltas - quantities of reserve tokens to rebalance after withdrawal

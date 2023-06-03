@@ -72,9 +72,11 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         if(amounts[0] > 0) {
             deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[0], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1],
                 ratio[0], ratio[1], tradingFee1, tradingFee2);
+            (deltas[0], deltas[1]) = (deltas[0], 0);
         } else {
             deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[1], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0],
                 ratio[1], ratio[0], tradingFee1, tradingFee2);
+            (deltas[0], deltas[1]) = (0, deltas[0]);
         }
     }
 }
