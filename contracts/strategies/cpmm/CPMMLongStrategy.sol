@@ -54,21 +54,26 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
             uint256 factor1 = 10 ** s.decimals[1];
             desiredRatio = factor0 * factor1 / desiredRatio; // invert price
             deltas = _calcDeltasForRatioStaticCall(desiredRatio, reserve1, reserve0, tokensHeld, factor1);
-            (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
+            (deltas[0], deltas[1]) = (0, deltas[0]); // revert results, 1st root (index 0) is the only feasible trade
         } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
             deltas = _calcDeltasForRatioStaticCall(desiredRatio, reserve0, reserve1, tokensHeld, factor0);
-            deltas[1] = 0;
-        } else {
-            (deltas[0], deltas[1]) = (0, 0); // no trade
-        }
+            deltas[1] = 0; // 1st quadratic root (index 0) is the only feasible trade
+        } // otherwise no trade
     }
 
-    function _calcDeltasForRatioStaticCall(uint256 desiredRatio, uint128 reserve0, uint128 reserve1,
+    /// @dev Function to perform static call to MathLib.calcDeltasForRatio function
+    /// @param ratio - desired ratio we wish collateral (`tokensHeld`) to have
+    /// @param reserve0 - reserve quantity of token0 in CFMM
+    /// @param reserve1 - reserve quantity of token1 in CFMM
+    /// @param tokensHeld - collateral to rebalance
+    /// @param factor - decimals expansion number of first token (e.g. 10^(token0's decimals))
+    /// @return deltas - quadratic roots (quantities to trade).
+    function _calcDeltasForRatioStaticCall(uint256 ratio, uint128 reserve0, uint128 reserve1,
         uint128[] memory tokensHeld, uint256 factor) internal virtual view returns(int256[] memory deltas) {
 
         // side = false => always buying
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasForRatio.selector, desiredRatio, reserve0, reserve1, tokensHeld, factor, false, tradingFee1, tradingFee2));
+            calcDeltasForRatio.selector, ratio, reserve0, reserve1, tokensHeld, factor, false, tradingFee1, tradingFee2));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -81,20 +86,29 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         if(amounts[0] > 0) {
             deltas = _calcDeltasForWithdrawalStaticCall(amounts[0], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1],
                 ratio[0], ratio[1]);
-            deltas[1] = 0;
-        } else {
+            (deltas[0], deltas[1]) = (deltas[1], 0); // revert results, 2nd root (index 1) is the only feasible trade
+        } else if(amounts[1] > 0){
             deltas = _calcDeltasForWithdrawalStaticCall(amounts[1], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0],
                 ratio[1], ratio[0]);
-            (deltas[0], deltas[1]) = (0, deltas[0]);
-        }
+            deltas[0] = 0; // 2nd root (index 1) is the only feasible trade
+        } // otherwise no trade
     }
 
-    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint128 tokensheld0, uint128 tokensheld1, uint128 reserve0,
+    /// @dev Function to perform static call to MathLib.calcDeltasForWithdrawal function
+    /// @param amount - amount of token0 requesting to withdraw
+    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
+    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantities of token0 in CFMM
+    /// @param reserve1 - reserve quantities of token1 in CFMM
+    /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
+    /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
+    /// @return deltas - quantities of reserve tokens to rebalance after withdrawal.
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint128 tokensHeld0, uint128 tokensHeld1, uint128 reserve0,
         uint128 reserve1, uint256 ratio0, uint256 ratio1) internal virtual view returns(int256[] memory deltas) {
 
         // side = false => always buying
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasForWithdrawal.selector, amount, tokensheld0, tokensheld1, reserve0, reserve1, ratio0, ratio1,
+            calcDeltasForWithdrawal.selector, amount, tokensHeld0, tokensHeld1, reserve0, reserve1, ratio0, ratio1,
             tradingFee1, tradingFee2));
         require(success && data.length >= 1);
 
