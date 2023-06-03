@@ -1,17 +1,22 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 import "../../interfaces/math/ICPMMMath.sol";
 
-contract CPMMMath is ICPMMMath{
-    constructor(){
-    }
+/// @title Math library for CPMM strategies
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
+/// @notice Math library for complex computations for CPMM strategies
+contract CPMMMath is ICPMMMath {
 
-    // how much collateral to trade to have enough to close a position
-    // reserve and collateral have to be of the same token
-    // if > 0 => have to buy token to have exact amount of token to close position
-    // if < 0 => have to sell token to have exact amount of token to close position
-    function calcDeltasToClose(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity) external virtual override pure returns(int256 delta) {
+    /// @dev See {ICPMMMath-calcDeltasToClose}
+    /// @notice how much collateral to trade to have enough to close a position
+    /// @notice reserve and collateral have to be of the same token
+    /// @notice if > 0 => have to buy token to have exact amount of token to close position
+    /// @notice if < 0 => have to sell token to have exact amount of token to close position
+    function calcDeltasToClose(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity)
+        external virtual override pure returns(int256 delta) {
+
         uint256 left = reserve * liquidity;
         uint256 right = collateral * lastCFMMInvariant;
         bool isNeg = right > left;
@@ -19,24 +24,16 @@ contract CPMMMath is ICPMMMath{
         delta = isNeg ? -int256(_delta) : int256(_delta);
     }
 
-    /// @dev See calculate quantities to trade to rebalance collateral (`tokensHeld`) to the desired `ratio`
+    /// @dev See {ICPMMMath-calcDeltasForRatio}
     /// @notice The calculation takes into consideration the market impact the transaction would have
-    /// @notice The eqution is derived from solving the quadratic root formula taking into account trading fees
+    /// @notice The equation is derived from solving the quadratic root formula taking into account trading fees
     /// @notice default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
     /// @notice buying should always give us a positive number, if the response is a negative number, then the result is not good
     /// @notice A positive quadratic root means buying, a negative quadratic root means selling
     /// @notice We can flip the reserves, tokensHeld, and ratio to make a buy a sell or a sell a buy
     /// @notice side = 0 (false) => buy, side = 1 (true)  => sell
-    /// @param ratio - desired ratio we wish collateral (`tokensHeld`) to have
-    /// @param reserve0 - reserve quantity of token0 in CFMM
-    /// @param reserve1 - reserve quantity of token1 in CFMM
-    /// @param tokensHeld - collateral to rebalance
-    /// @param factor - decimals expansion number of first token (e.g. 10^(token0's decimals))
-    /// @param side - side of token to rebalance
-    /// @return deltas - quadratic roots (quantities to trade). The first quadratic root (index 0) is the only feasible trade
-    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, uint256 factor, bool side, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
-        //uint256 fee1 = tradingFee1;
-        //uint256 fee2 = tradingFee2;
+    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld,
+        uint256 factor, bool side, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
         // must negate
         uint256 a = fee1 * ratio / fee2;
         // must negate
@@ -108,5 +105,12 @@ contract CPMMMath is ICPMMMath{
             // (-b - det)/-2a = (b+det)/2a
             deltas[1] = int256((b + det) * factor / (2*a));
         }
+    }
+
+    /// @dev See {ICPMMMath-calcDeltasForWithdrawal}.
+    function calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
+        uint256[] calldata ratio, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+
+        deltas = new int256[](2);
     }
 }
