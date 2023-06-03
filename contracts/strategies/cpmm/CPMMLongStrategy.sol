@@ -53,16 +53,25 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
             (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]); // invert collateral
             uint256 factor1 = 10 ** s.decimals[1];
             desiredRatio = factor0 * factor1 / desiredRatio; // invert price
-            deltas = ICPMMMath(mathLib).calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, factor1, false,
-                tradingFee1, tradingFee2); // always buying
+            deltas = _calcDeltasForRatioStaticCall(desiredRatio, reserve1, reserve0, tokensHeld, factor1);
             (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
         } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
-            deltas = ICPMMMath(mathLib).calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, factor0, false,
-                tradingFee1, tradingFee2); // always buying
+            deltas = _calcDeltasForRatioStaticCall(desiredRatio, reserve0, reserve1, tokensHeld, factor0);
             deltas[1] = 0;
         } else {
             (deltas[0], deltas[1]) = (0, 0); // no trade
         }
+    }
+
+    function _calcDeltasForRatioStaticCall(uint256 desiredRatio, uint128 reserve0, uint128 reserve1,
+        uint128[] memory tokensHeld, uint256 factor) internal virtual view returns(int256[] memory deltas) {
+
+        // side = false => always buying
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
+            calcDeltasForRatio.selector, desiredRatio, reserve0, reserve1, tokensHeld, factor, false, tradingFee1, tradingFee2));
+        require(success && data.length >= 1);
+
+        deltas = abi.decode(data, (int256[]));
     }
 
     /// @dev See {LongStrategy-_calcDeltasForWithdrawal}.
@@ -70,13 +79,25 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
         uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
 
         if(amounts[0] > 0) {
-            deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[0], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1],
-                ratio[0], ratio[1], tradingFee1, tradingFee2);
-            (deltas[0], deltas[1]) = (deltas[0], 0);
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[0], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1],
+                ratio[0], ratio[1]);
+            deltas[1] = 0;
         } else {
-            deltas = ICPMMMath(mathLib).calcDeltasForWithdrawal(amounts[1], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0],
-                ratio[1], ratio[0], tradingFee1, tradingFee2);
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[1], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0],
+                ratio[1], ratio[0]);
             (deltas[0], deltas[1]) = (0, deltas[0]);
         }
+    }
+
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint128 tokensheld0, uint128 tokensheld1, uint128 reserve0,
+        uint128 reserve1, uint256 ratio0, uint256 ratio1) internal virtual view returns(int256[] memory deltas) {
+
+        // side = false => always buying
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
+            calcDeltasForWithdrawal.selector, amount, tokensheld0, tokensheld1, reserve0, reserve1, ratio0, ratio1,
+            tradingFee1, tradingFee2));
+        require(success && data.length >= 1);
+
+        deltas = abi.decode(data, (int256[]));
     }
 }
