@@ -94,13 +94,13 @@ contract TestCPMMLongStrategyRepay is CPMMLongStrategy {
         deltas = new int256[](2);
     }
 
-    function _calcDeltasForRatioStaticCall(uint256 desiredRatio, uint128 reserve0, uint128 reserve1,
-        uint128[] memory tokensHeld, uint256 factor) internal virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasForRatioStaticCall(uint256 ratio0, uint256 ratio1, uint128 reserve0, uint128 reserve1,
+        uint128 tokensHeld0, uint128 tokensHeld1) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
     }
 
-    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint128 tokensheld0, uint128 tokensheld1, uint128 reserve0,
-        uint128 reserve1, uint256 ratio0, uint256 ratio1) internal virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint256 ratio0, uint256 ratio1, uint128 reserve0,
+        uint128 reserve1, uint128 tokensheld0, uint128 tokensheld1) internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
     }
 }

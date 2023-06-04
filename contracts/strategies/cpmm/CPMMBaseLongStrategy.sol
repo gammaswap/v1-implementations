@@ -97,6 +97,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
     /// @dev See {BaseLongStrategy-swapTokens}.
     function swapTokens(LibStorage.Loan storage, uint256[] memory, uint256[] memory inAmts) internal virtual override {
+        if(inAmts[0] == 0 && inAmts[1] == 0) return;
+
         ICPMM(s.cfmm).swap(inAmts[0],inAmts[1],address(this),new bytes(0)); // out amounts already sent in beforeSwapTokens
     }
 
@@ -106,6 +108,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
         outAmts = new uint256[](2);
         inAmts = new uint256[](2);
+
+        if(deltas[0] == 0 && deltas[1] == 0) {
+            return (outAmts, inAmts);
+        }
+
         (inAmts[0], inAmts[1], outAmts[0], outAmts[1]) = calcInAndOutAmounts(_loan, reserves[0], reserves[1],
             deltas[0], deltas[1]);
     }

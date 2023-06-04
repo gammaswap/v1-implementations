@@ -470,12 +470,15 @@ describe("CPMMLongStrategy", function () {
   });
 
   describe("Calc Tokens to Swap", function () {
+    it("Zero Token Swap", async function () {
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
+      strategy.testBeforeSwapTokens(tokenId, [0, 0]);
+    });
+
     it("Error Before Token Swap", async function () {
       const res1 = await (await strategy.createLoan()).wait();
       const tokenId = res1.events[0].args.tokenId;
-      await expect(
-        strategy.testBeforeSwapTokens(tokenId, [0, 0])
-      ).to.be.revertedWithCustomError(strategy, "BadDelta");
       await expect(
         strategy.testBeforeSwapTokens(tokenId, [1, 1])
       ).to.be.revertedWithCustomError(strategy, "BadDelta");
