@@ -14,8 +14,8 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerExternalLongStrategy(10, 8000, 1e19, 2252571, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
+    constructor(uint16 originationFee_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
+        BalancerExternalLongStrategy(10, 8000, 1e19, 2252571, originationFee_, baseRate_, factor_, maxApy_, weight0_) {
     }
 
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
@@ -133,7 +133,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         emit CalcAmounts(outAmts, inAmts);
     }
 
-    function _borrowLiquidity(uint256, uint256, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint256, uint256[] memory) {
+    /*function _borrowLiquidity(uint256, uint256, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint256, uint256[] memory) {
         return (0, new uint256[](2));
     }
 
@@ -141,15 +141,15 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
         return (0, new uint256[](2));
     }
 
-    function _decreaseCollateral(uint256, uint128[] calldata, address) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
+    function _decreaseCollateral(uint256, uint128[] memory, address, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _increaseCollateral(uint256) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
+    function _increaseCollateral(uint256, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
     }
 
-    function _rebalanceCollateral(uint256, int256[] calldata, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
+    function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override(ILongStrategy, LongStrategy) returns(uint128[] memory) {
         return new uint128[](2);
-    }
+    }/**/
 }

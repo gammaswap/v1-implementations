@@ -13,10 +13,13 @@ contract BalancerLiquidationStrategy is BalancerBaseLongStrategy, LiquidationStr
     /// @return LIQUIDATION_FEE - liquidation penalty charged from collateral
     uint16 immutable public LIQUIDATION_FEE;
 
-    /// @dev Initialises the contract by setting `_liquidationThreshold`, `_liquidationFee`, `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint16 _liquidationThreshold, uint16 _liquidationFee, uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerBaseLongStrategy(_liquidationThreshold, _maxTotalApy, _blocksPerYear, 0, _baseRate, _factor, _maxApy, _weight0) {
-        LIQUIDATION_FEE = _liquidationFee;
+    /// @dev Initialises the contract by setting `LTV_THRESHOLD`, `LIQUIDATION_FEE`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
+    /// @dev `baseRate`, `factor`, `maxApy`, and `weight0`
+    constructor(uint16 liquidationThreshold_, uint16 liquidationFee_, uint256 maxTotalApy_, uint256 blocksPerYear_,
+        uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseLongStrategy(liquidationThreshold_,
+        maxTotalApy_, blocksPerYear_, 0, baseRate_, factor_, maxApy_, weight0_) {
+
+        LIQUIDATION_FEE = liquidationFee_;
     }
 
     /// @return Returns the liquidation fee threshold.

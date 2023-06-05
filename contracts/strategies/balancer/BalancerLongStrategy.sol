@@ -10,9 +10,11 @@ import "./BalancerBaseLongStrategy.sol";
 /// @dev This implementation was specifically designed to work with Balancer
 contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
 
-    /// @dev Initialises the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0)
-        BalancerBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _baseRate, _factor, _maxApy, _weight0) {
+    /// @dev Initialises the contract by setting `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `origFee`,
+    /// @dev `baseRate`, `factor`, `maxApy`, and `_weight0`
+    constructor(uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 originationFee_,
+        uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseLongStrategy(ltvThreshold_,
+        maxTotalApy_, blocksPerYear_, originationFee_, baseRate_, factor_, maxApy_, weight0_) {
     }
 
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
@@ -23,17 +25,31 @@ contract BalancerLongStrategy is BalancerBaseLongStrategy, LongStrategy {
     }
 
     /// @dev See {ILongStrategy-calcDeltasToClose}.
-    function calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId)
+        external virtual override view returns(int256[] memory deltas) {
+
         return _calcDeltasToClose(tokensHeld, reserves, liquidity, collateralId);
     }
 
     /// @dev See {ILongStrategy-calcDeltasForRatio}.
-    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
+        external virtual override view returns(int256[] memory deltas) {
+
         return _calcDeltasForRatio(tokensHeld, reserves, ratio);
     }
 
     /// @dev See {LongStrategy-_calcDeltasForRatio}.
-    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
+        internal virtual override view returns(int256[] memory deltas) {
+
         deltas = new int256[](2);
     }
+
+    /// @dev See {LongStrategy-_calcDeltasForWithdrawal}.
+    function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
+        uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
+
+        deltas = new int256[](2);
+    }
+
 }

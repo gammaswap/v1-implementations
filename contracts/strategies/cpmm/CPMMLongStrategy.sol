@@ -10,9 +10,16 @@ import "./CPMMBaseLongStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
 
-    /// @dev Initializes the contract by setting `_ltvThreshold`, `_maxTotalApy`, `_blocksPerYear`, `_originationFee`, `_tradingFee1`, `_tradingFee2`, `_baseRate`, `_factor`, and `_maxApy`
-    constructor(uint16 _ltvThreshold, uint256 _maxTotalApy, uint256 _blocksPerYear, uint24 _originationFee, uint16 _tradingFee1, uint16 _tradingFee2, uint64 _baseRate, uint80 _factor, uint80 _maxApy)
-        CPMMBaseLongStrategy(_ltvThreshold, _maxTotalApy, _blocksPerYear, _originationFee, _tradingFee1, _tradingFee2, _baseRate, _factor, _maxApy) {
+    error MissingMathLib();
+
+    /// @dev Initializes the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
+    /// @dev `origFee`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
+    constructor(address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_,
+        uint24 origFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_,
+        uint80 maxApy_) CPMMBaseLongStrategy(mathLib_, ltvThreshold_, maxTotalApy_, blocksPerYear_, origFee_,
+        tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+
+        if(mathLib_ == address(0)) revert MissingMathLib();
     }
 
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
@@ -21,126 +28,86 @@ contract CPMMLongStrategy is CPMMBaseLongStrategy, LongStrategy {
     }
 
     /// @dev See {ILongStrategy-calcDeltasToClose}.
-    function calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity,
+        uint256 collateralId) external virtual override view returns(int256[] memory deltas) {
         return _calcDeltasToClose(tokensHeld, reserves, liquidity, collateralId);
     }
 
     /// @dev See {ILongStrategy-calcDeltasForRatio}.
-    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
+        external virtual override view returns(int256[] memory deltas) {
         deltas = _calcDeltasForRatio(tokensHeld, reserves, ratio);
     }
 
     /// @dev See {LongStrategy-_calcDeltasForRatio}.
-    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
+    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
+        internal virtual override view returns(int256[] memory deltas) {
         deltas = new int256[](2);
-        (uint128 reserve0, uint128 reserve1) = (reserves[0], reserves[1]);
-        uint256 factor0 = 10 ** s.decimals[0];
-        uint256 desiredRatio = ratio[1] * factor0 / ratio[0];
-        uint256 loanRatio = tokensHeld[1] * factor0 / tokensHeld[0];
 
-        // we're always going to buy, therefore when desiredRatio > loanRatio, invert reserves, collaterals, and desiredRatio
-        if(desiredRatio > loanRatio) { // sell token0, buy token1 (need more token1)
-            (tokensHeld[0], tokensHeld[1]) = (tokensHeld[1], tokensHeld[0]); // invert collateral
-            uint256 factor1 = 10 ** s.decimals[1];
-            desiredRatio = factor0 * factor1 / desiredRatio; // invert price
-            deltas = calcDeltasForRatio(desiredRatio, reserve1, reserve0, tokensHeld, factor1, false); // always buying
-            (deltas[0], deltas[1]) = (0, deltas[0]); // revert results
-        } else if(desiredRatio < loanRatio) { // buy token0, sell token1 (need more token0)
-            deltas = calcDeltasForRatio(desiredRatio, reserve0, reserve1, tokensHeld, factor0, false); // always buying
-            deltas[1] = 0;
-        } else {
-            (deltas[0], deltas[1]) = (0, 0); // no trade
-        }
+        // we only buy, therefore when desiredRatio > loanRatio, invert reserves, collaterals, and desiredRatio
+        uint256 leftVal = uint256(ratio[1]) * uint256(tokensHeld[0]);
+        uint256 rightVal = uint256(ratio[0]) * uint256(tokensHeld[1]);
+        if(leftVal > rightVal) { // sell token0, buy token1 (need more token1)
+            deltas = _calcDeltasForRatioStaticCall(ratio[1], ratio[0], reserves[1], reserves[0], tokensHeld[1], tokensHeld[0]);
+            (deltas[0], deltas[1]) = (0, deltas[0]); // swap result, 1st root (index 0) is the only feasible trade
+        } else if(leftVal < rightVal) { // buy token0, sell token1 (need more token0)
+            deltas = _calcDeltasForRatioStaticCall(ratio[0], ratio[1], reserves[0], reserves[1], tokensHeld[0], tokensHeld[1]);
+            deltas[1] = 0; // 1st quadratic root (index 0) is the only feasible trade
+        } // otherwise no trade
     }
 
-    /// @dev See calculate quantities to trade to rebalance collateral (`tokensHeld`) to the desired `ratio`
-    /// @notice The calculation takes into consideration the market impact the transaction would have
-    /// @notice The eqution is derived from solving the quadratic root formula taking into account trading fees
-    /// @notice default is selling (-a), so if side is true (sell), switch bIsNeg and remove fee from B in b calc
-    /// @notice buying should always give us a positive number, if the response is a negative number, then the result is not good
-    /// @notice A positive quadratic root means buying, a negative quadratic root means selling
-    /// @notice We can flip the reserves, tokensHeld, and ratio to make a buy a sell or a sell a buy
-    /// @notice side = 0 (false) => buy, side = 1 (true)  => sell
-    /// @param ratio - desired ratio we wish collateral (`tokensHeld`) to have
+    /// @dev Function to perform static call to MathLib.calcDeltasForRatio function
+    /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
+    /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
     /// @param reserve0 - reserve quantity of token0 in CFMM
     /// @param reserve1 - reserve quantity of token1 in CFMM
-    /// @param tokensHeld - collateral to rebalance
-    /// @param factor - decimals expansion number of first token (e.g. 10^(token0's decimals))
-    /// @param side - side of token to rebalance
-    /// @return deltas - quadratic roots (quantities to trade). The first quadratic root (index 0) is the only feasible trade
-    function calcDeltasForRatio(uint256 ratio, uint128 reserve0, uint128 reserve1, uint128[] memory tokensHeld, uint256 factor, bool side) public virtual view returns(int256[] memory deltas) {
-        uint256 fee1 = tradingFee1;
-        uint256 fee2 = tradingFee2;
-        // must negate
-        uint256 a = fee1 * ratio / fee2;
-        // must negate
-        bool bIsNeg;
-        deltas = new int256[](2);
-        uint256 b;
-        {
-            uint256 leftVal;
-            {
-                uint256 A_times_Phi = tokensHeld[0] * fee1 / fee2;
-                uint256 A_hat_times_Phi = side ? reserve0 : reserve0 * fee1 / fee2;
-                bIsNeg = A_hat_times_Phi < A_times_Phi;
-                leftVal = (bIsNeg ? A_times_Phi - A_hat_times_Phi : A_hat_times_Phi - A_times_Phi) * ratio / factor;
-            }
-            uint256 rightVal = side ? (tokensHeld[1] + reserve1) * fee1 / fee2 : (tokensHeld[1] * fee1 / fee2) + reserve1;
-            if(bIsNeg) { // leftVal < 0
-                bIsNeg = leftVal < rightVal;
-                if(bIsNeg) {
-                    b = rightVal - leftVal;
-                } else {
-                    b = leftVal - rightVal;
-                }
-            } else {
-                b = leftVal + rightVal;
-                bIsNeg = true;
-            }
-            bIsNeg = side == false ? !bIsNeg : bIsNeg;
-        }
+    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
+    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @return deltas - quadratic roots (quantities to trade).
+    function _calcDeltasForRatioStaticCall(uint256 ratio0, uint256 ratio1, uint128 reserve0, uint128 reserve1,
+        uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
 
-        uint256 det;
-        {
-            uint256 leftVal = tokensHeld[0] * ratio / factor;
-            bool cIsNeg = leftVal < tokensHeld[1];
-            uint256 c = (cIsNeg ? tokensHeld[1] - leftVal : leftVal - tokensHeld[1]) * reserve0 * (side ? 1 : fee1 ); // B*A decimals
-            c = side ? c : c / fee2;
-            uint256 ac4 = 4 * c * a / factor;
-            det = Math.sqrt(!cIsNeg ? b**2 + ac4 : b**2 - ac4); // should check here that won't get an imaginary number
-        }
+        // always buys
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
+            calcDeltasForRatio.selector, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1, tradingFee1, tradingFee2));
+        require(success && data.length >= 1);
 
-        // remember that a is always negative
-        // root = (-b +/- det)/(2a)
-        if(bIsNeg) { // b < 0
-            // plus version
-            // (b + det)/-2a = -(b + det)/2a
-            // this is always negative
-            deltas[0] = -int256((b + det) * factor / (2*a));
+        deltas = abi.decode(data, (int256[]));
+    }
 
-            // minus version
-            // (b - det)/-2a = (det-b)/2a
-            if(det > b) {
-                // x2 is positive
-                deltas[1] = int256((det - b) * factor / (2*a));
-            } else {
-                // x2 is negative
-                deltas[1]= -int256((b - det) * factor / (2*a));
-            }
-        } else { // b > 0
-            // plus version
-            // (-b + det)/-2a = (b - det)/2a
-            if(b > det) {
-                //  x1 is positive
-                deltas[0] = int256((b - det) * factor / (2*a));
-            } else {
-                //  x1 is negative
-                deltas[0] = -int256((det - b) * factor / (2*a));
-            }
+    /// @dev See {LongStrategy-_calcDeltasForWithdrawal}.
+    function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
+        uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
 
-            // minus version
-            // (-b - det)/-2a = (b+det)/2a
-            deltas[1] = int256((b + det) * factor / (2*a));
-        }
+        if(amounts[0] > 0) {
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[0], ratio[0], ratio[1], reserves[0], reserves[1],
+                tokensHeld[0], tokensHeld[1]);
+            (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 2nd root (index 1) is the only feasible trade
+        } else if(amounts[1] > 0){
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[1],  ratio[1], ratio[0], reserves[1], reserves[0],
+                tokensHeld[1], tokensHeld[0]);
+            deltas[0] = 0; // 2nd root (index 1) is the only feasible trade
+        } // otherwise no trade
+    }
+
+    /// @dev Function to perform static call to MathLib.calcDeltasForWithdrawal function
+    /// @param amount - amount of token0 requesting to withdraw
+    /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
+    /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
+    /// @param reserve0 - reserve quantities of token0 in CFMM
+    /// @param reserve1 - reserve quantities of token1 in CFMM
+    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
+    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @return deltas - quantities of reserve tokens to rebalance after withdrawal.
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint256 ratio0, uint256 ratio1,uint128 reserve0,
+        uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
+
+        // always buys
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
+            calcDeltasForWithdrawal.selector, amount, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1,
+            tradingFee1, tradingFee2));
+        require(success && data.length >= 1);
+
+        deltas = abi.decode(data, (int256[]));
     }
 }

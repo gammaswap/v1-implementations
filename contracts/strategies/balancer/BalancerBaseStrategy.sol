@@ -35,14 +35,15 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
     /// @dev Weight of token1 in the Balancer pool.
     uint256 immutable public weight1;
 
-    /// @dev Initializes the contract by setting `_maxTotalApy`, `_blocksPerYear`, `_baseRate`, `_factor`, `_maxApy`, and `_weight0`
-    constructor(uint256 _maxTotalApy, uint256 _blocksPerYear, uint64 _baseRate, uint80 _factor, uint80 _maxApy, uint256 _weight0) LogDerivativeRateModel(_baseRate, _factor, _maxApy) {
-        if(_maxTotalApy < _maxApy) revert MaxTotalApy();// maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `factor`, `maxApy`, and `weight0`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
+        LogDerivativeRateModel(baseRate_, factor_, maxApy_) {
+        if(maxTotalApy_ < maxApy_) revert MaxTotalApy();// maxTotalApy (CFMM Fees + GammaSwap interest rate) cannot be greater or equal to maxApy (max GammaSwap interest rate)
 
-        MAX_TOTAL_APY = _maxTotalApy;
-        BLOCKS_PER_YEAR = _blocksPerYear;
-        weight0 = _weight0;
-        weight1 = 1e18 - _weight0;
+        MAX_TOTAL_APY = maxTotalApy_;
+        BLOCKS_PER_YEAR = blocksPerYear_;
+        weight0 = weight0_;
+        weight1 = 1e18 - weight0_;
     }
 
     /// @dev See {BaseStrategy-blocksPerYear}.
@@ -148,7 +149,8 @@ abstract contract BalancerBaseStrategy is IBalancerStrategy, BaseStrategy, LogDe
         // Log the final reserves in the GammaPool
         (uint256 finalReserves0, uint256 finalReserves1) = getStrategyReserves();
 
-        // Note: We are logging differences in reserves of the GammaPool (instead of the Vault) to account for transfer tax on the underlying tokens
+        // Note: We are logging differences in reserves of the GammaPool (instead of the Vault) to account for transfer
+        // taxes on the underlying tokens
 
         // The difference between the initial and final reserves is the amount of reserve tokens withdrawn
         amounts = new uint256[](2);
