@@ -1236,21 +1236,88 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         weth.transfer(address(pool), 130 * 1e18);
 
         pool.increaseCollateral(tokenId, new uint256[](0));
+
+        IGammaPool.PoolData memory poolData = pool.getLatestPoolData();
+        assertEq(poolData.BORROWED_INVARIANT, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED_PLUS_INTEREST, 0);
+        assertGt(poolData.LP_INVARIANT, 0);
+        assertGt(poolData.LP_TOKEN_BALANCE, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED, 0);
+        assertEq(poolData.utilizationRate, 0);
+        assertEq(poolData.accFeeIndex, 1e18);
+        assertEq(poolData.currBlockNumber, 1);
+        assertEq(poolData.LAST_BLOCK_NUMBER, 1);
+
         (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
 
         IGammaPool.LoanData memory loanData = pool.loan(tokenId);
         assertEq(loanData.liquidity, liquidityBorrowed);
+        assertGt(loanData.tokensHeld[0], 0);
+        assertGt(loanData.tokensHeld[1], 0);
+
+        IGammaPool.PoolData memory poolData1 = pool.getLatestPoolData();
+        assertGt(poolData1.BORROWED_INVARIANT, poolData.BORROWED_INVARIANT);
+        assertGt(poolData1.LP_TOKEN_BORROWED_PLUS_INTEREST, poolData.LP_TOKEN_BORROWED_PLUS_INTEREST);
+        assertLt(poolData1.LP_INVARIANT, poolData.LP_INVARIANT);
+        assertLt(poolData1.LP_TOKEN_BALANCE, poolData.LP_TOKEN_BALANCE);
+        assertGt(poolData1.LP_TOKEN_BORROWED, poolData.LP_TOKEN_BORROWED);
+        assertGt(poolData1.utilizationRate, poolData.utilizationRate);
+        assertEq(poolData1.accFeeIndex, poolData.accFeeIndex);
+        assertEq(poolData1.currBlockNumber, 1);
+        assertEq(poolData1.LAST_BLOCK_NUMBER, 1);
 
         vm.roll(100000000);  // After a while
 
         loanData = pool.loan(tokenId);
         assertGt(loanData.liquidity, liquidityBorrowed);
+        assertGt(loanData.tokensHeld[0], 0);
+        assertGt(loanData.tokensHeld[1], 0);
 
-        vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
+        IGammaPool.PoolData memory poolData2 = pool.getLatestPoolData();
+        assertGt(poolData2.BORROWED_INVARIANT, poolData1.BORROWED_INVARIANT);
+        assertGt(poolData2.LP_TOKEN_BORROWED_PLUS_INTEREST, poolData1.LP_TOKEN_BORROWED_PLUS_INTEREST);
+        assertEq(poolData2.LP_INVARIANT, poolData1.LP_INVARIANT);
+        assertEq(poolData2.LP_TOKEN_BALANCE, poolData1.LP_TOKEN_BALANCE);
+        assertEq(poolData2.LP_TOKEN_BORROWED, poolData1.LP_TOKEN_BORROWED);
+        assertEq(poolData2.utilizationRate, poolData1.utilizationRate);
+        assertGt(poolData2.accFeeIndex, poolData1.accFeeIndex);
+        assertEq(poolData2.currBlockNumber, 100000000);
+        assertEq(poolData2.LAST_BLOCK_NUMBER, 1);
+        uint256 usdcBal = usdc.balanceOf(addr1);
+        uint256 wethBal = weth.balanceOf(addr1);
+        uint256 liquidityDebtGrowth = loanData.liquidity - liquidityBorrowed;
+
+        vm.expectRevert(bytes4(keccak256("BadDebt()")));
+        pool.repayLiquidity(tokenId, loanData.liquidity/2, new uint256[](0), 1, addr1);
+
+        vm.expectRevert(bytes4(keccak256("BadDebt()")));
+        pool.repayLiquidity(tokenId, loanData.liquidity/2, new uint256[](0), 2, addr1);
+
         pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 1, addr1);
 
-        vm.expectRevert(bytes4(keccak256("NotEnoughBalance()")));
-        pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 2, addr1);
+        loanData = pool.loan(tokenId);
+        assertEq(loanData.liquidity, 0);
+        assertEq(loanData.tokensHeld[0], 0);
+        assertEq(loanData.tokensHeld[1], 0);
+        assertEq((usdc.balanceOf(addr1) - usdcBal)/1e3, 0);
+        assertEq((weth.balanceOf(addr1) - wethBal)/1e3, 0);
+
+        IGammaPool.PoolData memory poolData3 = pool.getLatestPoolData();
+        uint256 invariantDiff = (poolData2.LP_INVARIANT + poolData2.BORROWED_INVARIANT) - poolData3.LP_INVARIANT;
+        uint256 invariantPaid = poolData3.LP_INVARIANT - poolData.LP_INVARIANT;
+        uint256 writeDown = liquidityDebtGrowth - invariantPaid;
+        assertGt(liquidityDebtGrowth, invariantPaid); // write down
+        assertGt(writeDown, 2000*1e18); // write down
+        assertGt(invariantDiff, 0); // write down
+        assertEq(poolData3.BORROWED_INVARIANT, 0);
+        assertEq(poolData3.LP_TOKEN_BORROWED_PLUS_INTEREST, 0);
+        assertGt(poolData3.LP_INVARIANT, poolData2.LP_INVARIANT);
+        assertGt(poolData3.LP_TOKEN_BALANCE, poolData2.LP_TOKEN_BALANCE);
+        assertEq(poolData3.LP_TOKEN_BORROWED, 0);
+        assertEq(poolData3.utilizationRate, 0);
+        assertEq(poolData3.accFeeIndex, poolData2.accFeeIndex);
+        assertEq(poolData3.currBlockNumber, 100000000);
+        assertEq(poolData3.LAST_BLOCK_NUMBER, 100000000);
     }
 
     /// @dev Interest on loan changes if rate params change

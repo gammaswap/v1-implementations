@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-implementations",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
@@ -72,7 +72,7 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^3.0.1",
     "@balancer-labs/v2-vault": "^3.0.1",
-    "@gammaswap/v1-core": "^0.5.2",
+    "@gammaswap/v1-core": "^0.5.3",
     "@openzeppelin/contracts": "^4.7.0",
     "@prb/math": "^3.1.0"
   }
