@@ -8,7 +8,7 @@ import "../base/BalancerBaseLongStrategy.sol";
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
 /// @dev This implementation was specifically designed to work with Balancer
-contract BalancerExternalLongStrategy is BalancerBaseLongStrategy, ExternalRebalanceStrategy {
+contract BalancerExternalRebalanceStrategy is BalancerBaseLongStrategy, ExternalRebalanceStrategy {
 
     /// @return EXTERNAL_SWAP_FEE - fees charged to flash loans
     uint256 immutable public EXTERNAL_SWAP_FEE;

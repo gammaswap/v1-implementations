@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
-import "../../../strategies/cpmm/external/CPMMExternalLiquidationStrategy.sol";
+import "../../../strategies/cpmm/liquidation/CPMMExternalLiquidationStrategy.sol";
 
 contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy, BaseBorrowStrategy {
 

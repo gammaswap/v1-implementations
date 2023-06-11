@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
-import "./base/BalancerBaseRebalanceStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/lending/RepayStrategy.sol";
+import "../base/BalancerBaseRebalanceStrategy.sol";
 
-/// @title Rebalance Strategy concrete implementation contract for Balancer Weighted Pools
+/// @title Repay Strategy concrete implementation contract for Balancer Weighted Pools
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
-/// @notice Sets up variables used by RebalanceStrategy and defines internal functions specific to Balancer Weighted Pools
+/// @notice Sets up variables used by LongStrategy and defines internal functions specific to Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer
-contract BalancerRebalanceStrategy is BalancerBaseRebalanceStrategy, RebalanceStrategy {
+contract BalancerRepayStrategy is BalancerBaseRebalanceStrategy, RepayStrategy {
 
     /// @dev Initialises the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
     /// @dev `origFee`, `baseRate`, `factor`, `maxApy`, and `_weight0`

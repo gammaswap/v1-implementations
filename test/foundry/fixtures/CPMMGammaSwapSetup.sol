@@ -6,11 +6,11 @@ import "@gammaswap/v1-core/contracts/GammaPoolFactory.sol";
 import "./UniswapSetup.sol";
 import "./TokensSetup.sol";
 import "../../../contracts/pools/CPMMGammaPool.sol";
-import "../../../contracts/strategies/cpmm/CPMMLiquidationStrategy.sol";
+import "../../../contracts/strategies/cpmm/lending/CPMMBorrowStrategy.sol";
+import "../../../contracts/strategies/cpmm/lending/CPMMRepayStrategy.sol";
+import "../../../contracts/strategies/cpmm/liquidation/CPMMLiquidationStrategy.sol";
 import "../../../contracts/strategies/cpmm/CPMMShortStrategy.sol";
 import "../../../contracts/libraries/cpmm/CPMMMath.sol";
-import "../../../contracts/strategies/cpmm/CPMMBorrowStrategy.sol";
-import "../../../contracts/strategies/cpmm/CPMMRepayStrategy.sol";
 
 contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
 

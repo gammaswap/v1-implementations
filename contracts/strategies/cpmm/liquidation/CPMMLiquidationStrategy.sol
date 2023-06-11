@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/liquidation/SingleLiquidationStrategy.sol";
 import "@gammaswap/v1-core/contracts/strategies/liquidation/BatchLiquidationStrategy.sol";
-import "./base/CPMMBaseLongStrategy.sol";
+import "../base/CPMMBaseLongStrategy.sol";
 
 /// @title Liquidation Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
