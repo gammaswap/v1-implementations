@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/ShortStrategySync.sol";
 import "../../interfaces/external/cpmm/ICPMM.sol";
-import "./CPMMBaseStrategy.sol";
+import "./base/CPMMBaseStrategy.sol";
 
 /// @title Short Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)

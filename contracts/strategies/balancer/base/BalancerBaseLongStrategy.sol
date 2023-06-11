@@ -2,8 +2,8 @@
 pragma solidity >=0.8.4;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseLongStrategy.sol";
-import "../../libraries/weighted/FixedPoint.sol";
-import "../../libraries/weighted/WeightedMath.sol";
+import "../../../libraries/weighted/FixedPoint.sol";
+import "../../../libraries/weighted/WeightedMath.sol";
 import "./BalancerBaseStrategy.sol";
 
 /// @title Base Long Strategy concrete implementation contract for Balancer Weighted Pools

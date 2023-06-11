@@ -7,7 +7,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
-import "../strategies/balancer/BalancerBaseStrategy.sol";
+import "../libraries/weighted/FixedPoint.sol";
 import "../interfaces/external/balancer/IWeightedPool.sol";
 import "../interfaces/external/balancer/IVault.sol";
 import "../interfaces/strategies/IBalancerStrategy.sol";

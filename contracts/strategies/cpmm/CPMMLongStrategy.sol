@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/lending/BorrowStrategy.sol";
 import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
-import "./CPMMBaseRebalanceStrategy.sol";
+import "./base/CPMMBaseRebalanceStrategy.sol";
 
 /// @title Borrow and Rebalance Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)

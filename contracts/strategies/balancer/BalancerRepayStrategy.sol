@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/lending/RepayStrategy.sol";
-import "./BalancerBaseRebalanceStrategy.sol";
+import "./base/BalancerBaseRebalanceStrategy.sol";
 
 /// @title Repay Strategy concrete implementation contract for Balancer Weighted Pools
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)

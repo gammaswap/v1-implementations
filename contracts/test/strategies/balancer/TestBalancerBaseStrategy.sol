@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/balancer/BalancerBaseStrategy.sol";
+import "../../../strategies/balancer/base/BalancerBaseStrategy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 

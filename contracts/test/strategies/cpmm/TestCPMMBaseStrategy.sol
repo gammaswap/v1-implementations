@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/CPMMBaseStrategy.sol";
+import "../../../strategies/cpmm/base/CPMMBaseStrategy.sol";
 
 contract TestCPMMBaseStrategy is CPMMBaseStrategy {
 

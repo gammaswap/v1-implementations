@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
-import "../../interfaces/math/ICPMMMath.sol";
+import "../../../interfaces/math/ICPMMMath.sol";
 import "./BalancerBaseLongStrategy.sol";
 
 /// @title Base Rebalance Strategy concrete implementation contract for Balancer Weighted Pools

@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/ShortStrategySync.sol";
 import "../../interfaces/external/balancer/IVault.sol";
-import "./BalancerBaseStrategy.sol";
+import "./base/BalancerBaseStrategy.sol";
 
 /// @title Short Strategy concrete implementation contract for Balancer Weighted Pools
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)

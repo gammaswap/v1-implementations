@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/rates/LogDerivativeRateModel.sol";
 import "@gammaswap/v1-core/contracts/strategies/base/BaseStrategy.sol";
-import "../../interfaces/external/cpmm/ICPMM.sol";
+import "../../../interfaces/external/cpmm/ICPMM.sol";
 
 /// @title Base Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
