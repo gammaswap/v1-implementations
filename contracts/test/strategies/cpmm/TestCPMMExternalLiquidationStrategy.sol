@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/external/CPMMExternalLiquidationStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
+import "../../../strategies/cpmm/liquidation/CPMMExternalLiquidationStrategy.sol";
 
-contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy {
+contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy, BaseBorrowStrategy {
 
+    error ExcessiveBorrowing();
     using LibStorage for LibStorage.Storage;
     using Math for uint;
-    error ExcessiveBorrowing();
 
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMExternalLiquidationStrategy(10, mathLib_, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+    constructor(uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMExternalLiquidationStrategy(10, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
@@ -150,5 +151,10 @@ contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy 
 
     function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {
         if(!hasMargin(collateral, liquidity, _ltvThreshold())) revert HasMargin(); // Revert if loan does not have enough collateral
+    }
+
+    /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
+    function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
+        return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
     }
 }

@@ -9,8 +9,8 @@ contract TestCPMMGammaPool is CPMMGammaPool {
     uint128 public _reserve0;
     uint128 public _reserve1;
 
-    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
-        CPMMGammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy, _cfmmFactory, _cfmmInitCodeHash) {
+    constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy, address _shortStrategy, address _liquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
+        CPMMGammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _shortStrategy, _liquidationStrategy, _cfmmFactory, _cfmmInitCodeHash) {
         s.decimals = new uint8[](2);
         s.decimals[0] = 18;
         s.decimals[1] = 18;

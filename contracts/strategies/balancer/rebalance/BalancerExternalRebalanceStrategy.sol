@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "@gammaswap/v1-core/contracts/strategies/external/ExternalLongStrategy.sol";
-import "../BalancerBaseLongStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/rebalance/ExternalRebalanceStrategy.sol";
+import "../base/BalancerBaseLongStrategy.sol";
 
 /// @title External Long Strategy concrete implementation contract for Balancer AMM
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
 /// @dev This implementation was specifically designed to work with Balancer
-contract BalancerExternalLongStrategy is BalancerBaseLongStrategy, ExternalLongStrategy {
+contract BalancerExternalRebalanceStrategy is BalancerBaseLongStrategy, ExternalRebalanceStrategy {
 
     /// @return EXTERNAL_SWAP_FEE - fees charged to flash loans
     uint256 immutable public EXTERNAL_SWAP_FEE;
@@ -25,10 +25,5 @@ contract BalancerExternalLongStrategy is BalancerBaseLongStrategy, ExternalLongS
     /// @dev See {ExternalBaseStrategy-externalSwapFee}
     function externalSwapFee() internal view virtual override returns(uint256) {
         return EXTERNAL_SWAP_FEE;
-    }
-
-    /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
-    function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
-        return 0;
     }
 }

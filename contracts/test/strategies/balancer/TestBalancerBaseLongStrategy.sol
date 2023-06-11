@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/balancer/external/BalancerExternalLongStrategy.sol";
+import "../../../strategies/balancer/rebalance/BalancerExternalRebalanceStrategy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
+contract TestBalancerBaseLongStrategy is BalancerExternalRebalanceStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -15,7 +15,7 @@ contract TestBalancerLongStrategy is BalancerExternalLongStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(uint16 originationFee_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
-        BalancerExternalLongStrategy(10, 8000, 1e19, 2252571, originationFee_, baseRate_, factor_, maxApy_, weight0_) {
+        BalancerExternalRebalanceStrategy(10, 8000, 1e19, 2252571, originationFee_, baseRate_, factor_, maxApy_, weight0_) {
     }
 
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {

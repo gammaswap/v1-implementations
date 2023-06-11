@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "@gammaswap/v1-core/contracts/strategies/LiquidationStrategy.sol";
-import "./BalancerBaseLongStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/liquidation/SingleLiquidationStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/liquidation/BatchLiquidationStrategy.sol";
+import "../base/BalancerBaseLongStrategy.sol";
 
 /// @title Liquidation Strategy concrete implementation contract for Balancer Weighted Pools
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by LiquidationStrategy and defines internal functions specific to Balancer Weighted Pools
 /// @dev This implementation was specifically designed to work with Balancer
-contract BalancerLiquidationStrategy is BalancerBaseLongStrategy, LiquidationStrategy {
+contract BalancerLiquidationStrategy is BalancerBaseLongStrategy, SingleLiquidationStrategy, BatchLiquidationStrategy {
 
     /// @return LIQUIDATION_FEE - liquidation penalty charged from collateral
     uint16 immutable public LIQUIDATION_FEE;
@@ -22,7 +23,7 @@ contract BalancerLiquidationStrategy is BalancerBaseLongStrategy, LiquidationStr
         LIQUIDATION_FEE = liquidationFee_;
     }
 
-    /// @return Returns the liquidation fee threshold.
+    /// @dev See {BaseLiquidationStrategy-_liquidationFee}.
     function _liquidationFee() internal virtual override view returns(uint16) {
         return LIQUIDATION_FEE;
     }

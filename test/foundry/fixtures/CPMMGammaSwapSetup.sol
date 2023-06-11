@@ -6,7 +6,9 @@ import "@gammaswap/v1-core/contracts/GammaPoolFactory.sol";
 import "./UniswapSetup.sol";
 import "./TokensSetup.sol";
 import "../../../contracts/pools/CPMMGammaPool.sol";
-import "../../../contracts/strategies/cpmm/CPMMLiquidationStrategy.sol";
+import "../../../contracts/strategies/cpmm/lending/CPMMBorrowStrategy.sol";
+import "../../../contracts/strategies/cpmm/lending/CPMMRepayStrategy.sol";
+import "../../../contracts/strategies/cpmm/liquidation/CPMMLiquidationStrategy.sol";
 import "../../../contracts/strategies/cpmm/CPMMShortStrategy.sol";
 import "../../../contracts/libraries/cpmm/CPMMMath.sol";
 
@@ -20,7 +22,8 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
 
     GammaPoolFactory public factory;
 
-    CPMMLongStrategy public longStrategy;
+    CPMMBorrowStrategy public longStrategy;
+    CPMMRepayStrategy public repayStrategy;
     CPMMShortStrategy public shortStrategy;
     CPMMLiquidationStrategy public liquidationStrategy;
     CPMMGammaPool public protocol;
@@ -47,12 +50,13 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
         uint256 maxTotalApy = 1e19;
 
         mathLib = new CPMMMath();
-        longStrategy = new CPMMLongStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
+        longStrategy = new CPMMBorrowStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
+        repayStrategy = new CPMMRepayStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
         shortStrategy = new CPMMShortStrategy(maxTotalApy, 2252571, baseRate, factor, maxApy);
-        liquidationStrategy = new CPMMLiquidationStrategy(address(0), 9500, 250, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
+        liquidationStrategy = new CPMMLiquidationStrategy(9500, 250, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
 
         bytes32 cfmmHash = hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'; // UniV2Pair init_code_hash
-        protocol = new CPMMGammaPool(PROTOCOL_ID, address(factory), address(longStrategy), address(shortStrategy),
+        protocol = new CPMMGammaPool(PROTOCOL_ID, address(factory), address(longStrategy), address(repayStrategy), address(shortStrategy),
             address(liquidationStrategy), address(uniFactory), cfmmHash);
 
         factory.addProtocol(address(protocol));

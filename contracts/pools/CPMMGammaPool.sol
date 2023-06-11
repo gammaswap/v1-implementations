@@ -26,9 +26,12 @@ contract CPMMGammaPool is GammaPool {
     /// @return cfmmInitCodeHash - init code hash of CFMM
     bytes32 immutable public cfmmInitCodeHash;
 
-    /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
-    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
-        GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
+    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`,
+    /// @dev `shortStrategy`, `liquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
+    constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy,
+        address _shortStrategy, address _liquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
+        GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _borrowStrategy, _shortStrategy,
+        _liquidationStrategy, _liquidationStrategy) {
         cfmmFactory = _cfmmFactory;
         cfmmInitCodeHash = _cfmmInitCodeHash;
     }
@@ -64,5 +67,4 @@ contract CPMMGammaPool is GammaPool {
             revert BadProtocol();
         }
     }
-
 }
