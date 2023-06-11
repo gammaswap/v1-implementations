@@ -84,24 +84,4 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override returns(uint128[] memory) {
         return new uint128[](2);
     }
-
-    function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio)
-        internal virtual override view returns(int256[] memory deltas) {
-        deltas = new int256[](2);
-    }
-
-    function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves,
-        uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
-        deltas = new int256[](2);
-    }
-
-    function _calcDeltasForRatioStaticCall(uint256 ratio0, uint256 ratio1, uint128 reserve0, uint128 reserve1,
-        uint128 tokensHeld0, uint128 tokensHeld1) internal virtual override view returns(int256[] memory deltas) {
-        deltas = new int256[](2);
-    }
-
-    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint256 ratio0, uint256 ratio1, uint128 reserve0,
-        uint128 reserve1, uint128 tokensheld0, uint128 tokensheld1) internal virtual override view returns(int256[] memory deltas) {
-        deltas = new int256[](2);
-    }
 }

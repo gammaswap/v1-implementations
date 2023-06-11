@@ -45,12 +45,17 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Stores weights passed to constructor as immutable variable
     uint256 immutable public weight1;
 
-    /// @dev Initializes the contract by setting `protocolId`, `factory`, `longStrategy`, `shortStrategy`, `liquidationStrategy`, `balancerVault`, `poolFactory` and `weight0`.
-    constructor(uint16 _protocolId, address _factory, address _longStrategy, address _shortStrategy, address _liquidationStrategy, address _poolFactory, uint256 _weight0)
-        GammaPool(_protocolId, _factory, _longStrategy, _shortStrategy, _liquidationStrategy) {
-        require(_weight0 == IBalancerStrategy(_longStrategy).weight0(), "weight0 long strategy");
+    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`, `rebalanceStrategy`,
+    /// `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `poolFactory` and `weight0`.
+    constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy, address _rebalanceStrategy,
+        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _poolFactory, uint256 _weight0)
+        GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _rebalanceStrategy, _shortStrategy, _liquidationStrategy, _batchLiquidationStrategy) {
+        require(_weight0 == IBalancerStrategy(_borrowStrategy).weight0(), "weight0 long strategy");
+        require(_weight0 == IBalancerStrategy(_repayStrategy).weight0(), "weight0 long strategy");
+        require(_weight0 == IBalancerStrategy(_rebalanceStrategy).weight0(), "weight0 long strategy");
         require(_weight0 == IBalancerStrategy(_shortStrategy).weight0(), "weight0 short strategy");
         require(_weight0 == IBalancerStrategy(_liquidationStrategy).weight0(), "weight0 liquidation strategy");
+        require(_weight0 == IBalancerStrategy(_batchLiquidationStrategy).weight0(), "weight0 liquidation strategy");
         
         poolFactory = _poolFactory;
         weight0 = _weight0;
@@ -76,10 +81,10 @@ contract BalancerGammaPool is GammaPool {
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256 lastPrice) {
-        /*uint256[] memory factors = getScalingFactors();
+        uint256[] memory factors = getScalingFactors();
         uint128[] memory reserves = _getLatestCFMMReserves();
         uint256 numerator = reserves[1] * factors[1] * weight1 / weight0;
-        return numerator * 1e18 / (reserves[0] * factors[0]);/**/
+        return numerator * 1e18 / (reserves[0] * factors[0]);
     }
 
     /// @dev See {GammaPoolERC4626-_getLatestCFMMReserves}
@@ -174,7 +179,7 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev See {IGammaPool-getRates}
-    function getRates() external virtual override view returns(uint256, uint256, uint256) {
+    /*function getRates() external virtual override view returns(uint256, uint256, uint256) {
         return(0,0,0);
     }
 
@@ -192,9 +197,5 @@ contract BalancerGammaPool is GammaPool {
     /// @dev See {IGammaPool-getCFMMBalances}
     function getCFMMBalances() external virtual override view returns(uint128[] memory cfmmReserves, uint256 cfmmInvariant, uint256 cfmmTotalSupply) {
         return(new uint128[](0), s.lastCFMMInvariant, s.lastCFMMTotalSupply);
-    }
-
-    function calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) external override virtual view returns(int256[] memory deltas) {
-        deltas = new int256[](0);
-    }
+    }/**/
 }

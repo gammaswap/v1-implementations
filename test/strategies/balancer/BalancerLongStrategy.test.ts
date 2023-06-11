@@ -8,7 +8,7 @@ const _WeightedPoolFactoryBytecode = require("@balancer-labs/v2-deployments/dist
 const _WeightedPoolAbi = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/abi/WeightedPool.json");
 const _WeightedPoolBytecode = require("@balancer-labs/v2-deployments/dist/tasks/20210418-weighted-pool/bytecode/WeightedPool.json");
 
-describe.skip("BalancerLongStrategy", function () {
+describe("BalancerLongStrategy", function () {
   let TestERC20: any;
   let TestERC20Decimals: any;
 
@@ -365,900 +365,894 @@ describe.skip("BalancerLongStrategy", function () {
       expect(await decimalsPool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
       expect(await strategyDecimals.testGetWeights()).to.deep.equal(WEIGHTS);
     });
+  });
 
-    describe("Repay Functions", function () {
-      it("Calc Tokens to Repay", async function () {
-        const ONE = BigNumber.from(10).pow(18);
-        const reserves0 = ONE.mul(500);
-        const reserves1 = ONE.mul(1000);
-        const lastCFMMInvariant = await strategy.testCalcInvariant([
-          reserves0,
-          reserves1,
-        ]);
-        const liquidity = ONE.mul(100);
-        await (
-          await strategy.setCFMMReserves(
-            reserves0,
-            reserves1,
-            lastCFMMInvariant
-          )
-        ).wait();
-        const expToken0 = liquidity.mul(reserves0).div(lastCFMMInvariant);
-        const expToken1 = liquidity.mul(reserves1).div(lastCFMMInvariant);
-        const res0 = await strategy.testCalcTokensToRepay(liquidity);
-        expect(res0[0]).to.equal(expToken0);
-        expect(res0[1]).to.equal(expToken1);
+  describe("Repay Functions", function () {
+    it("Calc Tokens to Repay", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const reserves0 = ONE.mul(500);
+      const reserves1 = ONE.mul(1000);
+      const lastCFMMInvariant = await strategy.testCalcInvariant([
+        reserves0,
+        reserves1,
+      ]);
+      const liquidity = ONE.mul(100);
+      await (
+        await strategy.setCFMMReserves(reserves0, reserves1, lastCFMMInvariant)
+      ).wait();
+      const expToken0 = liquidity.mul(reserves0).div(lastCFMMInvariant);
+      const expToken1 = liquidity.mul(reserves1).div(lastCFMMInvariant);
+      const res0 = await strategy.testCalcTokensToRepay(liquidity);
+      expect(res0[0]).to.equal(expToken0);
+      expect(res0[1]).to.equal(expToken1);
 
-        const reserves0a = reserves0;
-        const reserves1a = reserves1.mul(2);
-        const lastCFMMInvariant1 = await strategy.testCalcInvariant([
+      const reserves0a = reserves0;
+      const reserves1a = reserves1.mul(2);
+      const lastCFMMInvariant1 = await strategy.testCalcInvariant([
+        reserves0a,
+        reserves1a,
+      ]);
+      await (
+        await strategy.setCFMMReserves(
           reserves0a,
           reserves1a,
-        ]);
-        await (
-          await strategy.setCFMMReserves(
-            reserves0a,
-            reserves1a,
-            lastCFMMInvariant1
-          )
-        ).wait();
-        const expToken0a = liquidity.mul(reserves0a).div(lastCFMMInvariant1);
-        const expToken1a = liquidity.mul(reserves1a).div(lastCFMMInvariant1);
-        const res1 = await strategy.testCalcTokensToRepay(liquidity);
-        expect(res1[0]).to.equal(expToken0a);
-        expect(res1[1]).to.equal(expToken1a);
+          lastCFMMInvariant1
+        )
+      ).wait();
+      const expToken0a = liquidity.mul(reserves0a).div(lastCFMMInvariant1);
+      const expToken1a = liquidity.mul(reserves1a).div(lastCFMMInvariant1);
+      const res1 = await strategy.testCalcTokensToRepay(liquidity);
+      expect(res1[0]).to.equal(expToken0a);
+      expect(res1[1]).to.equal(expToken1a);
 
-        const reserves0b = reserves0.mul(2);
-        const reserves1b = reserves1;
-        const lastCFMMInvariant2 = await strategy.testCalcInvariant([
+      const reserves0b = reserves0.mul(2);
+      const reserves1b = reserves1;
+      const lastCFMMInvariant2 = await strategy.testCalcInvariant([
+        reserves0b,
+        reserves1b,
+      ]);
+      await (
+        await strategy.setCFMMReserves(
           reserves0b,
           reserves1b,
-        ]);
-        await (
-          await strategy.setCFMMReserves(
-            reserves0b,
-            reserves1b,
-            lastCFMMInvariant2
-          )
-        ).wait();
-        const expToken0b = liquidity.mul(reserves0b).div(lastCFMMInvariant2);
-        const expToken1b = liquidity.mul(reserves1b).div(lastCFMMInvariant2);
-        const res2 = await strategy.testCalcTokensToRepay(liquidity);
-        expect(res2[0]).to.equal(expToken0b);
-        expect(res2[1]).to.equal(expToken1b);
-      });
-
-      it("Before Repay", async function () {
-        // BeforeRepay now does nothing, hence should never revert
-
-        const res1 = await (await strategy.createLoan()).wait();
-        const tokenId = res1.events[0].args.tokenId;
-
-        await (await tokenA.transfer(strategy.address, 100)).wait();
-        await (await tokenB.transfer(strategy.address, 200)).wait();
-
-        expect(await tokenA.balanceOf(strategy.address)).to.equal(100);
-        expect(await tokenB.balanceOf(strategy.address)).to.equal(200);
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-
-        await (
-          await strategy.setTokenBalances(tokenId, 100, 200, 100, 200)
-        ).wait();
-
-        await (await strategy.testBeforeRepay(tokenId, [100, 200])).wait();
-
-        // The balances of these contracts should be unchanged
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenA.balanceOf(strategy.address)).to.equal(100);
-        expect(await tokenB.balanceOf(strategy.address)).to.equal(200);
-
-        await (await tokenA.transfer(strategy.address, 300)).wait();
-        await (await tokenB.transfer(strategy.address, 140)).wait();
-
-        expect(await tokenA.balanceOf(strategy.address)).to.equal(400);
-        expect(await tokenB.balanceOf(strategy.address)).to.equal(340);
-        expect(await tokenA.balanceOf(cfmm)).to.equal(0);
-        expect(await tokenB.balanceOf(cfmm)).to.equal(0);
-      });
+          lastCFMMInvariant2
+        )
+      ).wait();
+      const expToken0b = liquidity.mul(reserves0b).div(lastCFMMInvariant2);
+      const expToken1b = liquidity.mul(reserves1b).div(lastCFMMInvariant2);
+      const res2 = await strategy.testCalcTokensToRepay(liquidity);
+      expect(res2[0]).to.equal(expToken0b);
+      expect(res2[1]).to.equal(expToken1b);
     });
 
-    describe("Get Amount In/Out", function () {
-      it("Error GetAmountIn", async function () {
-        const SCALINGFACTOR = BigNumber.from(1);
+    it("Before Repay", async function () {
+      // BeforeRepay now does nothing, hence should never revert
 
-        await expect(
-          strategy.testGetAmountIn(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, false)
-        ).to.be.revertedWith("BAL#004"); // ZeroDivision error
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
 
-        await expect(
-          strategy.testGetAmountIn(
-            1000000000,
-            0,
-            0,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
+      await (await tokenA.transfer(strategy.address, 100)).wait();
+      await (await tokenB.transfer(strategy.address, 200)).wait();
 
-        await expect(
-          strategy.testGetAmountIn(
-            1000000000,
-            1000000000,
-            0,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
+      expect(await tokenA.balanceOf(strategy.address)).to.equal(100);
+      expect(await tokenB.balanceOf(strategy.address)).to.equal(200);
+      expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      expect(await tokenB.balanceOf(cfmm)).to.equal(0);
 
-        await expect(
-          strategy.testGetAmountIn(
-            1000000000,
-            0,
-            1000000000,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
-      });
+      await (
+        await strategy.setTokenBalances(tokenId, 100, 200, 100, 200)
+      ).wait();
 
-      it("Error GetAmountOut", async function () {
-        const SCALINGFACTOR = BigNumber.from(1);
+      await (await strategy.testBeforeRepay(tokenId, [100, 200])).wait();
 
-        await expect(
-          strategy.testGetAmountOut(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, true)
-        ).to.be.revertedWith("BAL#004"); // ZeroDivision error
+      // The balances of these contracts should be unchanged
+      expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+      expect(await tokenA.balanceOf(strategy.address)).to.equal(100);
+      expect(await tokenB.balanceOf(strategy.address)).to.equal(200);
 
-        await expect(
-          strategy.testGetAmountOut(
-            1000000000,
-            0,
-            0,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
+      await (await tokenA.transfer(strategy.address, 300)).wait();
+      await (await tokenB.transfer(strategy.address, 140)).wait();
 
-        await expect(
-          strategy.testGetAmountOut(
-            1000000000,
-            1000000000,
-            0,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
+      expect(await tokenA.balanceOf(strategy.address)).to.equal(400);
+      expect(await tokenB.balanceOf(strategy.address)).to.equal(340);
+      expect(await tokenA.balanceOf(cfmm)).to.equal(0);
+      expect(await tokenB.balanceOf(cfmm)).to.equal(0);
+    });
+  });
 
-        await expect(
-          strategy.testGetAmountOut(
-            1000000000,
-            0,
-            1000000000,
-            SCALINGFACTOR,
-            SCALINGFACTOR,
-            false
-          )
-        ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
-      });
+  describe("Get Amount In/Out", function () {
+    it("Error GetAmountIn", async function () {
+      const SCALINGFACTOR = BigNumber.from(1);
 
-      it("Calculate GetAmountIn", async function () {
-        const ONE = BigNumber.from(10).pow(18);
-        const amountOut = ONE.mul(100);
-        const reserveOut = ONE.mul(500);
-        const reserveIn = ONE.mul(1000);
+      await expect(
+        strategy.testGetAmountIn(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, false)
+      ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
-        const SCALINGFACTOR = BigNumber.from(1);
-
-        const answer1 = await strategy.testGetAmountIn(
-          amountOut,
-          reserveOut,
-          reserveIn,
+      await expect(
+        strategy.testGetAmountIn(
+          1000000000,
+          0,
+          0,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
-        );
+        )
+      ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
-        const expectedAnswer1 = BigNumber.from("25357220663536529408");
-
-        expectEqualWithError(answer1, expectedAnswer1);
-
-        const answer2 = await strategy.testGetAmountIn(
-          BigNumber.from(105).mul(ONE),
-          reserveOut,
-          reserveIn.mul(3),
+      await expect(
+        strategy.testGetAmountIn(
+          1000000000,
+          1000000000,
+          0,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
-        );
+        )
+      ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
 
-        const expectedAnswer2 = BigNumber.from("80416298597382832128");
-
-        expectEqualWithError(answer2, expectedAnswer2);
-
-        const answer3 = await strategy.testGetAmountIn(
-          amountOut.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
+      await expect(
+        strategy.testGetAmountIn(
+          1000000000,
+          0,
+          1000000000,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
-        );
-
-        const expectedAnswer3 = BigNumber.from("19876520058160660480");
-
-        expectEqualWithError(answer3, expectedAnswer3);
-
-        const answer4 = await strategy.testGetAmountIn(
-          amountOut.mul(3),
-          reserveOut.mul(7),
-          reserveIn.mul(12),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer4 = BigNumber.from("121292623593009332224");
-
-        expectEqualWithError(answer4, expectedAnswer4);
-
-        const answer5 = await strategy.testGetAmountIn(
-          amountOut.mul(2),
-          reserveOut.mul(5),
-          reserveIn.mul(3),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer5 = BigNumber.from("28205068727569096704");
-
-        expectEqualWithError(answer5, expectedAnswer5);
-      });
-
-      it("Calculate GetAmountIn for Decimals", async function () {
-        const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
-        const DECIMALS_ONE = BigNumber.from(10).pow(
-          cfmmDecimalsTokenDecimals[1]
-        );
-
-        const amountOut = ONE.mul(100);
-        const reserveOut = ONE.mul(500);
-        const reserveIn = DECIMALS_ONE.mul(1000);
-
-        const SCALINGFACTOR0 = BigNumber.from(10).pow(
-          18 - cfmmDecimalsTokenDecimals[0]
-        );
-        const SCALINGFACTOR1 = BigNumber.from(10).pow(
-          18 - cfmmDecimalsTokenDecimals[1]
-        );
-
-        const answer1 = await strategy.testGetAmountIn(
-          amountOut,
-          reserveOut,
-          reserveIn,
-          SCALINGFACTOR1,
-          SCALINGFACTOR0,
-          false
-        );
-
-        let expectedAnswer1 = BigNumber.from("25357220663536529408");
-
-        if (cfmmDecimalsTokenDecimals[1] < 18) {
-          expectedAnswer1 = expectedAnswer1.div(
-            BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1])
-          );
-        }
-
-        expectEqualWithError(answer1, expectedAnswer1);
-      });
-
-      it("Calculate GetAmountOut", async function () {
-        const ONE = BigNumber.from(10).pow(18);
-        const amountIn = ONE.mul(100);
-        const reserveOut = ONE.mul(500);
-        const reserveIn = ONE.mul(1000);
-
-        const SCALINGFACTOR = BigNumber.from(1);
-
-        const amountOut1 = await strategy.testGetAmountOut(
-          amountIn,
-          reserveOut,
-          reserveIn,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer1 = BigNumber.from("287429996912549888000");
-
-        expectEqualWithError(amountOut1, expectedAnswer1);
-
-        const amountOut2 = await strategy.testGetAmountOut(
-          amountIn.mul(2),
-          reserveOut,
-          reserveIn.mul(3),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer2 = BigNumber.from("219815289395209764864");
-
-        expectEqualWithError(amountOut2, expectedAnswer2);
-
-        const amountOut3 = await strategy.testGetAmountOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(3),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer3 = BigNumber.from("1538707025766468550656");
-
-        expectEqualWithError(amountOut3, expectedAnswer3);
-
-        const amountOut4 = await strategy.testGetAmountOut(
-          amountIn.mul(2),
-          reserveOut.mul(7),
-          reserveIn.mul(19),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer4 = BigNumber.from("313884305967069986816");
-
-        expectEqualWithError(amountOut4, expectedAnswer4);
-
-        const amountOut5 = await strategy.testGetAmountOut(
-          amountIn.mul(2),
-          reserveOut.mul(2),
-          reserveIn.mul(15),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
-
-        const expectedAnswer5 = BigNumber.from("112060590249046573056");
-
-        expectEqualWithError(amountOut5, expectedAnswer5);
-      });
-
-      it("Calculate GetAmountOut for Decimals", async function () {
-        const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
-        const ONE2 = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
-
-        const amountIn = ONE2.mul(100);
-
-        const reserveOut = ONE.mul(500);
-        const reserveIn = ONE2.mul(1000);
-
-        const SCALINGFACTOR0 = BigNumber.from(10).pow(
-          18 - cfmmDecimalsTokenDecimals[0]
-        );
-        const SCALINGFACTOR1 = BigNumber.from(10).pow(
-          18 - cfmmDecimalsTokenDecimals[1]
-        );
-
-        const amountOut1 = await strategy.testGetAmountOut(
-          amountIn,
-          reserveOut,
-          reserveIn,
-          SCALINGFACTOR1,
-          SCALINGFACTOR0,
-          false
-        );
-
-        let expectedAnswer1 = BigNumber.from("287429996912549888000");
-
-        if (cfmmDecimalsTokenDecimals[0] < 18) {
-          expectedAnswer1 = expectedAnswer1.div(
-            BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0])
-          );
-        }
-
-        expectEqualWithError(amountOut1, expectedAnswer1);
-      });
+        )
+      ).to.be.revertedWith("BAL#305"); // Token out unbalanced the pool too much on a swap
     });
 
-    describe("Calculate Tokens to Swap", function () {
-      it("Error Before Token Swap", async function () {
-        const res1 = await (await strategy.createLoan()).wait();
-        const tokenId = res1.events[0].args.tokenId;
+    it("Error GetAmountOut", async function () {
+      const SCALINGFACTOR = BigNumber.from(1);
 
-        await expect(
-          strategy.testBeforeSwapTokens(tokenId, [0, 0])
-        ).to.be.revertedWithCustomError(strategy, "BadDelta");
+      await expect(
+        strategy.testGetAmountOut(0, 0, 0, SCALINGFACTOR, SCALINGFACTOR, true)
+      ).to.be.revertedWith("BAL#004"); // ZeroDivision error
 
-        await expect(
-          strategy.testBeforeSwapTokens(tokenId, [1, 1])
-        ).to.be.revertedWithCustomError(strategy, "BadDelta");
-
-        await expect(
-          strategy.testBeforeSwapTokens(tokenId, [-1, -1])
-        ).to.be.revertedWithCustomError(strategy, "BadDelta");
-
-        await expect(
-          strategy.testBeforeSwapTokens(tokenId, [1, -1])
-        ).to.be.revertedWithCustomError(strategy, "BadDelta");
-
-        await expect(
-          strategy.testBeforeSwapTokens(tokenId, [-1, 1])
-        ).to.be.revertedWithCustomError(strategy, "BadDelta");
-      });
-
-      it("Calculate Exact Tokens to Buy", async function () {
-        const res = await (await strategy.createLoan()).wait();
-        const tokenId = res.events[0].args.tokenId;
-
-        const ONE = BigNumber.from(10).pow(18);
-
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
-
-        const delta = ONE.mul(10);
-
-        const SCALINGFACTOR = BigNumber.from(1);
-
-        // Buy exactly delta
-        const res0 = await (
-          await strategy.testBeforeSwapTokens(tokenId, [delta, 0])
-        ).wait();
-
-        const evt0 = res0.events[res0.events.length - 1];
-
-        const amtOut0 = await strategy.testGetAmountIn(
-          delta,
-          reserves0,
-          reserves1,
+      await expect(
+        strategy.testGetAmountOut(
+          1000000000,
+          0,
+          0,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
-        );
+        )
+      ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
-        expectEqualWithError(evt0.args.inAmts[0], delta);
-        expect(evt0.args.inAmts[1]).to.equal(0);
-        expect(evt0.args.outAmts[0]).to.equal(0);
-        expectEqualWithError(evt0.args.outAmts[1], amtOut0);
-
-        // Buy exactly delta
-        const res1 = await (
-          await strategy.testBeforeSwapTokens(tokenId, [0, delta])
-        ).wait();
-
-        const evt1 = res1.events[res1.events.length - 1];
-        const amtOut1 = await strategy.testGetAmountIn(
-          delta,
-          reserves1,
-          reserves0,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          true
-        );
-
-        expect(evt1.args.inAmts[0]).to.equal(0);
-        expectEqualWithError(evt1.args.inAmts[1], delta);
-        expectEqualWithError(evt1.args.outAmts[0], amtOut1);
-        expect(evt1.args.outAmts[1]).to.equal(0);
-      });
-
-      it("Calculate Exact Tokens to Sell", async function () {
-        const res = await (await strategy.createLoan()).wait();
-        const tokenId = res.events[0].args.tokenId;
-
-        const ONE = BigNumber.from(10).pow(18);
-
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
-
-        const delta = ONE.mul(10);
-        const negDelta = ethers.constants.Zero.sub(delta);
-
-        const SCALINGFACTOR = BigNumber.from(1);
-
-        // Sell exactly delta
-        const res0 = await (
-          await strategy.testBeforeSwapTokens(tokenId, [negDelta, 0])
-        ).wait();
-
-        const evt0 = res0.events[res0.events.length - 1];
-
-        const amtIn0 = await strategy.testGetAmountOut(
-          delta,
-          reserves1,
-          reserves0,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          true
-        );
-
-        expect(evt0.args.inAmts[0]).to.equal(0);
-        expectEqualWithError(evt0.args.inAmts[1], amtIn0);
-        expectEqualWithError(evt0.args.outAmts[0], delta);
-        expect(evt0.args.outAmts[1]).to.equal(0);
-
-        // Sell exactly delta
-        const res1 = await (
-          await strategy.testBeforeSwapTokens(tokenId, [0, negDelta])
-        ).wait();
-        const evt1 = res1.events[res1.events.length - 1];
-
-        const amtIn1 = await strategy.testGetAmountOut(
-          delta,
-          reserves0,
-          reserves1,
+      await expect(
+        strategy.testGetAmountOut(
+          1000000000,
+          1000000000,
+          0,
           SCALINGFACTOR,
           SCALINGFACTOR,
           false
-        );
+        )
+      ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
 
-        expectEqualWithError(evt1.args.inAmts[0], amtIn1);
-        expect(evt1.args.inAmts[1]).to.equal(0);
-        expect(evt1.args.outAmts[0]).to.equal(0);
-        expectEqualWithError(evt1.args.outAmts[1], delta);
-      });
+      await expect(
+        strategy.testGetAmountOut(
+          1000000000,
+          0,
+          1000000000,
+          SCALINGFACTOR,
+          SCALINGFACTOR,
+          false
+        )
+      ).to.be.revertedWith("BAL#304"); // Token in unbalanced the pool too much on a swap
     });
 
-    describe("Swap Tokens", function () {
-      async function getStrategyReserves(_strategy: any, _tokens: any) {
-        let tokens0Balance;
-        let tokens1Balance;
+    it("Calculate GetAmountIn", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const amountOut = ONE.mul(100);
+      const reserveOut = ONE.mul(500);
+      const reserveIn = ONE.mul(1000);
 
-        if (
-          BigNumber.from(_tokens[0].address).lt(
-            BigNumber.from(_tokens[1].address)
-          )
-        ) {
-          tokens0Balance = await _tokens[0].balanceOf(_strategy.address);
-          tokens1Balance = await _tokens[1].balanceOf(_strategy.address);
-        } else {
-          tokens0Balance = await _tokens[1].balanceOf(_strategy.address);
-          tokens1Balance = await _tokens[0].balanceOf(_strategy.address);
-        }
-        return { tokens0: tokens0Balance, tokens1: tokens1Balance };
+      const SCALINGFACTOR = BigNumber.from(1);
+
+      const answer1 = await strategy.testGetAmountIn(
+        amountOut,
+        reserveOut,
+        reserveIn,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer1 = BigNumber.from("25357220663536529408");
+
+      expectEqualWithError(answer1, expectedAnswer1);
+
+      const answer2 = await strategy.testGetAmountIn(
+        BigNumber.from(105).mul(ONE),
+        reserveOut,
+        reserveIn.mul(3),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer2 = BigNumber.from("80416298597382832128");
+
+      expectEqualWithError(answer2, expectedAnswer2);
+
+      const answer3 = await strategy.testGetAmountIn(
+        amountOut.mul(2),
+        reserveOut.mul(7),
+        reserveIn.mul(3),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer3 = BigNumber.from("19876520058160660480");
+
+      expectEqualWithError(answer3, expectedAnswer3);
+
+      const answer4 = await strategy.testGetAmountIn(
+        amountOut.mul(3),
+        reserveOut.mul(7),
+        reserveIn.mul(12),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer4 = BigNumber.from("121292623593009332224");
+
+      expectEqualWithError(answer4, expectedAnswer4);
+
+      const answer5 = await strategy.testGetAmountIn(
+        amountOut.mul(2),
+        reserveOut.mul(5),
+        reserveIn.mul(3),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer5 = BigNumber.from("28205068727569096704");
+
+      expectEqualWithError(answer5, expectedAnswer5);
+    });
+
+    it("Calculate GetAmountIn for Decimals", async function () {
+      const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
+      const DECIMALS_ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
+
+      const amountOut = ONE.mul(100);
+      const reserveOut = ONE.mul(500);
+      const reserveIn = DECIMALS_ONE.mul(1000);
+
+      const SCALINGFACTOR0 = BigNumber.from(10).pow(
+        18 - cfmmDecimalsTokenDecimals[0]
+      );
+      const SCALINGFACTOR1 = BigNumber.from(10).pow(
+        18 - cfmmDecimalsTokenDecimals[1]
+      );
+
+      const answer1 = await strategy.testGetAmountIn(
+        amountOut,
+        reserveOut,
+        reserveIn,
+        SCALINGFACTOR1,
+        SCALINGFACTOR0,
+        false
+      );
+
+      let expectedAnswer1 = BigNumber.from("25357220663536529408");
+
+      if (cfmmDecimalsTokenDecimals[1] < 18) {
+        expectedAnswer1 = expectedAnswer1.div(
+          BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[1])
+        );
       }
 
-      it("Swap Tokens for Exact Tokens, First Index", async function () {
-        // Create a loan in the Long Strategy
-        const res = await (await strategy.createLoan()).wait();
-        // Get the loan token ID
-        const tokenId = res.events[0].args.tokenId;
+      expectEqualWithError(answer1, expectedAnswer1);
+    });
 
-        const ONE = BigNumber.from(10).pow(18);
+    it("Calculate GetAmountOut", async function () {
+      const ONE = BigNumber.from(10).pow(18);
+      const amountIn = ONE.mul(100);
+      const reserveOut = ONE.mul(500);
+      const reserveIn = ONE.mul(1000);
 
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
+      const SCALINGFACTOR = BigNumber.from(1);
 
-        // Reserves of the Balancer pool
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
+      const amountOut1 = await strategy.testGetAmountOut(
+        amountIn,
+        reserveOut,
+        reserveIn,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
 
-        const delta = ONE.mul(10);
+      const expectedAnswer1 = BigNumber.from("287429996912549888000");
 
-        const SCALINGFACTOR = BigNumber.from(1);
+      expectEqualWithError(amountOut1, expectedAnswer1);
 
-        // Calculated the expected amount out
-        const expAmtOut0 = await strategy.testGetAmountIn(
-          delta,
-          reserves0,
-          reserves1,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
+      const amountOut2 = await strategy.testGetAmountOut(
+        amountIn.mul(2),
+        reserveOut,
+        reserveIn.mul(3),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer2 = BigNumber.from("219815289395209764864");
+
+      expectEqualWithError(amountOut2, expectedAnswer2);
+
+      const amountOut3 = await strategy.testGetAmountOut(
+        amountIn.mul(2),
+        reserveOut.mul(7),
+        reserveIn.mul(3),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer3 = BigNumber.from("1538707025766468550656");
+
+      expectEqualWithError(amountOut3, expectedAnswer3);
+
+      const amountOut4 = await strategy.testGetAmountOut(
+        amountIn.mul(2),
+        reserveOut.mul(7),
+        reserveIn.mul(19),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer4 = BigNumber.from("313884305967069986816");
+
+      expectEqualWithError(amountOut4, expectedAnswer4);
+
+      const amountOut5 = await strategy.testGetAmountOut(
+        amountIn.mul(2),
+        reserveOut.mul(2),
+        reserveIn.mul(15),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const expectedAnswer5 = BigNumber.from("112060590249046573056");
+
+      expectEqualWithError(amountOut5, expectedAnswer5);
+    });
+
+    it("Calculate GetAmountOut for Decimals", async function () {
+      const ONE = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[0]);
+      const ONE2 = BigNumber.from(10).pow(cfmmDecimalsTokenDecimals[1]);
+
+      const amountIn = ONE2.mul(100);
+
+      const reserveOut = ONE.mul(500);
+      const reserveIn = ONE2.mul(1000);
+
+      const SCALINGFACTOR0 = BigNumber.from(10).pow(
+        18 - cfmmDecimalsTokenDecimals[0]
+      );
+      const SCALINGFACTOR1 = BigNumber.from(10).pow(
+        18 - cfmmDecimalsTokenDecimals[1]
+      );
+
+      const amountOut1 = await strategy.testGetAmountOut(
+        amountIn,
+        reserveOut,
+        reserveIn,
+        SCALINGFACTOR1,
+        SCALINGFACTOR0,
+        false
+      );
+
+      let expectedAnswer1 = BigNumber.from("287429996912549888000");
+
+      if (cfmmDecimalsTokenDecimals[0] < 18) {
+        expectedAnswer1 = expectedAnswer1.div(
+          BigNumber.from(10).pow(18 - cfmmDecimalsTokenDecimals[0])
         );
+      }
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      expectEqualWithError(amountOut1, expectedAnswer1);
+    });
+  });
 
-        // delta tokens are added to the strategy in slot 0 and expAmtOut0 tokens are removed from the strategy in slot 1
-        const res0 = await (
-          await strategy.testSwapTokens(tokenId, [delta, 0])
-        ).wait();
+  describe("Calculate Tokens to Swap", function () {
+    it("Error Before Token Swap", async function () {
+      const res1 = await (await strategy.createLoan()).wait();
+      const tokenId = res1.events[0].args.tokenId;
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      await expect(
+        strategy.testBeforeSwapTokens(tokenId, [0, 0])
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
-        // Check that the event arguments are correct
-        const evt0 = res0.events[res0.events.length - 1];
+      await expect(
+        strategy.testBeforeSwapTokens(tokenId, [1, 1])
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
-        expect(evt0.args.outAmts[0]).to.equal(0);
-        expectEqualWithError(evt0.args.outAmts[1], expAmtOut0);
-        expectEqualWithError(evt0.args.inAmts[0], delta);
-        expect(evt0.args.inAmts[1]).to.equal(0);
+      await expect(
+        strategy.testBeforeSwapTokens(tokenId, [-1, -1])
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
-        expectEqualWithError(
-          strategyReserves1.tokens0,
-          strategyReserves0.tokens0.add(delta)
-        );
+      await expect(
+        strategy.testBeforeSwapTokens(tokenId, [1, -1])
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
 
-        expectEqualWithError(
-          strategyReserves1.tokens1,
-          strategyReserves0.tokens1.sub(expAmtOut0)
-        );
+      await expect(
+        strategy.testBeforeSwapTokens(tokenId, [-1, 1])
+      ).to.be.revertedWithCustomError(strategy, "BadDelta");
+    });
 
-        await (
-          await strategy.setCFMMReserves(
-            reserves0.sub(delta),
-            reserves1.add(expAmtOut0),
-            0
-          )
-        ).wait();
+    it("Calculate Exact Tokens to Buy", async function () {
+      const res = await (await strategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
 
-        const strategyReserves2 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const ONE = BigNumber.from(10).pow(18);
 
-        const expAmtOut1 = await strategy.testGetAmountIn(
-          delta,
-          reserves1.add(expAmtOut0),
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
+
+      const delta = ONE.mul(10);
+
+      const SCALINGFACTOR = BigNumber.from(1);
+
+      // Buy exactly delta
+      const res0 = await (
+        await strategy.testBeforeSwapTokens(tokenId, [delta, 0])
+      ).wait();
+
+      const evt0 = res0.events[res0.events.length - 1];
+
+      const amtOut0 = await strategy.testGetAmountIn(
+        delta,
+        reserves0,
+        reserves1,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      expectEqualWithError(evt0.args.inAmts[0], delta);
+      expect(evt0.args.inAmts[1]).to.equal(0);
+      expect(evt0.args.outAmts[0]).to.equal(0);
+      expectEqualWithError(evt0.args.outAmts[1], amtOut0);
+
+      // Buy exactly delta
+      const res1 = await (
+        await strategy.testBeforeSwapTokens(tokenId, [0, delta])
+      ).wait();
+
+      const evt1 = res1.events[res1.events.length - 1];
+      const amtOut1 = await strategy.testGetAmountIn(
+        delta,
+        reserves1,
+        reserves0,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        true
+      );
+
+      expect(evt1.args.inAmts[0]).to.equal(0);
+      expectEqualWithError(evt1.args.inAmts[1], delta);
+      expectEqualWithError(evt1.args.outAmts[0], amtOut1);
+      expect(evt1.args.outAmts[1]).to.equal(0);
+    });
+
+    it("Calculate Exact Tokens to Sell", async function () {
+      const res = await (await strategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
+
+      const delta = ONE.mul(10);
+      const negDelta = ethers.constants.Zero.sub(delta);
+
+      const SCALINGFACTOR = BigNumber.from(1);
+
+      // Sell exactly delta
+      const res0 = await (
+        await strategy.testBeforeSwapTokens(tokenId, [negDelta, 0])
+      ).wait();
+
+      const evt0 = res0.events[res0.events.length - 1];
+
+      const amtIn0 = await strategy.testGetAmountOut(
+        delta,
+        reserves1,
+        reserves0,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        true
+      );
+
+      expect(evt0.args.inAmts[0]).to.equal(0);
+      expectEqualWithError(evt0.args.inAmts[1], amtIn0);
+      expectEqualWithError(evt0.args.outAmts[0], delta);
+      expect(evt0.args.outAmts[1]).to.equal(0);
+
+      // Sell exactly delta
+      const res1 = await (
+        await strategy.testBeforeSwapTokens(tokenId, [0, negDelta])
+      ).wait();
+      const evt1 = res1.events[res1.events.length - 1];
+
+      const amtIn1 = await strategy.testGetAmountOut(
+        delta,
+        reserves0,
+        reserves1,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      expectEqualWithError(evt1.args.inAmts[0], amtIn1);
+      expect(evt1.args.inAmts[1]).to.equal(0);
+      expect(evt1.args.outAmts[0]).to.equal(0);
+      expectEqualWithError(evt1.args.outAmts[1], delta);
+    });
+  });
+
+  describe("Swap Tokens", function () {
+    async function getStrategyReserves(_strategy: any, _tokens: any) {
+      let tokens0Balance;
+      let tokens1Balance;
+
+      if (
+        BigNumber.from(_tokens[0].address).lt(
+          BigNumber.from(_tokens[1].address)
+        )
+      ) {
+        tokens0Balance = await _tokens[0].balanceOf(_strategy.address);
+        tokens1Balance = await _tokens[1].balanceOf(_strategy.address);
+      } else {
+        tokens0Balance = await _tokens[1].balanceOf(_strategy.address);
+        tokens1Balance = await _tokens[0].balanceOf(_strategy.address);
+      }
+      return { tokens0: tokens0Balance, tokens1: tokens1Balance };
+    }
+
+    it("Swap Tokens for Exact Tokens, First Index", async function () {
+      // Create a loan in the Long Strategy
+      const res = await (await strategy.createLoan()).wait();
+      // Get the loan token ID
+      const tokenId = res.events[0].args.tokenId;
+
+      const ONE = BigNumber.from(10).pow(18);
+
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
+
+      // Reserves of the Balancer pool
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
+
+      const delta = ONE.mul(10);
+
+      const SCALINGFACTOR = BigNumber.from(1);
+
+      // Calculated the expected amount out
+      const expAmtOut0 = await strategy.testGetAmountIn(
+        delta,
+        reserves0,
+        reserves1,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
+
+      const strategyReserves0 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
+
+      // delta tokens are added to the strategy in slot 0 and expAmtOut0 tokens are removed from the strategy in slot 1
+      const res0 = await (
+        await strategy.testSwapTokens(tokenId, [delta, 0])
+      ).wait();
+
+      const strategyReserves1 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
+
+      // Check that the event arguments are correct
+      const evt0 = res0.events[res0.events.length - 1];
+
+      expect(evt0.args.outAmts[0]).to.equal(0);
+      expectEqualWithError(evt0.args.outAmts[1], expAmtOut0);
+      expectEqualWithError(evt0.args.inAmts[0], delta);
+      expect(evt0.args.inAmts[1]).to.equal(0);
+
+      expectEqualWithError(
+        strategyReserves1.tokens0,
+        strategyReserves0.tokens0.add(delta)
+      );
+
+      expectEqualWithError(
+        strategyReserves1.tokens1,
+        strategyReserves0.tokens1.sub(expAmtOut0)
+      );
+
+      await (
+        await strategy.setCFMMReserves(
           reserves0.sub(delta),
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          true
-        );
+          reserves1.add(expAmtOut0),
+          0
+        )
+      ).wait();
 
-        // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
-        const res1 = await (
-          await strategy.testSwapTokens(tokenId, [0, delta])
-        ).wait();
+      const strategyReserves2 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        const strategyReserves3 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const expAmtOut1 = await strategy.testGetAmountIn(
+        delta,
+        reserves1.add(expAmtOut0),
+        reserves0.sub(delta),
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        true
+      );
 
-        const evt1 = res1.events[res1.events.length - 1];
+      // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
+      const res1 = await (
+        await strategy.testSwapTokens(tokenId, [0, delta])
+      ).wait();
 
-        expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
-        expect(evt1.args.outAmts[1]).to.equal(0);
-        expect(evt1.args.inAmts[0]).to.equal(0);
-        expectEqualWithError(evt1.args.inAmts[1], delta);
+      const strategyReserves3 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          strategyReserves3.tokens0,
-          strategyReserves2.tokens0.sub(expAmtOut1)
-        );
+      const evt1 = res1.events[res1.events.length - 1];
 
-        expectEqualWithError(
-          strategyReserves3.tokens1,
-          strategyReserves2.tokens1.add(delta)
-        );
-      });
+      expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
+      expect(evt1.args.outAmts[1]).to.equal(0);
+      expect(evt1.args.inAmts[0]).to.equal(0);
+      expectEqualWithError(evt1.args.inAmts[1], delta);
 
-      it("Swap Tokens for Exact Tokens, Second Index", async function () {
-        // Create a loan in the Long Strategy
-        const res = await (await strategy.createLoan()).wait();
-        // Get the loan token ID
-        const tokenId = res.events[0].args.tokenId;
+      expectEqualWithError(
+        strategyReserves3.tokens0,
+        strategyReserves2.tokens0.sub(expAmtOut1)
+      );
 
-        const ONE = BigNumber.from(10).pow(18);
+      expectEqualWithError(
+        strategyReserves3.tokens1,
+        strategyReserves2.tokens1.add(delta)
+      );
+    });
 
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
+    it("Swap Tokens for Exact Tokens, Second Index", async function () {
+      // Create a loan in the Long Strategy
+      const res = await (await strategy.createLoan()).wait();
+      // Get the loan token ID
+      const tokenId = res.events[0].args.tokenId;
 
-        // Reserves of the Balancer pool
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
+      const ONE = BigNumber.from(10).pow(18);
 
-        const delta = ONE.mul(10);
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
 
-        const SCALINGFACTOR = BigNumber.from(1);
+      // Reserves of the Balancer pool
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
 
-        const expAmtOut1 = await strategy.testGetAmountIn(
-          delta,
-          reserves1,
-          reserves0,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          true
-        );
+      const delta = ONE.mul(10);
 
-        const strategyReserves = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const SCALINGFACTOR = BigNumber.from(1);
 
-        // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
-        const res1 = await (
-          await strategy.testSwapTokens(tokenId, [0, delta])
-        ).wait();
+      const expAmtOut1 = await strategy.testGetAmountIn(
+        delta,
+        reserves1,
+        reserves0,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        true
+      );
 
-        const strategyReserves2 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const strategyReserves = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        const evt1 = res1.events[res1.events.length - 1];
+      // Swap where delta tokens are added in slot 1 and some amountIn is removed from slot 0
+      const res1 = await (
+        await strategy.testSwapTokens(tokenId, [0, delta])
+      ).wait();
 
-        expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
-        expect(evt1.args.outAmts[1]).to.equal(0);
-        expect(evt1.args.inAmts[0]).to.equal(0);
-        expectEqualWithError(evt1.args.inAmts[1], delta);
+      const strategyReserves2 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          strategyReserves2.tokens0,
-          strategyReserves.tokens0.sub(expAmtOut1)
-        );
+      const evt1 = res1.events[res1.events.length - 1];
 
-        expectEqualWithError(
-          strategyReserves2.tokens1,
-          strategyReserves.tokens1.add(delta)
-        );
-      });
+      expectEqualWithError(evt1.args.outAmts[0], expAmtOut1);
+      expect(evt1.args.outAmts[1]).to.equal(0);
+      expect(evt1.args.inAmts[0]).to.equal(0);
+      expectEqualWithError(evt1.args.inAmts[1], delta);
 
-      it("Swap Exact Tokens for Tokens, First Index", async function () {
-        const res = await (await strategy.createLoan()).wait();
-        const tokenId = res.events[0].args.tokenId;
+      expectEqualWithError(
+        strategyReserves2.tokens0,
+        strategyReserves.tokens0.sub(expAmtOut1)
+      );
 
-        const ONE = BigNumber.from(10).pow(18);
+      expectEqualWithError(
+        strategyReserves2.tokens1,
+        strategyReserves.tokens1.add(delta)
+      );
+    });
 
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
+    it("Swap Exact Tokens for Tokens, First Index", async function () {
+      const res = await (await strategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
 
-        const delta = ONE.mul(10);
-        const negDelta = ethers.constants.Zero.sub(delta);
+      const ONE = BigNumber.from(10).pow(18);
 
-        const SCALINGFACTOR = BigNumber.from(1);
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const delta = ONE.mul(10);
+      const negDelta = ethers.constants.Zero.sub(delta);
 
-        const expectedAmountOut0 = await strategy.testGetAmountOut(
-          delta,
-          reserves1,
-          reserves0,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          true
-        );
+      const SCALINGFACTOR = BigNumber.from(1);
 
-        // delta tokens are leaving the GammaPool in slot 0 and expectedAmountOut0 tokens are entering the GammaPool in slot 1
-        const res0 = await (
-          await strategy.testSwapTokens(tokenId, [negDelta, 0])
-        ).wait();
+      const strategyReserves0 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const expectedAmountOut0 = await strategy.testGetAmountOut(
+        delta,
+        reserves1,
+        reserves0,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        true
+      );
 
-        const evt0 = res0.events[res0.events.length - 1];
-        expect(evt0.args.outAmts[0]).to.equal(delta);
-        expect(evt0.args.outAmts[1]).to.equal(0);
-        expect(evt0.args.inAmts[0]).to.equal(0);
-        expect(evt0.args.inAmts[1]).to.equal(expectedAmountOut0);
+      // delta tokens are leaving the GammaPool in slot 0 and expectedAmountOut0 tokens are entering the GammaPool in slot 1
+      const res0 = await (
+        await strategy.testSwapTokens(tokenId, [negDelta, 0])
+      ).wait();
 
-        expectEqualWithError(
-          strategyReserves1.tokens0,
-          strategyReserves0.tokens0.sub(delta)
-        );
+      const strategyReserves1 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          strategyReserves1.tokens1,
-          strategyReserves0.tokens1.add(expectedAmountOut0)
-        );
+      const evt0 = res0.events[res0.events.length - 1];
+      expect(evt0.args.outAmts[0]).to.equal(delta);
+      expect(evt0.args.outAmts[1]).to.equal(0);
+      expect(evt0.args.inAmts[0]).to.equal(0);
+      expect(evt0.args.inAmts[1]).to.equal(expectedAmountOut0);
 
-        const actualStrategyReserves1 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      expectEqualWithError(
+        strategyReserves1.tokens0,
+        strategyReserves0.tokens0.sub(delta)
+      );
 
-        await (
-          await strategy.setCFMMReserves(
-            strategyReserves0.tokens0.sub(delta),
-            strategyReserves0.tokens1.add(expectedAmountOut0),
-            0
-          )
-        ).wait();
+      expectEqualWithError(
+        strategyReserves1.tokens1,
+        strategyReserves0.tokens1.add(expectedAmountOut0)
+      );
 
-        const strategyReserves2 = await strategy.getCFMMReserves();
+      const actualStrategyReserves1 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          actualStrategyReserves1.tokens0,
-          strategyReserves2[0]
-        );
-        expectEqualWithError(
-          actualStrategyReserves1.tokens1,
-          strategyReserves2[1]
-        );
-      });
+      await (
+        await strategy.setCFMMReserves(
+          strategyReserves0.tokens0.sub(delta),
+          strategyReserves0.tokens1.add(expectedAmountOut0),
+          0
+        )
+      ).wait();
 
-      it("Swap Exact Tokens for Tokens, Second Index", async function () {
-        const res = await (await strategy.createLoan()).wait();
-        const tokenId = res.events[0].args.tokenId;
+      const strategyReserves2 = await strategy.getCFMMReserves();
 
-        const ONE = BigNumber.from(10).pow(18);
+      expectEqualWithError(
+        actualStrategyReserves1.tokens0,
+        strategyReserves2[0]
+      );
+      expectEqualWithError(
+        actualStrategyReserves1.tokens1,
+        strategyReserves2[1]
+      );
+    });
 
-        const reserves = await setUpStrategyAndBalancerPool(tokenId);
-        const reserves0 = reserves.reserves0;
-        const reserves1 = reserves.reserves1;
+    it("Swap Exact Tokens for Tokens, Second Index", async function () {
+      const res = await (await strategy.createLoan()).wait();
+      const tokenId = res.events[0].args.tokenId;
 
-        const delta = ONE.mul(10);
-        const negDelta = ethers.constants.Zero.sub(delta);
+      const ONE = BigNumber.from(10).pow(18);
 
-        const SCALINGFACTOR = BigNumber.from(1);
+      const reserves = await setUpStrategyAndBalancerPool(tokenId);
+      const reserves0 = reserves.reserves0;
+      const reserves1 = reserves.reserves1;
 
-        const strategyReserves0 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const delta = ONE.mul(10);
+      const negDelta = ethers.constants.Zero.sub(delta);
 
-        const expectedAmountOut0 = await strategy.testGetAmountOut(
-          delta,
-          reserves0,
-          reserves1,
-          SCALINGFACTOR,
-          SCALINGFACTOR,
-          false
-        );
+      const SCALINGFACTOR = BigNumber.from(1);
 
-        // delta tokens are leaving the GammaPool in slot 1 and expectedAmountOut0 tokens are entering the GammaPool in slot 0
-        const res0 = await (
-          await strategy.testSwapTokens(tokenId, [0, negDelta])
-        ).wait();
+      const strategyReserves0 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        const strategyReserves1 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      const expectedAmountOut0 = await strategy.testGetAmountOut(
+        delta,
+        reserves0,
+        reserves1,
+        SCALINGFACTOR,
+        SCALINGFACTOR,
+        false
+      );
 
-        const evt0 = res0.events[res0.events.length - 1];
-        expect(evt0.args.outAmts[0]).to.equal(0);
-        expect(evt0.args.outAmts[1]).to.equal(delta);
-        expect(evt0.args.inAmts[0]).to.equal(expectedAmountOut0);
-        expect(evt0.args.inAmts[1]).to.equal(0);
+      // delta tokens are leaving the GammaPool in slot 1 and expectedAmountOut0 tokens are entering the GammaPool in slot 0
+      const res0 = await (
+        await strategy.testSwapTokens(tokenId, [0, negDelta])
+      ).wait();
 
-        expectEqualWithError(
-          strategyReserves1.tokens1,
-          strategyReserves0.tokens1.sub(delta)
-        );
+      const strategyReserves1 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          strategyReserves1.tokens0,
-          strategyReserves0.tokens0.add(expectedAmountOut0)
-        );
+      const evt0 = res0.events[res0.events.length - 1];
+      expect(evt0.args.outAmts[0]).to.equal(0);
+      expect(evt0.args.outAmts[1]).to.equal(delta);
+      expect(evt0.args.inAmts[0]).to.equal(expectedAmountOut0);
+      expect(evt0.args.inAmts[1]).to.equal(0);
 
-        const actualStrategyReserves1 = await getStrategyReserves(strategy, [
-          tokenA,
-          tokenB,
-        ]);
+      expectEqualWithError(
+        strategyReserves1.tokens1,
+        strategyReserves0.tokens1.sub(delta)
+      );
 
-        await (
-          await strategy.setCFMMReserves(
-            strategyReserves0.tokens0.add(expectedAmountOut0),
-            strategyReserves0.tokens1.sub(delta),
-            0
-          )
-        ).wait();
+      expectEqualWithError(
+        strategyReserves1.tokens0,
+        strategyReserves0.tokens0.add(expectedAmountOut0)
+      );
 
-        const strategyReserves2 = await strategy.getCFMMReserves();
+      const actualStrategyReserves1 = await getStrategyReserves(strategy, [
+        tokenA,
+        tokenB,
+      ]);
 
-        expectEqualWithError(
-          actualStrategyReserves1.tokens0,
-          strategyReserves2[0]
-        );
+      await (
+        await strategy.setCFMMReserves(
+          strategyReserves0.tokens0.add(expectedAmountOut0),
+          strategyReserves0.tokens1.sub(delta),
+          0
+        )
+      ).wait();
 
-        expectEqualWithError(
-          actualStrategyReserves1.tokens1,
-          strategyReserves2[1]
-        );
-      });
+      const strategyReserves2 = await strategy.getCFMMReserves();
+
+      expectEqualWithError(
+        actualStrategyReserves1.tokens0,
+        strategyReserves2[0]
+      );
+
+      expectEqualWithError(
+        actualStrategyReserves1.tokens1,
+        strategyReserves2[1]
+      );
     });
   });
 });

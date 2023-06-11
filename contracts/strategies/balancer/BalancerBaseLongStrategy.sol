@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.4;
 
-import "@gammaswap/v1-core/contracts/strategies/BaseLongStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/base/BaseLongStrategy.sol";
 import "../../libraries/weighted/FixedPoint.sol";
 import "../../libraries/weighted/WeightedMath.sol";
 import "./BalancerBaseStrategy.sol";
@@ -50,13 +50,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
     /// @dev See {BaseLongStrategy.originationFee}.
     function originationFee() internal virtual override view returns(uint24) {
         return origFee;
-    }
-
-    /// @dev See {BaseLongStrategy._calcDeltasToClose}.
-    function _calcDeltasToClose(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256 collateralId)
-        internal virtual override view returns(int256[] memory deltas) {
-
-        deltas = new int256[](2);
     }
 
     /// @dev See {BaseLongStrategy.calcTokensToRepay}.

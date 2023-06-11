@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "@gammaswap/v1-core/contracts/strategies/external/ExternalLiquidationStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/liquidation/ExternalLiquidationStrategy.sol";
 import "../BalancerBaseLongStrategy.sol";
 
 /// @title External Liquidation Strategy concrete implementation contract for Balancer AMM
