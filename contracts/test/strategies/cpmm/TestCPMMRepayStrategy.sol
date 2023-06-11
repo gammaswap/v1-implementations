@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@gammaswap/v1-core/contracts/strategies/lending/BorrowStrategy.sol";
 import "../../../strategies/cpmm/CPMMRepayStrategy.sol";
 
-contract TestCPMMLongStrategyRepay is CPMMRepayStrategy, BorrowStrategy {
+contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;

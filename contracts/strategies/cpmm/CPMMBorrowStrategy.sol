@@ -9,7 +9,7 @@ import "./base/CPMMBaseRebalanceStrategy.sol";
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by BorrowStrategy and RebalanceStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract CPMMLongStrategy is CPMMBaseRebalanceStrategy, BorrowStrategy, RebalanceStrategy {
+contract CPMMBorrowStrategy is CPMMBaseRebalanceStrategy, BorrowStrategy, RebalanceStrategy {
 
     /// @dev Initializes the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
     /// @dev `origFee`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`

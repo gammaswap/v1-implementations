@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import "../../../strategies/cpmm/CPMMLongStrategy.sol";
+import "../../../strategies/cpmm/CPMMBorrowStrategy.sol";
 
-contract TestCPMMLongStrategy is CPMMLongStrategy {
+contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
     using Math for uint;
@@ -18,8 +18,9 @@ contract TestCPMMLongStrategy is CPMMLongStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint16 originationFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMLongStrategy(mathLib_, 8000, 1e19, 2252571, originationFee_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint16 originationFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_,
+        uint80 factor_, uint80 maxApy_) CPMMBorrowStrategy(mathLib_, 8000, 1e19, 2252571, originationFee_, tradingFee1_,
+        tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {

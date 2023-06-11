@@ -22,9 +22,9 @@ abstract contract BalancerBaseRebalanceStrategy is BaseRebalanceStrategy, Balanc
 
     /// @dev Initializes the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
     /// @dev `origFee`, `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
-    constructor(address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_,
-        uint24 origFee_, uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_)
-        BalancerBaseLongStrategy(ltvThreshold_, maxTotalApy_, blocksPerYear_, origFee_, baseRate_, factor_, maxApy_, weight0_) {
+    constructor(address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 origFee_,
+        uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseLongStrategy(ltvThreshold_,
+        maxTotalApy_, blocksPerYear_, origFee_, baseRate_, factor_, maxApy_, weight0_) {
 
         if(mathLib_ == address(0)) revert MissingMathLib();
 

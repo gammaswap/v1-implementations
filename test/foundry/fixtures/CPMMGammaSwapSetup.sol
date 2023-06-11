@@ -9,7 +9,7 @@ import "../../../contracts/pools/CPMMGammaPool.sol";
 import "../../../contracts/strategies/cpmm/CPMMLiquidationStrategy.sol";
 import "../../../contracts/strategies/cpmm/CPMMShortStrategy.sol";
 import "../../../contracts/libraries/cpmm/CPMMMath.sol";
-import "../../../contracts/strategies/cpmm/CPMMLongStrategy.sol";
+import "../../../contracts/strategies/cpmm/CPMMBorrowStrategy.sol";
 import "../../../contracts/strategies/cpmm/CPMMRepayStrategy.sol";
 
 contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
@@ -22,7 +22,7 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
 
     GammaPoolFactory public factory;
 
-    CPMMLongStrategy public longStrategy;
+    CPMMBorrowStrategy public longStrategy;
     CPMMRepayStrategy public repayStrategy;
     CPMMShortStrategy public shortStrategy;
     CPMMLiquidationStrategy public liquidationStrategy;
@@ -50,7 +50,7 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
         uint256 maxTotalApy = 1e19;
 
         mathLib = new CPMMMath();
-        longStrategy = new CPMMLongStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
+        longStrategy = new CPMMBorrowStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
         repayStrategy = new CPMMRepayStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
         shortStrategy = new CPMMShortStrategy(maxTotalApy, 2252571, baseRate, factor, maxApy);
         liquidationStrategy = new CPMMLiquidationStrategy(9500, 250, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);

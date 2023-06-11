@@ -29,12 +29,12 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
 
     /// @dev Initializes the contract by setting `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `origFee`,
     /// @dev `baseRate`, `factor`, `maxApy`, and `weight0`
-    constructor(uint16 ltvThreshold_,  uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 originationFee_,
-        uint64 baseRate_, uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseStrategy(maxTotalApy_,
-        blocksPerYear_, baseRate_, factor_, maxApy_, weight0_) {
+    constructor(uint16 ltvThreshold_,  uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 origFee_, uint64 baseRate_,
+        uint80 factor_, uint80 maxApy_, uint256 weight0_) BalancerBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_,
+        factor_, maxApy_, weight0_) {
 
         LTV_THRESHOLD = ltvThreshold_;
-        origFee = originationFee_;
+        origFee = origFee_;
     }
 
     /// @dev See {BaseLongStrategy.minBorrow}.

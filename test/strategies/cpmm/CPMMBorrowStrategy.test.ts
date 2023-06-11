@@ -5,7 +5,7 @@ import { BigNumber } from "ethers";
 const UniswapV2FactoryJSON = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const UniswapV2PairJSON = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 
-describe("CPMMLongStrategy", function () {
+describe("CPMMBorrowStrategy", function () {
   let TestERC20: any;
   let TestERC20WithFee: any;
   let TestStrategy: any;
@@ -47,7 +47,7 @@ describe("CPMMLongStrategy", function () {
     TestGammaPoolFactory = await ethers.getContractFactory(
       "TestGammaPoolFactory"
     );
-    TestStrategy = await ethers.getContractFactory("TestCPMMLongStrategy");
+    TestStrategy = await ethers.getContractFactory("TestCPMMBorrowStrategy");
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
 
