@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-implementations",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
