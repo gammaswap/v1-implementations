@@ -9,6 +9,47 @@ import "../../interfaces/math/ICPMMMath.sol";
 /// @notice Math library for complex computations for CPMM strategies
 contract CPMMMath is ICPMMMath {
 
+    /// @dev See {ICPMMMath-calcDeltasForRatio}
+    /// @notice The calculation takes into consideration the market impact the transaction would have
+    /// @notice The equation is derived from solving the quadratic root formula taking into account trading fees
+    /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
+    /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
+    /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
+    function calcDeltasForMaxLP(uint256 reserve0, uint256 reserve1, uint256 tokensHeld0,
+        uint256 tokensHeld1, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+        //TODO: Formula goes here
+    }
+
+    /// @dev See {ICPMMMath-calcDeltasToCloseSetRatio}
+    /// @notice The calculation takes into consideration the market impact the transaction would have
+    /// @notice The equation is derived from solving the quadratic root formula taking into a   ccount trading fees
+    /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
+    /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
+    /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
+    function calcDeltasToCloseSetRatio(uint128 liquidity, uint256 lastCFMMInvariant, uint256 reserve0, uint256 reserve1, uint256 tokensHeld0,
+        uint256 tokensHeld1, uint256 ratio0, uint256 ratio1) external view returns(int256[] memory deltas) {
+        //TODO: Formula goes here
+        // phi = liquidity / lastCFMMInvariant
+        //     = L / L_hat
+        //
+        // a = P * (1 + phi)
+        //   = (ratio1 / ratio0) + (ratio1 * liquidity) / (ratio0 * lastCFMMInvariant)
+        uint256 a;
+
+        // b = -(P * (A_hat * (2 * phi + 1) - A) + B + B_hat)
+        //   = -(P * (A_hat * 2 * phi + A_hat - A) + B + B_hat)
+        //   = -(P * A_hat * 2 * phi + P * A_hat - P * A + B + B_hat)
+        //   = -(ratio1 * A_hat * 2 * liquidity / (ratio0 * lastCFMMInvariant) - ratio1 * A_hat / ratio0 - ratio1 * A / ratio0 + B + B_hat)
+        uint256 b;
+
+        // c = A_hat * [B - P * (A - A * phi)] - L * L_hat
+        //   = A_hat * [B - P * A - P * A * phi] - L * L_hat
+        //   = A_hat * B - A_hat * P * A - A_hat * P * A * phi - L * L_hat
+        //   = A_hat * B - A_hat * ratio1 * A / ratio0 - A_hat * ratio1 * A * L / (ratio0 * L_hat) - L * L_hat
+        uint256 c;
+
+    }
+
     /// @dev See {ICPMMMath-calcDeltasToClose}
     /// @notice how much collateral to trade to have enough to close a position
     /// @notice reserve and collateral have to be of the same token

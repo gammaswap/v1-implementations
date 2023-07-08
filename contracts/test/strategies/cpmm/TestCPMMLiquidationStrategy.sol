@@ -14,12 +14,12 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMLiquidationStrategy(liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMLiquidationStrategy(mathLib_, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
-        s.initialize(factory_, cfmm_, tokens_, decimals_);
+        s.initialize(factory_, cfmm_, 1, tokens_, decimals_);
     }
 
     function cfmm() public view returns(address) {
@@ -27,7 +27,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
     }
 
     function createLoan() external virtual returns(uint256 tokenId) {
-        tokenId = s.createLoan(s.tokens.length);
+        tokenId = s.createLoan(s.tokens.length, 0);
         emit LoanCreated(msg.sender, tokenId);
     }
 
@@ -62,44 +62,6 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         s.CFMM_RESERVES[0] = reserve0;
         s.CFMM_RESERVES[1] = reserve1;
         s.lastCFMMInvariant = lastCFMMInvariant;
-    }
-
-    function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        uint256[] memory amounts;
-        amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity);
-        return(amounts[0], amounts[1]);
-    }
-
-    function testBeforeRepay(uint256 tokenId, uint256[] memory amounts) external virtual {
-        beforeRepay(s.loans[tokenId], amounts);
-    }
-
-    // selling exactly amountOut
-    function testCalcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtIn(amountOut, reserveOut, reserveIn);
-    }
-
-    // buying exactly amountIn
-    function testCalcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtOut(amountIn, reserveOut, reserveIn);
-    }
-
-    function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(token, to, amount, balance, collateral);
-        emit ActualOutAmount(actualOutAmount);
-    }
-
-    function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (outAmts, inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
-        emit CalcAmounts(outAmts, inAmts);
-    }
-
-    function testSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
-        swapTokens(loan, outAmts, inAmts);
-        emit CalcAmounts(outAmts, inAmts);
     }
 
     function depositLPTokens(uint256 tokenId) external virtual {

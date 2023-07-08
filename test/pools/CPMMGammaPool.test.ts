@@ -10,6 +10,7 @@ const PROTOCOL_ID = 1;
 describe("CPMMGammaPool", function () {
   let TestERC20: any;
   let CPMMGammaPool: any;
+  let TestPoolViewer: any;
   let UniswapV2Factory: any;
   let UniswapV2Pair: any;
   let tokenA: any;
@@ -20,13 +21,18 @@ describe("CPMMGammaPool", function () {
   let addr2: any;
   let addr3: any;
   let addr4: any;
+  let addr5: any;
+  let addr6: any;
   let pool: any;
+  let viewer: any;
   let gsFactoryAddress: any;
   let cfmmHash: any;
   let longStrategyAddr: any;
   let repayStrategyAddr: any;
   let shortStrategyAddr: any;
   let liquidationStrategyAddr: any;
+  let externalRebalanceStrategyAddr: any;
+  let externalLiquidationStrategyAddr: any;
   let cfmm: any;
   let uniFactory: any;
   let badPool: any;
@@ -38,7 +44,8 @@ describe("CPMMGammaPool", function () {
     // Get the ContractFactory and Signers here.
     TestERC20 = await ethers.getContractFactory("TestERC20");
     CPMMGammaPool = await ethers.getContractFactory("CPMMGammaPool");
-    [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
+    TestPoolViewer = await ethers.getContractFactory("TestPoolViewer");
+    [owner, addr1, addr2, addr3, addr4, addr5, addr6] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -53,6 +60,7 @@ describe("CPMMGammaPool", function () {
     tokenA = await TestERC20.deploy("Test Token A", "TOKA");
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
     tokenC = await TestERC20.deploy("Test Token C", "TOKC");
+    viewer = await TestPoolViewer.deploy();
 
     uniFactory = await UniswapV2Factory.deploy(owner.address);
 
@@ -67,6 +75,8 @@ describe("CPMMGammaPool", function () {
     repayStrategyAddr = addr4.address;
     shortStrategyAddr = addr2.address;
     liquidationStrategyAddr = addr3.address;
+    externalRebalanceStrategyAddr = addr5.address;
+    externalLiquidationStrategyAddr = addr6.address;
 
     pool = await CPMMGammaPool.deploy(
       PROTOCOL_ID,
@@ -75,6 +85,10 @@ describe("CPMMGammaPool", function () {
       repayStrategyAddr,
       shortStrategyAddr,
       liquidationStrategyAddr,
+      liquidationStrategyAddr,
+      viewer.address,
+      externalRebalanceStrategyAddr,
+      externalLiquidationStrategyAddr,
       uniFactory.address,
       cfmmHash
     );
@@ -89,6 +103,10 @@ describe("CPMMGammaPool", function () {
       repayStrategyAddr,
       shortStrategyAddr,
       liquidationStrategyAddr,
+      liquidationStrategyAddr,
+      viewer.address,
+      externalRebalanceStrategyAddr,
+      externalLiquidationStrategyAddr,
       uniFactory.address,
       badCfmmHash
     );
@@ -100,6 +118,10 @@ describe("CPMMGammaPool", function () {
       repayStrategyAddr,
       shortStrategyAddr,
       liquidationStrategyAddr,
+      liquidationStrategyAddr,
+      viewer.address,
+      externalRebalanceStrategyAddr,
+      externalLiquidationStrategyAddr,
       gsFactoryAddress,
       cfmmHash
     );

@@ -19,7 +19,7 @@ contract TestBalancerBaseLongStrategy is BalancerExternalRebalanceStrategy {
     }
 
     function initialize(address _cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
-        s.initialize(msg.sender, _cfmm, tokens, decimals);
+        s.initialize(msg.sender, _cfmm, 1, tokens, decimals);
 
         // Store the PoolId in the storage contract
         s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);
@@ -66,7 +66,7 @@ contract TestBalancerBaseLongStrategy is BalancerExternalRebalanceStrategy {
     }
 
     function createLoan() external virtual returns(uint256 tokenId) {
-        tokenId = s.createLoan(s.tokens.length);
+        tokenId = s.createLoan(s.tokens.length, 0);
         emit LoanCreated(msg.sender, tokenId);
     }
 

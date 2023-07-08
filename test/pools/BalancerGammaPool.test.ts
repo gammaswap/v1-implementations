@@ -14,12 +14,14 @@ const PROTOCOL_ID = 2;
 describe.skip("BalancerGammaPool", function () {
   let TestERC20: any;
   let BalancerGammaPool: any;
+  let TestPoolViewer: any;
   let tokenA: any;
   let tokenB: any;
   let tokenC: any;
   let tokenD: any;
   let owner: any;
   let pool: any;
+  let viewer: any;
   let longStrategy: any;
   let shortStrategy: any;
   let liquidationStrategy: any;
@@ -53,6 +55,7 @@ describe.skip("BalancerGammaPool", function () {
         FixedPoint: fixedPoint.address,
       },
     });
+    TestPoolViewer = await ethers.getContractFactory("TestPoolViewer");
 
     // Fetch contract factories for strategies
     shortStrategy = await ethers.getContractFactory("BalancerShortStrategy", {
@@ -120,6 +123,7 @@ describe.skip("BalancerGammaPool", function () {
     tokenB = await TestERC20.deploy("Test Token B", "TOKB");
     tokenC = await TestERC20.deploy("Test Token C", "TOKC");
     tokenD = await TestERC20.deploy("Test Token D", "TOKD");
+    viewer = await TestPoolViewer.deploy();
 
     // Deploy the WeightedPoolFactory contract
     factory = await WeightedPoolFactory.deploy(
@@ -182,6 +186,7 @@ describe.skip("BalancerGammaPool", function () {
       longStrategy.address,
       shortStrategy.address,
       liquidationStrategy.address,
+      viewer.address,
       factory.address, // Address of the WeightedPoolFactory used to create the pool
       cfmmPoolWeights[0] // weight0
     );
