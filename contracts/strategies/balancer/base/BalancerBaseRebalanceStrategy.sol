@@ -32,13 +32,13 @@ abstract contract BalancerBaseRebalanceStrategy is BaseRebalanceStrategy, Balanc
     }
 
 
-    /// @dev See {BaseRebalanceStrategy-_calcDeltasToCloseKeepRatio}.
-    function _calcDeltasToCloseKeepRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256[] memory ratio) internal override virtual view returns(int256[] memory deltas) {
+    /// @dev See {BaseRebalanceStrategy-_calcDeltasToCloseSetRatio}.
+    function _calcDeltasToCloseSetRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256[] memory ratio) internal override virtual view returns(int256[] memory deltas) {
 
     }
 
-    /// @dev See {BaseRebalanceStrategy-_calcMaxCollateral}.
-    function _calcMaxCollateral(int256[] memory deltas, uint128[] memory tokensHeld, uint128[] memory reserves) internal override virtual view returns(uint256 collateral) {
+    /// @dev See {BaseRebalanceStrategy-_calcCollateralPostTrade}.
+    function _calcCollateralPostTrade(int256[] memory deltas, uint128[] memory tokensHeld, uint128[] memory reserves) internal override virtual view returns(uint256 collateral) {
 
     }
 

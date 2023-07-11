@@ -81,20 +81,8 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
         // Add liquidity debt to total pool debt and start tracking loan
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
 
-        /*if(ratio.length > 0) {
-            if(ratio.length != tokensHeld.length) revert InvalidRatioLength();
-            //get current reserves without updating
-            uint128[] memory _reserves = getReserves(s.cfmm);
-            (tokensHeld,) = rebalanceCollateral(_loan, _calcDeltasForRatio(tokensHeld, _reserves, ratio), _reserves);
-        }/**/
-
         // Check that loan is not undercollateralized
         checkMargin(calcInvariant(s.cfmm, tokensHeld), loanLiquidity);
-
-        /*emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.BORROW_LIQUIDITY);
-
-        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
-            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, s.CFMM_RESERVES, TX_TYPE.BORROW_LIQUIDITY);/**/
     }
 
     function _decreaseCollateral(uint256, uint128[] calldata, address, uint256[] calldata) external virtual override returns(uint128[] memory collateral) {
@@ -114,5 +102,15 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     }
 
     function _calcDeltasForWithdrawal(uint128[] memory amounts, uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal override(CPMMBaseRebalanceStrategy, BaseRebalanceStrategy) virtual view returns(int256[] memory deltas) {
+    }
+
+    function updateLoanPrice(uint256 newLiquidity, uint256 currPrice, uint256 liquidity, uint256 lastPx) internal override virtual view returns(uint256) {
+        return lastPx;
+    }
+
+    function onLoanUpdate(LibStorage.Loan storage _loan, uint256 tokenId) internal virtual override returns(uint256 externalCollateral) {
+    }
+
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal virtual override {
     }
 }

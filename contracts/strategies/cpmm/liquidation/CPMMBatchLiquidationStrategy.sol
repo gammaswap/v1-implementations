@@ -30,6 +30,6 @@ contract CPMMBatchLiquidationStrategy is CPMMBaseRebalanceStrategy, BatchLiquida
 
     /// @dev See {BatchLiquidationStrategy-_calcMaxCollateralNotMktImpact}.
     function _calcMaxCollateralNotMktImpact(uint128[] memory tokensHeld, uint128[] memory reserves) internal override virtual returns(uint256) {
-        return 0;
+        return 0;//TODO: Missing implementation
     }
 }
