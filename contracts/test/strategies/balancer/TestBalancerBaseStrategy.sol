@@ -17,7 +17,7 @@ contract TestBalancerBaseStrategy is BalancerBaseStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals, bytes32 _poolId, address _vault) external virtual {
-        s.initialize(msg.sender, cfmm, tokens, decimals);
+        s.initialize(msg.sender, cfmm, 1, tokens, decimals);
 
         // Store the PoolId in the storage contract
         s.setBytes32(uint256(StorageIndexes.POOL_ID), _poolId);

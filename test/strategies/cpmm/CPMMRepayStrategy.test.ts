@@ -359,7 +359,7 @@ describe("CPMMRepayStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 1])
-      ).to.be.revertedWithCustomError(strategy, "NotEnoughBalance");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);
@@ -381,7 +381,7 @@ describe("CPMMRepayStrategy", function () {
 
       await expect(
         strategy.testBeforeRepay(tokenId, [1, 11])
-      ).to.be.revertedWithCustomError(strategy, "NotEnoughBalance");
+      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
 
       expect(await tokenA.balanceOf(cfmm.address)).to.equal(0);
       expect(await tokenB.balanceOf(cfmm.address)).to.equal(0);

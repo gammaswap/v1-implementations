@@ -48,8 +48,8 @@ contract BalancerGammaPool is GammaPool {
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`, `rebalanceStrategy`,
     /// `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `poolFactory` and `weight0`.
     constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy, address _rebalanceStrategy,
-        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _poolFactory, uint256 _weight0)
-        GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _rebalanceStrategy, _shortStrategy, _liquidationStrategy, _batchLiquidationStrategy) {
+        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _viewer, address _poolFactory, uint256 _weight0)
+        GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _rebalanceStrategy, _shortStrategy, _liquidationStrategy, _batchLiquidationStrategy, _viewer) {
         require(_weight0 == IBalancerStrategy(_borrowStrategy).weight0(), "weight0 long strategy");
         require(_weight0 == IBalancerStrategy(_repayStrategy).weight0(), "weight0 long strategy");
         require(_weight0 == IBalancerStrategy(_rebalanceStrategy).weight0(), "weight0 long strategy");
@@ -100,8 +100,8 @@ contract BalancerGammaPool is GammaPool {
     }
 
     /// @dev See {IGammaPool-createLoan}
-    function createLoan() external lock virtual override returns(uint256 tokenId) {
-        tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
+    function createLoan(uint16 refId) external lock virtual override returns(uint256 tokenId) {
+        tokenId = s.createLoan(tokenCount, refId); // save gas using constant variable tokenCount
         emit LoanCreated(msg.sender, tokenId);
     }
 
@@ -125,7 +125,7 @@ contract BalancerGammaPool is GammaPool {
     function initialize(address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals, bytes calldata _data) external virtual override {
         if(msg.sender != factory) revert Forbidden();// only factory is allowed to initialize
 
-        s.initialize(factory, _cfmm, _tokens, _decimals);
+        s.initialize(factory, _cfmm, protocolId, _tokens, _decimals);
 
         // Decode the PoolId in this function
         IBalancerStrategy.BalancerPoolData memory balancerPoolData = abi.decode(_data, (IBalancerStrategy.BalancerPoolData));

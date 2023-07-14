@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
+import "@gammaswap/v1-core/contracts/base/GammaPoolExternal.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
 import "@gammaswap/v1-core/contracts/libraries/Math.sol";
@@ -9,7 +10,7 @@ import "@gammaswap/v1-core/contracts/libraries/Math.sol";
 /// @title GammaPool implementation for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev This implementation is specifically for validating UniswapV2Pair and clone contracts
-contract CPMMGammaPool is GammaPool {
+contract CPMMGammaPool is GammaPool, GammaPoolExternal {
 
     error NotContract();
     error BadProtocol();
@@ -27,18 +28,20 @@ contract CPMMGammaPool is GammaPool {
     bytes32 immutable public cfmmInitCodeHash;
 
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`,
-    /// @dev `shortStrategy`, `liquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
+    /// @dev `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
     constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy,
-        address _shortStrategy, address _liquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
+        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _viewer,
+        address _externalRebalanceStrategy, address _externalLiquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
         GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _borrowStrategy, _shortStrategy,
-        _liquidationStrategy, _liquidationStrategy) {
+        _liquidationStrategy, _batchLiquidationStrategy, _viewer)
+        GammaPoolExternal(_externalRebalanceStrategy, _externalLiquidationStrategy) {
         cfmmFactory = _cfmmFactory;
         cfmmInitCodeHash = _cfmmInitCodeHash;
     }
 
     /// @dev See {IGammaPool-createLoan}
-    function createLoan() external lock virtual override returns(uint256 tokenId) {
-        tokenId = s.createLoan(tokenCount); // save gas using constant variable tokenCount
+    function createLoan(uint16 refId) external lock virtual override returns(uint256 tokenId) {
+        tokenId = s.createLoan(tokenCount, refId); // save gas using constant variable tokenCount
         emit LoanCreated(msg.sender, tokenId);
     }
 

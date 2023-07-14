@@ -2,24 +2,24 @@
 pragma solidity 0.8.17;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
-import "../../../strategies/cpmm/liquidation/CPMMExternalLiquidationStrategy.sol";
+import "../../../strategies/cpmm/liquidation/CPMMBatchLiquidationStrategy.sol";
 
-contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy, BaseBorrowStrategy {
+contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseBorrowStrategy {
 
-    error ExcessiveBorrowing();
     using LibStorage for LibStorage.Storage;
     using Math for uint;
+    error ExcessiveBorrowing();
 
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMExternalLiquidationStrategy(10, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint16 liquidationThreshold_, uint16 liquidationFeeThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMBatchLiquidationStrategy(mathLib_, liquidationThreshold_, liquidationFeeThreshold_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
-        s.initialize(factory_, cfmm_, tokens_, decimals_);
+        s.initialize(factory_, cfmm_, 1, tokens_, decimals_);
     }
 
     function cfmm() public view returns(address) {
@@ -27,7 +27,7 @@ contract TestCPMMExternalLiquidationStrategy is CPMMExternalLiquidationStrategy,
     }
 
     function createLoan() external virtual returns(uint256 tokenId) {
-        tokenId = s.createLoan(s.tokens.length);
+        tokenId = s.createLoan(s.tokens.length, 0);
         emit LoanCreated(msg.sender, tokenId);
     }
 
