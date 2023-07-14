@@ -108,6 +108,8 @@ contract CPMMMath is ICPMMMath {
         //   = ratio1 * (1 + phi) / ratio0
         //   = ratio1 * (phiDec + phi) / ratio0
         //   = ratio1 * (L_hat + L) / (L_hat * ratio0)
+        //   = ratio1 * (1 + L/L_hat) / ratio0
+        //   = [ratio1 + (ratio1 * L / L_hat)] * decimals0 / ratio0
 
         uint256 a;
 
@@ -120,23 +122,19 @@ contract CPMMMath is ICPMMMath {
         //   = [ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ] * invDecimals / lastCFMMInvariant
         {
             uint256 lastCFMMInvariant = Math.sqrt(reserve0 * reserve1);
-            //a = (ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ) * (10**invDecimals) / lastCFMMInvariant;
             a = (ratio1 * (lastCFMMInvariant + liquidity) / ratio0);
             a = a * (10**((decimals0 + decimals0)/2)) / lastCFMMInvariant;
+
             // b = -(P * (A_hat * (2 * phi + 1) - A) + B + B_hat)
             //   = -(P * (A_hat * 2 * phi + A_hat - A) + B + B_hat)
             //   = -(P * A_hat * 2 * phi + P * A_hat - P * A + B + B_hat)
             //   = -(P * (A_hat * 2 * phi + A_hat - A) + B + B_hat)
-            //   = -(P * (A_hat * 2 * phi / phiDec + A_hat - A) + B _ B_hat)
-            //   = -([ratio1 * (A_hat * 2 * phi / phiDec + A_hat - A) / ratio0] + B _ B_hat)
-            //   = -(ratio1 * A_hat * 2 * liquidity / (ratio0 * lastCFMMInvariant) - ratio1 * A_hat / ratio0 - ratio1 * A / ratio0 + B + B_hat)
-            //   = -(ratio1 * [A_hat * 2 * liquidity / lastCFMMInvariant - A_hat - A] / ratio0  + B + B_hat)
-            //   = -(ratio1 * [A_hat * 2 * liquidity / lastCFMMInvariant - (A_hat + A)] / ratio0  + B + B_hat)
+            //   = -(P * (A_hat * 2 * liquidity / lastCFMMInvariant + A_hat - A) + B + B_hat)
+            //   = -([ratio1 * (A_hat * 2 * liquidity / lastCFMMInvariant + A_hat - A) / ratio0] + B _ B_hat)
             {
-                b = reserve0 * 2 * liquidity / lastCFMMInvariant;
-                uint256 rightVal = reserve0 + tokensHeld0;
-                (bIsNeg, b) = b > rightVal ? (false, ratio1 * (b - rightVal) / ratio0) : (true, ratio1 * (rightVal - b) / ratio0);
-                rightVal = reserve1 + tokensHeld0;
+                b = reserve0 * 2 * liquidity / lastCFMMInvariant + reserve0;
+                (bIsNeg, b) = b > tokensHeld0 ? (false, ratio1 * (b - tokensHeld0) / ratio0) : (true, ratio1 * (tokensHeld0 - b) / ratio0);
+                uint256 rightVal = reserve1 + tokensHeld1;
                 if(bIsNeg) { // the sign changes because b is ultimately negated
                     (bIsNeg, b) = b > rightVal ? (false,b - rightVal) : (true,rightVal - b);
                 } else {

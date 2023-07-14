@@ -471,7 +471,7 @@ describe("CPMMLiquidationStrategy", function () {
         loan2.liquidity.div(ONE.div(10000))
       );
       expect(liquidationEvent.args.collateral).to.equal(collateral);
-      expect(liquidationEvent.args.txType).to.equal(10);
+      expect(liquidationEvent.args.txType).to.equal(11);
 
       const loanUpdateEvent = resp.events[len - 2];
       expect(loanUpdateEvent.event).to.equal("LoanUpdated");
@@ -483,7 +483,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
       expect(loanUpdateEvent.args.lpTokens).to.equal(0);
       expect(loanUpdateEvent.args.rateIndex).to.equal(0);
-      expect(loanUpdateEvent.args.txType).to.equal(10);
+      expect(loanUpdateEvent.args.txType).to.equal(11);
 
       const loan3 = await strategyFee.getLoan(tokenId);
       expect(loan3.initLiquidity).to.equal(0);
@@ -554,7 +554,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
         bal3.borrowedInvariant
       );
-      expect(poolUpdateEvent.args.txType).to.equal(10);
+      expect(poolUpdateEvent.args.txType).to.equal(11);
     });
 
     it("Liquidate with collateral, write down", async function () {
@@ -679,7 +679,7 @@ describe("CPMMLiquidationStrategy", function () {
         loan2.liquidity.sub(writeDownAmt).div(ONE.div(10000))
       );
       expect(liquidationEvent.args.collateral).to.equal(collateral);
-      expect(liquidationEvent.args.txType).to.equal(10);
+      expect(liquidationEvent.args.txType).to.equal(11);
 
       const loanUpdateEvent = resp.events[len - 2];
       expect(loanUpdateEvent.event).to.equal("LoanUpdated");
@@ -691,7 +691,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
       expect(loanUpdateEvent.args.lpTokens).to.equal(0);
       expect(loanUpdateEvent.args.rateIndex).to.equal(0);
-      expect(loanUpdateEvent.args.txType).to.equal(10);
+      expect(loanUpdateEvent.args.txType).to.equal(11);
 
       const loan3 = await strategyFee.getLoan(tokenId);
       expect(loan3.initLiquidity).to.equal(0);
@@ -764,7 +764,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
         bal3.borrowedInvariant
       );
-      expect(poolUpdateEvent.args.txType).to.equal(10);
+      expect(poolUpdateEvent.args.txType).to.equal(11);
     });
 
     it.skip("Liquidate with collateral with fees", async function () {
@@ -1291,7 +1291,7 @@ describe("CPMMLiquidationStrategy", function () {
         loan2.liquidity.div(ONE.div(10000))
       );
       expect(liquidationEvent.args.collateral).to.equal(collateral);
-      expect(liquidationEvent.args.txType).to.equal(11);
+      expect(liquidationEvent.args.txType).to.equal(12);
 
       const loanUpdateEvent = resp.events[len - 2];
       expect(loanUpdateEvent.event).to.equal("LoanUpdated");
@@ -1303,7 +1303,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
       expect(loanUpdateEvent.args.lpTokens).to.equal(0);
       expect(loanUpdateEvent.args.rateIndex).to.equal(0);
-      expect(loanUpdateEvent.args.txType).to.equal(11);
+      expect(loanUpdateEvent.args.txType).to.equal(12);
 
       const loan3 = await strategyFee.getLoan(tokenId);
       expect(loan3.initLiquidity).to.equal(0);
@@ -1371,7 +1371,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
         bal3.borrowedInvariant
       );
-      expect(poolUpdateEvent.args.txType).to.equal(11);
+      expect(poolUpdateEvent.args.txType).to.equal(12);
     });
 
     it("Liquidate with LP Token, write down", async function () {
@@ -1501,7 +1501,7 @@ describe("CPMMLiquidationStrategy", function () {
         loan2.liquidity.sub(writeDownAmt).div(ONE.div(10000))
       );
       expect(liquidationEvent.args.collateral).to.equal(collateral);
-      expect(liquidationEvent.args.txType).to.equal(11);
+      expect(liquidationEvent.args.txType).to.equal(12);
 
       const loanUpdateEvent = resp.events[len - 2];
       expect(loanUpdateEvent.event).to.equal("LoanUpdated");
@@ -1513,7 +1513,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(loanUpdateEvent.args.initLiquidity).to.equal(0);
       expect(loanUpdateEvent.args.lpTokens).to.equal(0);
       expect(loanUpdateEvent.args.rateIndex).to.equal(0);
-      expect(loanUpdateEvent.args.txType).to.equal(11);
+      expect(loanUpdateEvent.args.txType).to.equal(12);
 
       const loan3 = await strategyFee.getLoan(tokenId);
       expect(loan3.initLiquidity).to.equal(0);
@@ -1584,7 +1584,7 @@ describe("CPMMLiquidationStrategy", function () {
       expect(poolUpdateEvent.args.borrowedInvariant).to.equal(
         bal3.borrowedInvariant
       );
-      expect(poolUpdateEvent.args.txType).to.equal(11);
+      expect(poolUpdateEvent.args.txType).to.equal(12);
     });
   });
 });

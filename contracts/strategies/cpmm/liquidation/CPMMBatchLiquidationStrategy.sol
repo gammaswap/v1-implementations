@@ -30,6 +30,17 @@ contract CPMMBatchLiquidationStrategy is CPMMBaseRebalanceStrategy, BatchLiquida
 
     /// @dev See {BatchLiquidationStrategy-_calcMaxCollateralNotMktImpact}.
     function _calcMaxCollateralNotMktImpact(uint128[] memory tokensHeld, uint128[] memory reserves) internal override virtual returns(uint256) {
-        return 0;//TODO: Missing implementation
+        // [A * P + B] / [2 * sqrt(P)]
+        // [(A * reserve1 / reserve0) + B] / (2 * sqrt(reserve1/reserve0)
+        // [(A * reserve1 / reserve0) + B] / [2 * sqrt(reserve1)/sqrt(reserve0)]
+        // [(A * reserve1 / reserve0) + B] * sqrt(reserve0) / [2 * sqrt(reserve1)]
+        // [(A * reserve1 + B * reserve0) / reserve0] * sqrt(reserve0) / [2 * sqrt(reserve1)]
+        // [A * reserve1 * sqrt(reserve0) + B * reserve0 * sqrt(reserve0)] / [2 * reserve0 * sqrt(reserve1)]
+        // [A * sqrt(reserve1) * sqrt(reserve0)] / [2 * reserve0] + [B * reserve0] / [2 * sqrt(reserve0) * sqrt(reserve1)]
+        // (A * L_hat / reserve0 + B * reserve0 / L_hat) / 2
+        uint256 lastCFMMInvariant = Math.sqrt(reserves[0] * reserves[1]);
+        uint256 leftVal = tokensHeld[0] * lastCFMMInvariant / reserves[0];
+        uint256 rightVal = tokensHeld[1] * reserves[0] / lastCFMMInvariant;
+        return (leftVal + rightVal) / 2;
     }
 }
