@@ -9,9 +9,23 @@ import "../../interfaces/math/ICPMMMath.sol";
 /// @notice Math library for complex computations for CPMM strategies
 contract CPMMMath is ICPMMMath {
 
+    error ZeroTokensHeld();
+    error ZeroReserves();
+    error ZeroFees();
+    error ZeroRatio();
+    error ZeroDecimals();
+    error ComplexNumber();
+
     /// @dev See {ICPMMMath-calcCollateralPostTrade}
-    function calcCollateralPostTrade(uint256 delta, uint256 tokensHeld0, uint256 tokensHeld1, uint256 reserve0, uint256 reserve1, uint256 fee1, uint256 fee2) external override virtual view returns(uint256 collateral) {
+    function calcCollateralPostTrade(uint256 delta, uint256 tokensHeld0, uint256 tokensHeld1, uint256 reserve0, uint256 reserve1,
+        uint256 fee1, uint256 fee2) external override virtual view returns(uint256 collateral) {
+        if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
+        if(fee1 == 0 || fee2 == 0) revert ZeroFees();
+
         uint256 soldToken = reserve1 * delta * fee2 / ((reserve0 - delta) * fee1);
+        require(soldToken <= tokensHeld1, "SOLD_TOKEN_GT_TOKENS_HELD1");
+
         tokensHeld1 -= soldToken;
         tokensHeld0 += delta;
         collateral = Math.sqrt(tokensHeld0 * tokensHeld1);
@@ -23,8 +37,12 @@ contract CPMMMath is ICPMMMath {
     /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
     /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
     /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
-    function calcDeltasForMaxLP(uint256 reserve0, uint256 reserve1, uint256 tokensHeld0,
-        uint256 tokensHeld1, uint256 fee1, uint256 fee2, uint8 decimals0) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasForMaxLP(uint256 tokensHeld0, uint256 tokensHeld1, uint256 reserve0, uint256 reserve1,
+        uint256 fee1, uint256 fee2, uint8 decimals0) external virtual override view returns(int256[] memory deltas) {
+        if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
+        if(fee1 == 0 || fee2 == 0) revert ZeroFees();
+        if(decimals0 == 0) revert ZeroDecimals();
         // fee = fee1 / fee2 => fee2 > fee1 always
         // a = fee * (B_hat + B)
         uint256 a;
@@ -66,11 +84,8 @@ contract CPMMMath is ICPMMMath {
                 det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 - 4*a*c)
-                if(leftVal > rightVal) {
-                    det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
-                } else {
-                    return deltas; // results in imaginary number
-                }
+                if(leftVal < rightVal) revert ComplexNumber();// results in imaginary number
+                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 
@@ -99,8 +114,12 @@ contract CPMMMath is ICPMMMath {
     /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
     /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
     /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
-    function calcDeltasToCloseSetRatio(uint256 liquidity, uint256 reserve0, uint256 reserve1, uint256 tokensHeld0,
-        uint256 tokensHeld1, uint256 ratio0, uint256 ratio1, uint8 decimals0, uint8 decimals1) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasToCloseSetRatio(uint256 liquidity, uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
+        uint256 reserve0, uint256 reserve1, uint8 decimals0, uint8 decimals1) external virtual override view returns(int256[] memory deltas) {
+        if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
+        if(ratio0 == 0 || ratio1 == 0) revert ZeroRatio();
+        if(decimals0 == 0 || decimals1 == 0) revert ZeroDecimals();
         // phi = liquidity / lastCFMMInvariant
         //     = L / L_hat
 
@@ -181,11 +200,8 @@ contract CPMMMath is ICPMMMath {
                 det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 - 4*a*c)
-                if(leftVal > rightVal) {
-                    det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
-                } else {
-                    return deltas; // results in imaginary number
-                }
+                if(leftVal < rightVal) revert ComplexNumber(); // results in imaginary number
+                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 
@@ -229,8 +245,11 @@ contract CPMMMath is ICPMMMath {
     /// @notice reserve and collateral have to be of the same token
     /// @notice if > 0 => have to buy token to have exact amount of token to close position
     /// @notice if < 0 => have to sell token to have exact amount of token to close position
-    function calcDeltasToClose(uint256 lastCFMMInvariant, uint256 reserve, uint256 collateral, uint256 liquidity)
+    function calcDeltasToClose(uint256 liquidity, uint256 lastCFMMInvariant, uint256 collateral, uint256 reserve)
         external virtual override pure returns(int256 delta) {
+        require(lastCFMMInvariant > 0, "ZERO_CFMM_INVARIANT");
+        require(collateral > 0, "ZERO_COLLATERAL");
+        if(reserve == 0) revert ZeroReserves();
 
         uint256 left = reserve * liquidity;
         uint256 right = collateral * lastCFMMInvariant;
@@ -245,8 +264,12 @@ contract CPMMMath is ICPMMMath {
     /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
     /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
     /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
-    function calcDeltasForRatio(uint256 ratio0, uint256 ratio1, uint256 reserve0, uint256 reserve1, uint256 tokensHeld0,
-        uint256 tokensHeld1, uint256 fee1, uint256 fee2) external virtual override view returns(int256[] memory deltas) {
+    function calcDeltasForRatio(uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
+        uint256 reserve0, uint256 reserve1, uint256 fee1, uint256 fee2) external virtual override view returns(int256[] memory deltas) {
+        if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
+        if(ratio0 == 0 || ratio1 == 0) revert ZeroRatio();
+        if(fee1 == 0 || fee2 == 0) revert ZeroFees();
         // a = -P*fee
         //   = -ratio1 * fee1 / (ratio0 * fee2)
         // must negate
@@ -301,11 +324,8 @@ contract CPMMMath is ICPMMMath {
             rightVal = 4 * rightVal;
             if(cIsNeg) {
                 //sqrt(b^2 - 4*a*c)
-                if(leftVal > rightVal) {
-                    det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
-                } else {
-                    return deltas; // results in imaginary number
-                }
+                if(leftVal < rightVal) revert ComplexNumber(); // results in imaginary number
+                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 + 4*a*c)
                 det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
@@ -353,8 +373,12 @@ contract CPMMMath is ICPMMMath {
     /// @notice This equation should always result in a recommendation to purchase token0 (a positive number)
     /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
     /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
-    function calcDeltasForWithdrawal(uint256 amount, uint256 tokensHeld0, uint256 tokensHeld1, uint256 reserve0, uint256 reserve1,
-        uint256 ratio0, uint256 ratio1, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+    function calcDeltasForWithdrawal(uint256 amount, uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
+        uint256 reserve0, uint256 reserve1, uint256 fee1, uint256 fee2) external virtual override pure returns(int256[] memory deltas) {
+        if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
+        if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
+        if(ratio0 == 0 || ratio1 == 0) revert ZeroRatio();
+        if(fee1 == 0 || fee2 == 0) revert ZeroFees();
         // a = 1
         bool bIsNeg;
         uint256 b;
@@ -394,11 +418,9 @@ contract CPMMMath is ICPMMMath {
             if(cIsNeg) {
                 // add
                 det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
-            } else if(leftVal > rightVal) {
-                // subtract
-                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             } else {
-                return deltas; // leads to imaginary number, don't trade
+                if(leftVal < rightVal) revert ComplexNumber(); // imaginary number
+                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 
