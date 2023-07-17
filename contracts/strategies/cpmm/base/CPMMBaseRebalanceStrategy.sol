@@ -35,10 +35,10 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint256 leftVal = uint256(reserves[0]) * uint256(tokensHeld[1]);
         uint256 rightVal = uint256(reserves[1]) * uint256(tokensHeld[0]);
         if(leftVal > rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, reserves[0], reserves[1], tokensHeld[0], tokensHeld[1], ratio[0], ratio[1], s.decimals[0], s.decimals[1]);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], ratio[0], ratio[1], s.decimals[0], s.decimals[1]);
             (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
         } else if(leftVal < rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, reserves[1], reserves[0], tokensHeld[1], tokensHeld[0], ratio[1], ratio[0], s.decimals[1], s.decimals[0]);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], ratio[1], ratio[0], s.decimals[1], s.decimals[0]);
             (deltas[0], deltas[1]) = (0, deltas[1]); // swap result, 1st root (index 0) is the only feasible trade
         }
     }
@@ -63,10 +63,10 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint256 rightVal = uint256(reserves[1]) * uint256(tokensHeld[0]);
 
         if(leftVal > rightVal) {
-            deltas = _calcDeltasForMaxLPStaticCall(reserves[0], reserves[1], tokensHeld[0], tokensHeld[1], s.decimals[0]);
+            deltas = _calcDeltasForMaxLPStaticCall(tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], s.decimals[0]);
             (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
         } else if(leftVal < rightVal) {
-            deltas = _calcDeltasForMaxLPStaticCall(reserves[1], reserves[0], tokensHeld[1], tokensHeld[0], s.decimals[1]);
+            deltas = _calcDeltasForMaxLPStaticCall(tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], s.decimals[1]);
             (deltas[0], deltas[1]) = (0, deltas[1]); // swap result, 1st root (index 0) is the only feasible trade
         }
     }
@@ -80,8 +80,7 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         deltas = new int256[](2);
 
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasToClose.selector, calcInvariant(address(0), reserves), reserves[collateralId],
-            tokensHeld[collateralId], liquidity));
+        calcDeltasToClose.selector, liquidity, calcInvariant(address(0), reserves), tokensHeld[collateralId], reserves[collateralId]));
         require(success && data.length >= 1);
 
         deltas[collateralId] = abi.decode(data, (int256));
@@ -96,31 +95,31 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint256 leftVal = uint256(ratio[1]) * uint256(tokensHeld[0]);
         uint256 rightVal = uint256(ratio[0]) * uint256(tokensHeld[1]);
         if(leftVal > rightVal) { // sell token0, buy token1 (need more token1)
-            deltas = _calcDeltasForRatioStaticCall(ratio[1], ratio[0], reserves[1], reserves[0], tokensHeld[1], tokensHeld[0]);
+            deltas = _calcDeltasForRatioStaticCall(ratio[1], ratio[0], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0]);
             (deltas[0], deltas[1]) = (0, deltas[0]); // swap result, 1st root (index 0) is the only feasible trade
         } else if(leftVal < rightVal) { // buy token0, sell token1 (need more token0)
-            deltas = _calcDeltasForRatioStaticCall(ratio[0], ratio[1], reserves[0], reserves[1], tokensHeld[0], tokensHeld[1]);
+            deltas = _calcDeltasForRatioStaticCall(ratio[0], ratio[1], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1]);
             deltas[1] = 0; // 1st quadratic root (index 0) is the only feasible trade
         } // otherwise no trade
     }
 
     /// @dev Function to perform static call to MathLib.calcDeltasForRatio function
     /// @param liquidity - liquidity debt that needs to be repaid after rebalancing loan's collateral quantities
-    /// @param reserve0 - reserve quantity of token0 in CFMM
-    /// @param reserve1 - reserve quantity of token1 in CFMM
-    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
-    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
     /// @param ratio0 - ratio parameter of token0
     /// @param ratio1 - ratio parameter of token1
+    /// @param tokensHeld0 - quantities of token0 available in loan as collateral
+    /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantity of token0 in CFMM
+    /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param decimals0 - decimals of token0
     /// @param decimals1 - decimals of token1
     /// @return deltas - quadratic roots (quantities to trade).
-    function _calcDeltasToCloseSetRatioStaticCall(uint256 liquidity, uint128 reserve0, uint128 reserve1,
-        uint128 tokensHeld0, uint128 tokensHeld1, uint256 ratio0, uint256 ratio1, uint8 decimals0, uint8 decimals1) internal virtual view returns(int256[] memory deltas) {
+    function _calcDeltasToCloseSetRatioStaticCall(uint256 liquidity, uint128 tokensHeld0, uint128 tokensHeld1,
+        uint128 reserve0, uint128 reserve1, uint256 ratio0, uint256 ratio1, uint8 decimals0, uint8 decimals1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasToCloseSetRatio.selector, liquidity, reserve0, reserve1, tokensHeld0, tokensHeld1, ratio0, ratio1, decimals0, decimals1));
+            calcDeltasToCloseSetRatio.selector, liquidity, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, decimals0, decimals1));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -143,18 +142,18 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     }
 
     /// @dev Function to perform static call to MathLib.calcDeltasForRatio function
-    /// @param reserve0 - reserve quantity of token0 in CFMM
-    /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param tokensHeld0 - quantities of token0 available in loan as collateral
     /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantity of token0 in CFMM
+    /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param decimals0 - decimals of token0
     /// @return deltas - quadratic roots (quantities to trade).
-    function _calcDeltasForMaxLPStaticCall(uint128 reserve0, uint128 reserve1,
-        uint128 tokensHeld0, uint128 tokensHeld1, uint8 decimals0) internal virtual view returns(int256[] memory deltas) {
+    function _calcDeltasForMaxLPStaticCall(uint128 tokensHeld0, uint128 tokensHeld1, uint128 reserve0, uint128 reserve1,
+        uint8 decimals0) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasForMaxLP.selector, reserve0, reserve1, tokensHeld0, tokensHeld1, tradingFee1, tradingFee2, decimals0));
+            calcDeltasForMaxLP.selector, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2, decimals0));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -163,17 +162,17 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     /// @dev Function to perform static call to MathLib.calcDeltasForRatio function
     /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
     /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
-    /// @param reserve0 - reserve quantity of token0 in CFMM
-    /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param tokensHeld0 - quantities of token0 available in loan as collateral
     /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantity of token0 in CFMM
+    /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @return deltas - quadratic roots (quantities to trade).
-    function _calcDeltasForRatioStaticCall(uint256 ratio0, uint256 ratio1, uint128 reserve0, uint128 reserve1,
-        uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
+    function _calcDeltasForRatioStaticCall(uint256 ratio0, uint256 ratio1, uint128 tokensHeld0, uint128 tokensHeld1,
+        uint128 reserve0, uint128 reserve1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForRatio.selector, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1, tradingFee1, tradingFee2));
+        calcDeltasForRatio.selector, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -184,12 +183,10 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint256[] calldata ratio) internal virtual override view returns(int256[] memory deltas) {
 
         if(amounts[0] > 0) {
-            deltas = _calcDeltasForWithdrawalStaticCall(amounts[0], ratio[0], ratio[1], reserves[0], reserves[1],
-                tokensHeld[0], tokensHeld[1]);
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[0], ratio[0], ratio[1], tokensHeld[0], tokensHeld[1], reserves[0], reserves[1]);
             (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 2nd root (index 1) is the only feasible trade
         } else if(amounts[1] > 0){
-            deltas = _calcDeltasForWithdrawalStaticCall(amounts[1],  ratio[1], ratio[0], reserves[1], reserves[0],
-                tokensHeld[1], tokensHeld[0]);
+            deltas = _calcDeltasForWithdrawalStaticCall(amounts[1], ratio[1], ratio[0], tokensHeld[1], tokensHeld[0], reserves[1], reserves[0]);
             deltas[0] = 0; // 2nd root (index 1) is the only feasible trade
         } // otherwise no trade
     }
@@ -198,18 +195,17 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     /// @param amount - amount of token0 requesting to withdraw
     /// @param ratio0 - numerator of desired ratio to maintain after withdrawal (token0)
     /// @param ratio1 - denominator of desired ratio to maintain after withdrawal (token1)
-    /// @param reserve0 - reserve quantities of token0 in CFMM
-    /// @param reserve1 - reserve quantities of token1 in CFMM
     /// @param tokensHeld0 - quantities of token0 available in loan as collateral
     /// @param tokensHeld1 - quantities of token1 available in loan as collateral
+    /// @param reserve0 - reserve quantities of token0 in CFMM
+    /// @param reserve1 - reserve quantities of token1 in CFMM
     /// @return deltas - quantities of reserve tokens to rebalance after withdrawal.
-    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint256 ratio0, uint256 ratio1,uint128 reserve0,
-        uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
+    function _calcDeltasForWithdrawalStaticCall(uint128 amount, uint256 ratio0, uint256 ratio1,uint128 tokensHeld0, uint128 tokensHeld1,
+        uint128 reserve0, uint128 reserve1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
         (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForWithdrawal.selector, amount, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1,
-            tradingFee1, tradingFee2));
+        calcDeltasForWithdrawal.selector, amount, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));

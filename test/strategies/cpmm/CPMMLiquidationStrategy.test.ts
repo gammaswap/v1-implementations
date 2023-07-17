@@ -824,9 +824,10 @@ describe("CPMMLiquidationStrategy", function () {
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
 
-      await expect(
-        strategy._liquidate(tokenId)
-      ).to.be.revertedWithCustomError(strategy, "NotFullLiquidation");
+      await expect(strategy._liquidate(tokenId)).to.be.revertedWithCustomError(
+        strategy,
+        "NotFullLiquidation"
+      );
 
       await (await strategyFee._liquidate(tokenId)).wait();
 
@@ -901,9 +902,10 @@ describe("CPMMLiquidationStrategy", function () {
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
 
-      await expect(
-        strategy._liquidate(tokenId)
-      ).to.be.revertedWithCustomError(strategy, "NotFullLiquidation");
+      await expect(strategy._liquidate(tokenId)).to.be.revertedWithCustomError(
+        strategy,
+        "NotFullLiquidation"
+      );
 
       await (await strategyFee._liquidate(tokenId)).wait();
 
@@ -978,9 +980,10 @@ describe("CPMMLiquidationStrategy", function () {
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
       const token1bal0 = await tokenBFee.balanceOf(owner.address);
 
-      await expect(
-        strategy._liquidate(tokenId)
-      ).to.be.revertedWithCustomError(strategy, "NotFullLiquidation");
+      await expect(strategy._liquidate(tokenId)).to.be.revertedWithCustomError(
+        strategy,
+        "NotFullLiquidation"
+      );
 
       await (await strategyFee._liquidate(tokenId)).wait();
 
@@ -1052,9 +1055,10 @@ describe("CPMMLiquidationStrategy", function () {
         await strategyFee.canLiquidate(loan2.liquidity, collateral)
       ).to.equal(true);
 
-      await expect(
-        strategy._liquidate(tokenId)
-      ).to.be.revertedWithCustomError(strategy, "NotEnoughCollateral");
+      await expect(strategy._liquidate(tokenId)).to.be.revertedWithCustomError(
+        strategy,
+        "NotEnoughCollateral"
+      );
 
       await (await tokenBFee.transfer(strategy.address, ONE.div(20))).wait(); // tree token A transfers at 1% cause a
       const token0bal0 = await tokenAFee.balanceOf(owner.address);
