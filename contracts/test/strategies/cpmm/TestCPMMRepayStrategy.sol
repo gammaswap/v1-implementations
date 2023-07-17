@@ -91,8 +91,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     function _increaseCollateral(uint256, uint256[] calldata) external virtual override returns(uint128[] memory collateral) {
     }
 
-    function _repayLiquidityWithLP(uint256 tokenId, uint256 payLiquidity, uint256 collateralId, address to) external virtual override returns(uint256 liquidityPaid) {
-        return 0;
+    function _repayLiquidityWithLP(uint256 tokenId, uint256 collateralId, address to) external virtual override returns(uint256 liquidityPaid, uint128[] memory tokensHeld) {
     }
 
     function _repayLiquiditySetRatio(uint256 tokenId, uint256 payLiquidity, uint256[] calldata fees, uint256[] calldata ratio) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
