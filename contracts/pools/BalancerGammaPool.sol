@@ -13,6 +13,7 @@ import "../interfaces/external/balancer/IVault.sol";
 import "../interfaces/strategies/IBalancerStrategy.sol";
 
 /// @title GammaPool implementation for Balancer Weighted Pool
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev This implementation is specifically for validating Balancer Weighted Pools
 /// @notice Implementation ID is unique to gammapool implementation
 contract BalancerGammaPool is GammaPool {
