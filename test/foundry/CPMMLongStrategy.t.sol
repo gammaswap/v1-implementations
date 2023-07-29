@@ -2995,4 +2995,85 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         vm.stopPrank();
     }
+
+    function calcDiff(uint256 num1, uint256 num2) internal view returns(uint256 diff) {
+        diff = num1 > num2 ? num1 - num2 : num2 - num1;
+    }
+
+    function testOriginationFee() public {
+        (uint128 reserve0, uint128 reserve1,) = IUniswapV2Pair(cfmm).getReserves();
+
+        uint256 price = uint256(reserve1) * (1e18) / reserve0;
+        assertGt(price, 0);
+
+        uint256 totalSupply = IERC20(cfmm).totalSupply();
+        assertGt(totalSupply, 0);
+
+        uint256 lastCFMMInvariant = Math.sqrt(uint256(reserve0) * reserve1);
+
+        uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
+        assertGt(lpTokens, 0);
+
+        usdc.mint(addr1, 100 * 1_000_000 * 1e18);
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan(0);
+        assertGt(tokenId, 0);
+
+        usdc.transfer(address(pool), 200_000 * 1e18);
+        weth.transfer(address(pool), 200 * 1e18);
+
+        IPoolViewer viewer = IPoolViewer(pool.viewer());
+
+        IGammaPool.PoolData memory poolData = viewer.getLatestPoolData(address(pool));
+
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        assertGt(liquidityBorrowed, 0);
+        assertGt(amounts[0], 0);
+        assertGt(amounts[1], 0);
+
+        assertEq(liquidityBorrowed, poolData.LP_INVARIANT/8);
+
+        vm.stopPrank();
+
+        poolData = viewer.getLatestPoolData(address(pool));
+
+        factory.setPoolOrigFeeParams(address(pool), 10, 0, 10, 100, 100);// setting base origination fee to 10, disable dynamic part
+
+        vm.startPrank(addr1);
+
+        (uint256 liquidityBorrowed1, uint256[] memory amounts1) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        uint256 fee = liquidityBorrowed * 10 / 10000;
+        assertEq(calcDiff(liquidityBorrowed1, liquidityBorrowed + fee)/1e2, 0);
+        assertEq(calcDiff(amounts1[0], amounts[0])/1e2,0);
+        assertEq(calcDiff(amounts1[1], amounts[1])/1e2,0);
+
+        vm.stopPrank();
+
+        poolData = viewer.getLatestPoolData(address(pool));
+
+        factory.setPoolOrigFeeParams(address(pool), 10, 0, 10, 24, 39);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
+
+        vm.startPrank(addr1);
+
+        vm.expectRevert(bytes4(keccak256("Margin()")));
+        pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        usdc.transfer(address(pool), 200_000 * 1e18);
+        weth.transfer(address(pool), 200 * 1e18);
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        (uint256 liquidityBorrowed2, uint256[] memory amounts2) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        assertGt(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee)/1e2, 0);
+        assertEq(calcDiff(amounts2[0], amounts[0])/1e2,0);
+        assertEq(calcDiff(amounts2[1], amounts[1])/1e2,0);
+
+        fee = liquidityBorrowed * 2510 / 10000;
+        assertEq(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee)/1e2, 0);
+
+        vm.stopPrank();
+    }
 }
