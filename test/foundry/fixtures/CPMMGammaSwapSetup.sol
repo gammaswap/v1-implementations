@@ -55,8 +55,8 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
 
         mathLib = new CPMMMath();
         viewer = new PoolViewer();
-        longStrategy = new CPMMBorrowStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
-        repayStrategy = new CPMMRepayStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 0, 997, 1000, baseRate, factor, maxApy);
+        longStrategy = new CPMMBorrowStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
+        repayStrategy = new CPMMRepayStrategy(address(mathLib), 8000, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
         shortStrategy = new CPMMShortStrategy(maxTotalApy, 2252571, baseRate, factor, maxApy);
         liquidationStrategy = new CPMMLiquidationStrategy(address(mathLib), 9500, 250, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
         batchLiquidationStrategy = new CPMMBatchLiquidationStrategy(address(mathLib), 9500, 250, maxTotalApy, 2252571, 997, 1000, baseRate, factor, maxApy);
@@ -74,6 +74,8 @@ contract CPMMGammaSwapSetup is UniswapSetup, TokensSetup {
         cfmm = createPair(tokens[0], tokens[1]);
 
         pool = CPMMGammaPool(factory.createPool(PROTOCOL_ID, cfmm, tokens, new bytes(0)));
+
+        factory.setPoolOrigFeeParams(address(pool), 0, 0, 10, 100, 100);// setting origination fees to zero
 
         approvePool();
     }

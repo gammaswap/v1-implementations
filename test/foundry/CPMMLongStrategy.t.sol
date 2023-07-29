@@ -1317,7 +1317,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(poolData2.LP_INVARIANT, poolData1.LP_INVARIANT);
         assertEq(poolData2.LP_TOKEN_BALANCE, poolData1.LP_TOKEN_BALANCE);
         assertEq(poolData2.LP_TOKEN_BORROWED, poolData1.LP_TOKEN_BORROWED);
-        assertEq(poolData2.utilizationRate, poolData1.utilizationRate);
+        assertGt(poolData2.utilizationRate, poolData1.utilizationRate);
         assertGt(poolData2.accFeeIndex, poolData1.accFeeIndex);
         assertEq(poolData2.currBlockNumber, 100000000);
         assertEq(poolData2.LAST_BLOCK_NUMBER, 1);
