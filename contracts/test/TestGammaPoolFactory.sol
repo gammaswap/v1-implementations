@@ -10,8 +10,6 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
     mapping(bytes32 => address) public override getPool; // all GS Pools addresses can be predetermined
     mapping(address => bytes32) public override getKey; // all GS Pools addresses can be predetermined
     uint16 public override fee = 10000; // Default value is 10,000 basis points or 10%
-    uint24 public override origMin = 10000; // Default value is 10,000 basis points or 10%
-    uint24 public override origMax = 10000; // Default value is 10,000 basis points or 10%
     address public override feeTo;
     address public override feeToSetter;
     address public owner;
@@ -21,6 +19,9 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
         feeTo = _feeToSetter;
         fee = _fee;
         owner = msg.sender;
+    }
+
+    function setPoolOrigFeeParams(address _pool, uint16 _origFee, uint8 _extSwapFee, uint8 _emaMultiplier, uint8 _minUtilRate, uint8 _maxUtilRate) external virtual override {
     }
 
     function createPool(uint16, address, address[] calldata, bytes calldata) external override virtual returns(address) {
@@ -50,16 +51,16 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
         return 0;
     }
 
-    function feeInfo() external virtual override view returns(address, uint256, uint256, uint256) {
-        return(feeTo, 0, 0, 0);
+    function feeInfo() external virtual override view returns(address, uint256) {
+        return(feeTo, 0);
     }
 
-    function setPoolFee(address _pool, address _to, uint16 _protocolFee, uint24 _origMinFee, uint24 _origMaxFee, bool _isSet) external override virtual {
+    function setPoolFee(address _pool, address _to, uint16 _protocolFee, bool _isSet) external override virtual {
 
     }
 
-    function getPoolFee(address) external override virtual view returns (address _to, uint256 _protocolFee, uint256 _origMinFee, uint256 _origMaxFee, bool _isSet) {
-        return(feeTo, 0, 0, 0, false);
+    function getPoolFee(address) external override virtual view returns (address _to, uint256 _protocolFee, bool _isSet) {
+        return(feeTo, 0, false);
     }
 
     function getPools(uint256 start, uint256 end) external virtual override view returns(address[] memory _pools) {

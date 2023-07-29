@@ -103,7 +103,7 @@ contract BalancerGammaPool is GammaPool {
     /// @dev See {IGammaPool-createLoan}
     function createLoan(uint16 refId) external lock virtual override returns(uint256 tokenId) {
         tokenId = s.createLoan(tokenCount, refId); // save gas using constant variable tokenCount
-        emit LoanCreated(msg.sender, tokenId);
+        emit LoanCreated(msg.sender, tokenId, refId);
     }
 
     /// @dev See {GammaPoolERC4626._calcInvariant}.

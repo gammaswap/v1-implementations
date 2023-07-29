@@ -47,11 +47,6 @@ abstract contract BalancerBaseLongStrategy is BaseLongStrategy, BalancerBaseStra
         return LTV_THRESHOLD;
     }
 
-    /// @dev See {BaseLongStrategy.originationFee}.
-    function originationFee() internal virtual override view returns(uint24) {
-        return origFee;
-    }
-
     /// @dev See {BaseLongStrategy.calcTokensToRepay}.
     function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view
         returns(uint256[] memory amounts) {

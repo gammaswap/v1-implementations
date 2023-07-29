@@ -26,7 +26,6 @@ describe("CPMMLiquidationStrategy", function () {
   let cpmmMath: any;
   let owner: any;
   let addr1: any;
-  let addr2: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -35,7 +34,7 @@ describe("CPMMLiquidationStrategy", function () {
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCPMMMath = await ethers.getContractFactory("TestCPMMMath");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner, addr1] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -330,7 +329,6 @@ describe("CPMMLiquidationStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.origFee()).to.equal(0);
       expect(await strategy.tradingFee1()).to.equal(997);
       expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);
