@@ -3040,7 +3040,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         poolData = viewer.getLatestPoolData(address(pool));
 
-        factory.setPoolOrigFeeParams(address(pool), 10, 0, 10, 100, 100);// setting base origination fee to 10, disable dynamic part
+        factory.setPoolParams(address(pool), 10, 0, 10, 100, 100, 250, 200);// setting base origination fee to 10, disable dynamic part
 
         vm.startPrank(addr1);
 
@@ -3055,7 +3055,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         poolData = viewer.getLatestPoolData(address(pool));
 
-        factory.setPoolOrigFeeParams(address(pool), 10, 0, 10, 24, 39);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
+        factory.setPoolParams(address(pool), 10, 0, 10, 24, 39, 250, 200);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
 
         vm.startPrank(addr1);
 

@@ -19,7 +19,7 @@ contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_,
-        uint80 maxApy_) CPMMBorrowStrategy(mathLib_, 8000, 1e19, 2252571, tradingFee1_, tradingFee2_, baseRate_,
+        uint80 maxApy_) CPMMBorrowStrategy(mathLib_, 1e19, 2252571, tradingFee1_, tradingFee2_, baseRate_,
         factor_, maxApy_) {
     }
 

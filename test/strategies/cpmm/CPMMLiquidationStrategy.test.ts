@@ -78,8 +78,6 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategy = await TestStrategy.deploy(
       cpmmMath.address,
-      9500,
-      250,
       maxTotalApy,
       2252571,
       997,
@@ -100,6 +98,8 @@ describe("CPMMLiquidationStrategy", function () {
         [18, 18]
       )
     ).wait();
+
+    await (await strategy.setPoolParams(250, 50)).wait();
   });
 
   async function createStrategy(tok0Fee: any, tok1Fee: any, feePerc: any) {
@@ -146,8 +146,6 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategyFee = await TestStrategy.deploy(
       cpmmMath.address,
-      9500,
-      250,
       maxTotalApy,
       2252571,
       997,
@@ -165,6 +163,8 @@ describe("CPMMLiquidationStrategy", function () {
         [18, 18]
       )
     ).wait();
+
+    await (await strategyFee.setPoolParams(250, 50)).wait();
   }
 
   async function createPair(token1: any, token2: any) {
@@ -335,9 +335,8 @@ describe("CPMMLiquidationStrategy", function () {
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
-      expect(await strategy.LIQUIDATION_FEE()).to.equal(250);
-      expect(await strategy.LTV_THRESHOLD()).to.equal(9500);
       expect(await strategy.liquidationFee()).to.equal(250);
+      expect(await strategy.ltvThreshold()).to.equal(9500);
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);

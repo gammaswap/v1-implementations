@@ -11,11 +11,10 @@ import "../base/CPMMBaseRebalanceStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract CPMMBorrowStrategy is CPMMBaseRebalanceStrategy, BorrowStrategy, RebalanceStrategy {
 
-    /// @dev Initializes the contract by setting `mathLib`, `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
-    /// @dev `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
-    constructor(address mathLib_, uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_,
-        uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMBaseRebalanceStrategy(mathLib_, ltvThreshold_, maxTotalApy_, blocksPerYear_,
+    /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`,
+    /// @dev `tradingFee2`, `baseRate`, `factor`, and `maxApy`
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_,
+        uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMBaseRebalanceStrategy(mathLib_, maxTotalApy_, blocksPerYear_,
         tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 

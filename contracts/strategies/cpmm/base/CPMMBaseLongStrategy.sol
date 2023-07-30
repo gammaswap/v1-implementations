@@ -13,9 +13,6 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     error BadDelta();
     error ZeroReserves();
 
-    /// @return LTV_THRESHOLD - max ltv ratio acceptable before a loan is eligible for liquidation
-    uint16 immutable public LTV_THRESHOLD;
-
     /// @return tradingFee1 - numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 immutable public tradingFee1;
 
@@ -25,13 +22,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return Returns the minimum liquidity borrowed amount.
     uint256 constant public MIN_BORROW = 1e3;
 
-    /// @dev Initializes the contract by setting `LTV_THRESHOLD`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
-    /// @dev `tradingFee1`, `tradingFee2`, `baseRate`, `factor`, and `maxApy`
-    constructor(uint16 ltvThreshold_, uint256 maxTotalApy_, uint256 blocksPerYear_,
-        uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
+    /// @dev `baseRate`, `factor`, and `maxApy`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_,
+        uint80 factor_, uint80 maxApy_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
 
-        LTV_THRESHOLD = ltvThreshold_;
         tradingFee1 = tradingFee1_;
         tradingFee2 = tradingFee2_;
     }
@@ -39,11 +34,6 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return Returns the minimum liquidity borrowed amount.
     function minBorrow() internal virtual override view returns(uint256) {
         return MIN_BORROW;
-    }
-
-    /// @dev See {BaseLongStrategy-_ltvThreshold}.
-    function _ltvThreshold() internal virtual override view returns(uint16) {
-        return LTV_THRESHOLD;
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.

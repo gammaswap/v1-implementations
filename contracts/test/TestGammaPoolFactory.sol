@@ -21,7 +21,8 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
         owner = msg.sender;
     }
 
-    function setPoolOrigFeeParams(address _pool, uint16 _origFee, uint8 _extSwapFee, uint8 _emaMultiplier, uint8 _minUtilRate, uint8 _maxUtilRate) external virtual override {
+    function setPoolParams(address _pool, uint16 _origFee, uint8 _extSwapFee, uint8 _emaMultiplier, uint8 _minUtilRate,
+        uint8 _maxUtilRate, uint8 _liquidationFee, uint8 _ltvThreshold) external virtual override {
     }
 
     function createPool(uint16, address, address[] calldata, bytes calldata) external override virtual returns(address) {
