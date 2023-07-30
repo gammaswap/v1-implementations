@@ -26,7 +26,6 @@ describe("CPMMLiquidationStrategy", function () {
   let cpmmMath: any;
   let owner: any;
   let addr1: any;
-  let addr2: any;
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
@@ -35,7 +34,7 @@ describe("CPMMLiquidationStrategy", function () {
     TestERC20 = await ethers.getContractFactory("TestERC20");
     TestCPMMMath = await ethers.getContractFactory("TestCPMMMath");
     TestERC20WithFee = await ethers.getContractFactory("TestERC20WithFee");
-    [owner, addr1, addr2] = await ethers.getSigners();
+    [owner, addr1] = await ethers.getSigners();
     UniswapV2Factory = new ethers.ContractFactory(
       UniswapV2FactoryJSON.abi,
       UniswapV2FactoryJSON.bytecode,
@@ -79,8 +78,6 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategy = await TestStrategy.deploy(
       cpmmMath.address,
-      9500,
-      250,
       maxTotalApy,
       2252571,
       997,
@@ -101,6 +98,8 @@ describe("CPMMLiquidationStrategy", function () {
         [18, 18]
       )
     ).wait();
+
+    await (await strategy.setPoolParams(250, 50)).wait();
   });
 
   async function createStrategy(tok0Fee: any, tok1Fee: any, feePerc: any) {
@@ -147,8 +146,6 @@ describe("CPMMLiquidationStrategy", function () {
 
     strategyFee = await TestStrategy.deploy(
       cpmmMath.address,
-      9500,
-      250,
       maxTotalApy,
       2252571,
       997,
@@ -166,6 +163,8 @@ describe("CPMMLiquidationStrategy", function () {
         [18, 18]
       )
     ).wait();
+
+    await (await strategyFee.setPoolParams(250, 50)).wait();
   }
 
   async function createPair(token1: any, token2: any) {
@@ -330,16 +329,14 @@ describe("CPMMLiquidationStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.origFee()).to.equal(0);
       expect(await strategy.tradingFee1()).to.equal(997);
       expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);
       const baseRate = ONE.div(100);
       const factor = ONE.mul(4).div(100);
       const maxApy = ONE.mul(75).div(100);
-      expect(await strategy.LIQUIDATION_FEE()).to.equal(250);
-      expect(await strategy.LTV_THRESHOLD()).to.equal(9500);
       expect(await strategy.liquidationFee()).to.equal(250);
+      expect(await strategy.ltvThreshold()).to.equal(9500);
       expect(await strategy.baseRate()).to.equal(baseRate);
       expect(await strategy.factor()).to.equal(factor);
       expect(await strategy.maxApy()).to.equal(maxApy);

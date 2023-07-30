@@ -73,7 +73,6 @@ describe("CPMMBorrowStrategy", function () {
 
     strategy = await TestStrategy.deploy(
       addr3.address,
-      0,
       997,
       1000,
       baseRate,
@@ -137,7 +136,6 @@ describe("CPMMBorrowStrategy", function () {
 
     strategyFee = await TestStrategy.deploy(
       addr3.address,
-      0,
       997,
       1000,
       baseRate,
@@ -235,7 +233,6 @@ describe("CPMMBorrowStrategy", function () {
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
     it("Check Init Params", async function () {
-      expect(await strategy.origFee()).to.equal(0);
       expect(await strategy.tradingFee1()).to.equal(997);
       expect(await strategy.tradingFee2()).to.equal(1000);
       const ONE = BigNumber.from(10).pow(18);

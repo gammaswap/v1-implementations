@@ -10,12 +10,22 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    constructor(address mathLib_, uint16 originationFee_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMRepayStrategy(mathLib_, 8000, 1e19, 2252571, originationFee_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
+        CPMMRepayStrategy(mathLib_, 1e19, 2252571, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
         s.initialize(_factory, _cfmm, 1, _tokens, _decimals);
+        s.origFee = 0;
+    }
+
+    function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
+        origFee = originationFee();
+        origFee = discount > origFee ? 0 : (origFee - discount);
+    }
+
+    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate, uint256 feeDivisor) internal virtual override view returns(uint256) {
+        return baseOrigFee;
     }
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {

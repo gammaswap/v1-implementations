@@ -1317,7 +1317,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(poolData2.LP_INVARIANT, poolData1.LP_INVARIANT);
         assertEq(poolData2.LP_TOKEN_BALANCE, poolData1.LP_TOKEN_BALANCE);
         assertEq(poolData2.LP_TOKEN_BORROWED, poolData1.LP_TOKEN_BORROWED);
-        assertEq(poolData2.utilizationRate, poolData1.utilizationRate);
+        assertGt(poolData2.utilizationRate, poolData1.utilizationRate);
         assertGt(poolData2.accFeeIndex, poolData1.accFeeIndex);
         assertEq(poolData2.currBlockNumber, 100000000);
         assertEq(poolData2.LAST_BLOCK_NUMBER, 1);
@@ -2994,5 +2994,173 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(wethBal1, wethBal0);
 
         vm.stopPrank();
+    }
+
+    function calcDiff(uint256 num1, uint256 num2) internal view returns(uint256 diff) {
+        diff = num1 > num2 ? num1 - num2 : num2 - num1;
+    }
+
+    function testOriginationFee() public {
+        (uint128 reserve0, uint128 reserve1,) = IUniswapV2Pair(cfmm).getReserves();
+
+        uint256 price = uint256(reserve1) * (1e18) / reserve0;
+        assertGt(price, 0);
+
+        uint256 totalSupply = IERC20(cfmm).totalSupply();
+        assertGt(totalSupply, 0);
+
+        uint256 lastCFMMInvariant = Math.sqrt(uint256(reserve0) * reserve1);
+
+        uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
+        assertGt(lpTokens, 0);
+
+        usdc.mint(addr1, 100 * 1_000_000 * 1e18);
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan(0);
+        assertGt(tokenId, 0);
+
+        usdc.transfer(address(pool), 200_000 * 1e18);
+        weth.transfer(address(pool), 200 * 1e18);
+
+        IPoolViewer viewer = IPoolViewer(pool.viewer());
+
+        IGammaPool.PoolData memory poolData = viewer.getLatestPoolData(address(pool));
+
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        (uint256 liquidityBorrowed, uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        assertGt(liquidityBorrowed, 0);
+        assertGt(amounts[0], 0);
+        assertGt(amounts[1], 0);
+
+        assertEq(liquidityBorrowed, poolData.LP_INVARIANT/8);
+
+        vm.stopPrank();
+
+        poolData = viewer.getLatestPoolData(address(pool));
+
+        factory.setPoolParams(address(pool), 10, 0, 10, 100, 100, 250, 200);// setting base origination fee to 10, disable dynamic part
+
+        vm.startPrank(addr1);
+
+        (uint256 liquidityBorrowed1, uint256[] memory amounts1) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        uint256 fee = liquidityBorrowed * 10 / 10000;
+        assertEq(calcDiff(liquidityBorrowed1, liquidityBorrowed + fee)/1e2, 0);
+        assertEq(calcDiff(amounts1[0], amounts[0])/1e2,0);
+        assertEq(calcDiff(amounts1[1], amounts[1])/1e2,0);
+
+        vm.stopPrank();
+
+        poolData = viewer.getLatestPoolData(address(pool));
+
+        factory.setPoolParams(address(pool), 10, 0, 10, 24, 39, 250, 200);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
+
+        vm.startPrank(addr1);
+
+        vm.expectRevert(bytes4(keccak256("Margin()")));
+        pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        usdc.transfer(address(pool), 200_000 * 1e18);
+        weth.transfer(address(pool), 200 * 1e18);
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        (uint256 liquidityBorrowed2, uint256[] memory amounts2) = pool.borrowLiquidity(tokenId, lpTokens/8, new uint256[](0));
+
+        assertGt(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee)/1e2, 0);
+        assertEq(calcDiff(amounts2[0], amounts[0])/1e2,0);
+        assertEq(calcDiff(amounts2[1], amounts[1])/1e2,0);
+
+        fee = liquidityBorrowed * 2510 / 10000;
+        assertEq(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee)/1e2, 0);
+
+        vm.stopPrank();
+    }
+
+    /// @dev Loan debt increases as time passes
+    function testEmaUtilRateUpdate() public {
+        uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
+        assertGt(lpTokens, 0);
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan(0);
+        assertGt(tokenId, 0);
+
+        usdc.transfer(address(pool), 130_000 * 1e18);
+        weth.transfer(address(pool), 130 * 1e18);
+
+        pool.increaseCollateral(tokenId, new uint256[](0));
+
+        IGammaPool.PoolData memory poolData = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData.BORROWED_INVARIANT, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED_PLUS_INTEREST, 0);
+        assertGt(poolData.LP_INVARIANT, 0);
+        assertGt(poolData.LP_TOKEN_BALANCE, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED, 0);
+        assertEq(poolData.utilizationRate, 0);
+        assertEq(poolData.accFeeIndex, 1e18);
+        assertEq(poolData.currBlockNumber, 1);
+        assertEq(poolData.LAST_BLOCK_NUMBER, 1);
+        assertEq(poolData.emaUtilRate, 0);
+
+        (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
+
+        IPoolViewer viewer = IPoolViewer(pool.viewer());
+
+        IGammaPool.LoanData memory loanData = viewer.loan(address(pool), tokenId);
+        assertEq(loanData.liquidity, liquidityBorrowed);
+        assertGt(loanData.tokensHeld[0], 0);
+        assertGt(loanData.tokensHeld[1], 0);
+
+        IGammaPool.PoolData memory poolData1 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData1.BORROWED_INVARIANT, poolData.BORROWED_INVARIANT);
+        assertGt(poolData1.LP_TOKEN_BORROWED_PLUS_INTEREST, poolData.LP_TOKEN_BORROWED_PLUS_INTEREST);
+        assertLt(poolData1.LP_INVARIANT, poolData.LP_INVARIANT);
+        assertLt(poolData1.LP_TOKEN_BALANCE, poolData.LP_TOKEN_BALANCE);
+        assertGt(poolData1.LP_TOKEN_BORROWED, poolData.LP_TOKEN_BORROWED);
+        assertGt(poolData1.utilizationRate, poolData.utilizationRate);
+        assertEq(poolData1.accFeeIndex, poolData.accFeeIndex);
+        assertEq(poolData1.currBlockNumber, 1);
+        assertEq(poolData1.LAST_BLOCK_NUMBER, 1);
+
+        assertGt(poolData1.emaUtilRate, 24000000);
+        assertLt(poolData1.emaUtilRate, 25000000);
+        vm.roll(100000000);  // After a while
+
+        loanData = viewer.loan(address(pool), tokenId);
+        assertGt(loanData.liquidity, liquidityBorrowed);
+        assertGt(loanData.tokensHeld[0], 0);
+        assertGt(loanData.tokensHeld[1], 0);
+
+        IGammaPool.PoolData memory poolData2 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData2.BORROWED_INVARIANT, poolData1.BORROWED_INVARIANT);
+        assertGt(poolData2.LP_TOKEN_BORROWED_PLUS_INTEREST, poolData1.LP_TOKEN_BORROWED_PLUS_INTEREST);
+        assertEq(poolData2.LP_INVARIANT, poolData1.LP_INVARIANT);
+        assertEq(poolData2.LP_TOKEN_BALANCE, poolData1.LP_TOKEN_BALANCE);
+        assertEq(poolData2.LP_TOKEN_BORROWED, poolData1.LP_TOKEN_BORROWED);
+        assertGt(poolData2.utilizationRate, poolData1.utilizationRate);
+        assertGt(poolData2.accFeeIndex, poolData1.accFeeIndex);
+        assertEq(poolData2.currBlockNumber, 100000000);
+        assertEq(poolData2.LAST_BLOCK_NUMBER, 1);
+        uint256 usdcBal = usdc.balanceOf(addr1);
+        uint256 wethBal = weth.balanceOf(addr1);
+        uint256 liquidityDebtGrowth = loanData.liquidity - liquidityBorrowed;
+
+        IGammaPool.PoolData memory poolData3 = viewer.getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate, 34000000);
+        assertLt(poolData3.emaUtilRate, 35000000);
+
+        pool.repayLiquidity(tokenId, loanData.liquidity, new uint256[](0), 1, addr1);
+
+        loanData = viewer.loan(address(pool), tokenId);
+        assertEq(loanData.liquidity, 0);
+        assertEq(loanData.tokensHeld[0], 0);
+        assertEq(loanData.tokensHeld[1], 0);
+        assertEq((usdc.balanceOf(addr1) - usdcBal)/1e3, 0);
+        assertEq((weth.balanceOf(addr1) - wethBal)/1e3, 0);
+
+        poolData3 = viewer.getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate, 30000000);
+        assertLt(poolData3.emaUtilRate, 31000000);
     }
 }
