@@ -136,4 +136,6 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
     }
 
+    function mintOrigFeeToDevs(uint256 origFeeInv, uint256 totalInvariant) internal virtual override {
+    }
 }

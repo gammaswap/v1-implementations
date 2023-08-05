@@ -3079,6 +3079,9 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
     /// @dev Loan debt increases as time passes
     function testEmaUtilRateUpdate() public {
+
+        factory.setPoolParams(address(pool), 10, 0, 10, 85, 99, 250, 200);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
+
         uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
         assertGt(lpTokens, 0);
 
@@ -3123,8 +3126,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(poolData1.currBlockNumber, 1);
         assertEq(poolData1.LAST_BLOCK_NUMBER, 1);
 
-        assertGt(poolData1.emaUtilRate, 24000000);
-        assertLt(poolData1.emaUtilRate, 25000000);
+        assertGt(poolData1.emaUtilRate, 25000000);
+        assertLt(poolData1.emaUtilRate, 25020000);
         vm.roll(100000000);  // After a while
 
         loanData = viewer.loan(address(pool), tokenId);
@@ -3142,6 +3145,9 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertGt(poolData2.accFeeIndex, poolData1.accFeeIndex);
         assertEq(poolData2.currBlockNumber, 100000000);
         assertEq(poolData2.LAST_BLOCK_NUMBER, 1);
+
+        assertEq(IPoolViewer(pool.viewer()).calcDynamicOriginationFee(address(pool), 0), 10);
+
         uint256 usdcBal = usdc.balanceOf(addr1);
         uint256 wethBal = weth.balanceOf(addr1);
         uint256 liquidityDebtGrowth = loanData.liquidity - liquidityBorrowed;
@@ -3162,5 +3168,18 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         poolData3 = viewer.getLatestPoolData(address(pool));
         assertGt(poolData3.emaUtilRate, 30000000);
         assertLt(poolData3.emaUtilRate, 31000000);
+
+        usdc.transfer(address(pool), 5 * 130_000 * 1e18);
+        weth.transfer(address(pool), 5 * 130 * 1e18);
+
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        pool.borrowLiquidity(tokenId, lpTokens/2, new uint256[](0));
+        pool.borrowLiquidity(tokenId, lpTokens/2, new uint256[](0));
+
+        poolData3 = viewer.getLatestPoolData(address(pool));
+        assertGt(poolData3.utilizationRate, 93 * 1e16);
+        assertLt(poolData3.utilizationRate, 94 * 1e16);
+
+        assertEq(IPoolViewer(pool.viewer()).calcDynamicOriginationFee(address(pool), 0), 166);
     }
 }

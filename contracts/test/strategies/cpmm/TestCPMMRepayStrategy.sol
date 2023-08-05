@@ -122,4 +122,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
 
     function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal virtual override {
     }
+
+    function mintOrigFeeToDevs(uint256 origFeeInv, uint256 totalInvariant) internal virtual override {
+    }
 }
