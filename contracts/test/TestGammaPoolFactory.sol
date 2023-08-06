@@ -23,7 +23,7 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
     }
 
     function setPoolParams(address _pool, uint16 _origFee, uint8 _extSwapFee, uint8 _emaMultiplier, uint8 _minUtilRate,
-        uint8 _maxUtilRate, uint8 _liquidationFee, uint8 _ltvThreshold) external virtual override {
+        uint8 _maxUtilRate, uint16 _feeDivisor, uint8 _liquidationFee, uint8 _ltvThreshold) external virtual override {
     }
 
     function pausePoolFunction(address _pool, uint8 _functionId) external override virtual returns(uint256 _functionIds) {
