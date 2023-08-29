@@ -1,6 +1,6 @@
 {
   "name": "@gammaswap/v1-implementations",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
   "main": "index.js",
@@ -56,7 +56,7 @@
     "eslint-plugin-prettier": "^3.4.1",
     "eslint-plugin-promise": "^5.2.0",
     "ethers": "^5.6.9",
-    "hardhat": "^2.12.7",
+    "hardhat": "^2.17.1",
     "hardhat-contract-sizer": "^2.6.1",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.7.1",
@@ -72,7 +72,7 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^3.0.1",
     "@balancer-labs/v2-vault": "^3.0.1",
-    "@gammaswap/v1-core": "^0.5.27",
+    "@gammaswap/v1-core": "^0.5.28",
     "@openzeppelin/contracts": "^4.7.0",
     "@prb/math": "^3.1.0"
   }

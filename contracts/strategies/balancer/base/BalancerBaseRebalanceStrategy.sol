@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.17;
+pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
 import "../../../interfaces/math/ICPMMMath.sol";
@@ -55,9 +55,9 @@ abstract contract BalancerBaseRebalanceStrategy is BaseRebalanceStrategy, Balanc
 
         deltas = new int256[](2);
 
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasToClose.selector, calcInvariant(address(0), reserves), reserves[collateralId],
-            tokensHeld[collateralId], liquidity));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasToClose, (calcInvariant(address(0), reserves), reserves[collateralId],
+            tokensHeld[collateralId], liquidity)));
         require(success && data.length >= 1);
 
         deltas[collateralId] = abi.decode(data, (int256));
@@ -92,8 +92,8 @@ abstract contract BalancerBaseRebalanceStrategy is BaseRebalanceStrategy, Balanc
         uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForRatio.selector, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1, tradingFee1, tradingFee2));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasForRatio, (ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1, tradingFee1, tradingFee2)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -127,9 +127,9 @@ abstract contract BalancerBaseRebalanceStrategy is BaseRebalanceStrategy, Balanc
         uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForWithdrawal.selector, amount, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1,
-            tradingFee1, tradingFee2));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasForWithdrawal, (amount, ratio0, ratio1, reserve0, reserve1, tokensHeld0, tokensHeld1,
+            tradingFee1, tradingFee2)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
