@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.17;
+pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
 import "../../../interfaces/math/ICPMMMath.sol";
@@ -78,8 +78,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
 
         deltas = new int256[](2);
 
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasToClose.selector, liquidity, calcInvariant(address(0), reserves), tokensHeld[collateralId], reserves[collateralId]));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasToClose, (liquidity, calcInvariant(address(0), reserves), tokensHeld[collateralId], reserves[collateralId])));
         require(success && data.length >= 1);
 
         deltas[collateralId] = abi.decode(data, (int256));
@@ -117,8 +117,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint128 reserve0, uint128 reserve1, uint256 ratio0, uint256 ratio1, uint8 decimals0, uint8 decimals1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasToCloseSetRatio.selector, liquidity, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, decimals0, decimals1));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+            calcDeltasToCloseSetRatio, (liquidity, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, decimals0, decimals1)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -133,8 +133,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     /// @return collateral - collateral after transaction in terms of liquidity invariant
     function _calcCollateralPostTradeStaticCall(uint256 delta, uint128 tokensHeld0, uint128 tokensHeld1, uint256 reserve0, uint256 reserve1) internal virtual view returns(uint256 collateral) {
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcCollateralPostTrade.selector, delta, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+            calcCollateralPostTrade, (delta, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2)));
         require(success && data.length >= 1);
 
         collateral = abi.decode(data, (uint256));
@@ -151,8 +151,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint8 decimals0) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-            calcDeltasForMaxLP.selector, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2, decimals0));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+            calcDeltasForMaxLP, (tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2, decimals0)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -170,8 +170,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint128 reserve0, uint128 reserve1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForRatio.selector, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasForRatio, (ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
@@ -203,8 +203,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint128 reserve0, uint128 reserve1) internal virtual view returns(int256[] memory deltas) {
 
         // always buys
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeWithSelector(ICPMMMath(mathLib).
-        calcDeltasForWithdrawal.selector, amount, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
+        calcDeltasForWithdrawal, (amount, ratio0, ratio1, tokensHeld0, tokensHeld1, reserve0, reserve1, tradingFee1, tradingFee2)));
         require(success && data.length >= 1);
 
         deltas = abi.decode(data, (int256[]));
