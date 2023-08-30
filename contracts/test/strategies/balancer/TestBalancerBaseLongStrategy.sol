@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract TestBalancerBaseLongStrategy is BalancerExternalRebalanceStrategy {
 
     using LibStorage for LibStorage.Storage;
-    using Math for uint;
+    using GSMath for uint;
 
     event LoanCreated(address indexed caller, uint256 tokenId);
     event ActualOutAmount(uint256 outAmount);

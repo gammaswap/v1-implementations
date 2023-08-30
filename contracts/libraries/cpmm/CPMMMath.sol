@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.21;
 
-import "@gammaswap/v1-core/contracts/libraries/Math.sol";
+import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
 import "../../interfaces/math/ICPMMMath.sol";
 
 /// @title Math library for CPMM strategies
@@ -28,7 +28,7 @@ contract CPMMMath is ICPMMMath {
 
         tokensHeld1 -= soldToken;
         tokensHeld0 += delta;
-        collateral = Math.sqrt(tokensHeld0 * tokensHeld1);
+        collateral = GSMath.sqrt(tokensHeld0 * tokensHeld1);
     }
 
     /// @dev See {ICPMMMath-calcDeltasForRatio}
@@ -81,11 +81,11 @@ contract CPMMMath is ICPMMMath {
             uint256 rightVal = 4 * a * c;
             if(cIsNeg) {
                 //sqrt(b^2 + 4*a*c)
-                det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 - 4*a*c)
                 if(leftVal < rightVal) revert ComplexNumber();// results in imaginary number
-                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 
@@ -140,7 +140,7 @@ contract CPMMMath is ICPMMMath {
         //   = [ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ] / lastCFMMInvariant
         //   = [ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ] * invDecimals / lastCFMMInvariant
         {
-            uint256 lastCFMMInvariant = Math.sqrt(reserve0 * reserve1);
+            uint256 lastCFMMInvariant = GSMath.sqrt(reserve0 * reserve1);
             a = (ratio1 * (lastCFMMInvariant + liquidity) / ratio0);
             a = a * (10**((decimals0 + decimals0)/2)) / lastCFMMInvariant;
 
@@ -177,7 +177,7 @@ contract CPMMMath is ICPMMMath {
         {
             c = reserve0 * ratio1 / ratio0;
             (cIsNeg,c) = reserve1 > c ? (false,reserve1 - c) : (true, c - reserve1);
-            c = c * liquidity / Math.sqrt(reserve0 * reserve1);
+            c = c * liquidity / GSMath.sqrt(reserve0 * reserve1);
             if(cIsNeg) {
                 c = c + tokensHeld1;
                 uint256 leftVal = tokensHeld0 * ratio1 / ratio0;
@@ -197,11 +197,11 @@ contract CPMMMath is ICPMMMath {
             uint256 rightVal = 4 * a * c / (10 ** decimals0);
             if(cIsNeg) {
                 //sqrt(b^2 + 4*a*c)
-                det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 - 4*a*c)
                 if(leftVal < rightVal) revert ComplexNumber(); // results in imaginary number
-                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 
@@ -325,10 +325,10 @@ contract CPMMMath is ICPMMMath {
             if(cIsNeg) {
                 //sqrt(b^2 - 4*a*c)
                 if(leftVal < rightVal) revert ComplexNumber(); // results in imaginary number
-                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             } else {
                 //sqrt(b^2 + 4*a*c)
-                det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             }
         }
 
@@ -417,10 +417,10 @@ contract CPMMMath is ICPMMMath {
             uint256 rightVal = 4*c; // previously expanded
             if(cIsNeg) {
                 // add
-                det = Math.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
             } else {
                 if(leftVal < rightVal) revert ComplexNumber(); // imaginary number
-                det = Math.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
+                det = GSMath.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
             }
         }
 

@@ -6,7 +6,7 @@ import "../../../strategies/cpmm/rebalance/CPMMExternalRebalanceStrategy.sol";
 contract TestCPMMExternalRebalanceStrategy is CPMMExternalRebalanceStrategy {
 
     using LibStorage for LibStorage.Storage;
-    using Math for uint;
+    using GSMath for uint;
 
     error RebalanceExternally();
     error CheckLPTokens();

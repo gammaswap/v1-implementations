@@ -4,7 +4,7 @@ pragma solidity >=0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gammaswap/v1-core/contracts/rates/LogDerivativeRateModel.sol";
 import "@gammaswap/v1-core/contracts/strategies/base/BaseStrategy.sol";
-import "@gammaswap/v1-core/contracts/libraries/Math.sol";
+import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
 import "../../../interfaces/external/balancer/IVault.sol";
 import "../../../interfaces/external/balancer/IWeightedPool.sol";
 import "../../../interfaces/strategies/IBalancerStrategy.sol";

@@ -1399,7 +1399,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         factory.setRateParams(address(pool), abi.encode(params), false);
 
         loanData2 = viewer.loan(address(pool), tokenId);
-        assertEq(loanData2.liquidity, loanData.liquidity);/**/
+        assertEq(loanData2.liquidity, loanData.liquidity);
     }
 
     /// @dev increase collateral without keeping ratio
@@ -1425,8 +1425,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = uint256(reserve0) * num1 / 100000;
         ratio[1] = uint256(reserve1) * num2 / 100000;
 
-        uint256 liquidity = Math.sqrt(ratio[0] * ratio[1]);
-        lpTokens = liquidity * lpTokens / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 liquidity = GSMath.sqrt(ratio[0] * ratio[1]);
+        lpTokens = liquidity * lpTokens / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
 
         (uint256 liquidityBorrowed,uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/10, ratio);
         assertGt(liquidityBorrowed, 0);
@@ -1482,8 +1482,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = uint256(reserve0) * num1 / 100000;
         ratio[1] = uint256(reserve1) * num2 / 100000;
 
-        uint256 cfmmInvariant = Math.sqrt(uint256(reserve0) * uint256(reserve1));
-        uint256 liquidity = Math.sqrt(ratio[0] * ratio[1]);
+        uint256 cfmmInvariant = GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 liquidity = GSMath.sqrt(ratio[0] * ratio[1]);
         lpTokens = liquidity * lpTokens / cfmmInvariant;
 
         uint256 liquidityBorrowed;
@@ -1544,7 +1544,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = reserve0 * num1 / 100000;
         ratio[1] = reserve1 * num2 / 100000;
 
-        lpTokens = Math.sqrt(ratio[0] * ratio[1]) * lpTokens / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        lpTokens = GSMath.sqrt(ratio[0] * ratio[1]) * lpTokens / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
         uint256 liquidityBorrowed;
         {
             uint256[] memory amounts;
@@ -1610,7 +1610,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = reserve0 * num1 / 100000;
         ratio[1] = reserve1 * num2 / 100000;
 
-        lpTokens = Math.sqrt(ratio[0] * ratio[1]) * lpTokens / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        lpTokens = GSMath.sqrt(ratio[0] * ratio[1]) * lpTokens / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
 
         (uint256 liquidityBorrowed,uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/10, ratio);
         assertGt(liquidityBorrowed, 0);
@@ -1658,8 +1658,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = uint256(reserve0) * num1 / 100000;
         ratio[1] = uint256(reserve1) * num2 / 100000;
 
-        uint256 cfmmInvariant = Math.sqrt(uint256(reserve0) * uint256(reserve1));
-        uint256 liquidity = Math.sqrt(ratio[0] * ratio[1]);
+        uint256 cfmmInvariant = GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 liquidity = GSMath.sqrt(ratio[0] * ratio[1]);
         lpTokens = liquidity * lpTokens / cfmmInvariant;
 
         uint256 liquidityBorrowed;
@@ -1721,8 +1721,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = uint256(reserve0) * num1 / 100000;
         ratio[1] = uint256(reserve1) * num2 / 100000;
 
-        uint256 cfmmInvariant = Math.sqrt(uint256(reserve0) * uint256(reserve1));
-        uint256 liquidity = Math.sqrt(ratio[0] * ratio[1]);
+        uint256 cfmmInvariant = GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 liquidity = GSMath.sqrt(ratio[0] * ratio[1]);
         lpTokens = liquidity * lpTokens / cfmmInvariant;
 
         (uint256 liquidityBorrowed,uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/10, ratio);
@@ -1778,7 +1778,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = reserve0 * num1 / 100000;
         ratio[1] = reserve1 * num2 / 100000;
 
-        lpTokens = Math.sqrt(ratio[0] * ratio[1]) * lpTokens / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        lpTokens = GSMath.sqrt(ratio[0] * ratio[1]) * lpTokens / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
 
         (uint256 liquidityBorrowed,uint256[] memory amounts) = pool.borrowLiquidity(tokenId, lpTokens/10, ratio);
         assertGt(liquidityBorrowed, 0);
@@ -1845,8 +1845,8 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         ratio[0] = uint256(reserve0) * num1 / 100000;
         ratio[1] = uint256(reserve1) * num2 / 100000;
 
-        uint256 liquidity = Math.sqrt(ratio[0] * ratio[1]);
-        lpTokens = liquidity * lpTokens / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 liquidity = GSMath.sqrt(ratio[0] * ratio[1]);
+        lpTokens = liquidity * lpTokens / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
 
         uint256 liquidityBorrowed;
         {
@@ -2061,7 +2061,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertGt(price1, 0);
         assertGt(price1,price);
 
-        uint256 lpTokenDebt = loanData.liquidity * IERC20(cfmm).totalSupply() / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 lpTokenDebt = loanData.liquidity * IERC20(cfmm).totalSupply() / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
         IERC20(cfmm).transfer(address(pool), lpTokenDebt / 2);
 
         uint256 liquidityPaid;
@@ -2140,7 +2140,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertGt(price1, 0);
         assertGt(price1,price);
 
-        uint256 lpTokenDebt = loanData.liquidity * IERC20(cfmm).totalSupply() / Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 lpTokenDebt = loanData.liquidity * IERC20(cfmm).totalSupply() / GSMath.sqrt(uint256(reserve0) * uint256(reserve1));
         IERC20(cfmm).transfer(address(pool), lpTokenDebt / 2);
 
         uint256 liquidityPaid;
@@ -3009,7 +3009,7 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         uint256 totalSupply = IERC20(cfmm).totalSupply();
         assertGt(totalSupply, 0);
 
-        uint256 lastCFMMInvariant = Math.sqrt(uint256(reserve0) * reserve1);
+        uint256 lastCFMMInvariant = GSMath.sqrt(uint256(reserve0) * reserve1);
 
         uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
         assertGt(lpTokens, 0);

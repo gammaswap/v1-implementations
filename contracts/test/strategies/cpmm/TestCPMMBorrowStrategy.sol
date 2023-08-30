@@ -6,7 +6,7 @@ import "../../../strategies/cpmm/lending/CPMMBorrowStrategy.sol";
 contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
-    using Math for uint;
+    using GSMath for uint;
 
     error RebalanceExternally();
     error CheckLPTokens();
