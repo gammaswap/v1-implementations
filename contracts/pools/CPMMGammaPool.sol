@@ -5,7 +5,7 @@ import "@gammaswap/v1-core/contracts/base/GammaPool.sol";
 import "@gammaswap/v1-core/contracts/base/GammaPoolExternal.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
-import "@gammaswap/v1-core/contracts/libraries/Math.sol";
+import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
 
 /// @title GammaPool implementation for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
@@ -47,7 +47,7 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
 
     /// @dev See {GammaPoolERC4626._calcInvariant}.
     function _calcInvariant(uint128[] memory tokensHeld) internal virtual override view returns(uint256) {
-        return Math.sqrt(uint256(tokensHeld[0]) * tokensHeld[1]);
+        return GSMath.sqrt(uint256(tokensHeld[0]) * tokensHeld[1]);
     }
 
     /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.

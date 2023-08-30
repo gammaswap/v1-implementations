@@ -7,7 +7,7 @@ import "../../../strategies/cpmm/liquidation/CPMMLiquidationStrategy.sol";
 contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
-    using Math for uint;
+    using GSMath for uint;
     error ExcessiveBorrowing();
 
     event LoanCreated(address indexed caller, uint256 tokenId);

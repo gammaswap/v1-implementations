@@ -27,7 +27,7 @@ contract CPMMBatchLiquidationStrategy is CPMMBaseRebalanceStrategy, BatchLiquida
         // [A * reserve1 * sqrt(reserve0) + B * reserve0 * sqrt(reserve0)] / [2 * reserve0 * sqrt(reserve1)]
         // [A * sqrt(reserve1) * sqrt(reserve0)] / [2 * reserve0] + [B * reserve0] / [2 * sqrt(reserve0) * sqrt(reserve1)]
         // (A * L_hat / reserve0 + B * reserve0 / L_hat) / 2
-        uint256 lastCFMMInvariant = Math.sqrt(uint256(reserves[0]) * reserves[1]);
+        uint256 lastCFMMInvariant = GSMath.sqrt(uint256(reserves[0]) * reserves[1]);
         uint256 leftVal = uint256(tokensHeld[0]) * lastCFMMInvariant / reserves[0];
         uint256 rightVal = uint256(tokensHeld[1]) * reserves[0] / lastCFMMInvariant;
         return (leftVal + rightVal) / 2;
