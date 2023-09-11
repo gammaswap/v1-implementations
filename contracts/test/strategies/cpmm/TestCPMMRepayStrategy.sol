@@ -24,7 +24,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
         origFee = discount > origFee ? 0 : (origFee - discount);
     }
 
-    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate, uint256 feeDivisor) internal virtual override view returns(uint256) {
+    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {
         return baseOrigFee;
     }
 
