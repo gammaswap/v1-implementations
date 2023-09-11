@@ -3,7 +3,6 @@
   "version": "0.5.16",
   "description": "Pool and strategies implementation contracts for GammaSwap",
   "homepage": "https://gammaswap.com",
-  "main": "index.js",
   "scripts": {
     "hardhat": "hardhat",
     "test": "hardhat test",
