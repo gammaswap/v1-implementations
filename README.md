@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/gammaswap/v1-implementations/actions/workflows/main.yml">
-    <img src="https://github.com/gammaswap/v1-core/actions/workflows/main.yml/badge.svg?branch=main" alt="Compile/Test/Publish">
+    <img src="https://github.com/gammaswap/v1-implementations/actions/workflows/main.yml/badge.svg?branch=main" alt="Compile/Test/Publish">
   </a>
 </p>
 
