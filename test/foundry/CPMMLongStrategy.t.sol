@@ -3148,7 +3148,6 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
 
         poolData = viewer.getLatestPoolData(address(pool));
         fee = liquidityBorrowed * 17 / 10000; // linear origination fee 17 basis points
-        console.log(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee));
         assertEq(calcDiff(liquidityBorrowed2, liquidityBorrowed + fee)/1e2, 0);
 
         vm.stopPrank();
@@ -3258,5 +3257,119 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertLt(poolData3.utilizationRate, 94 * 1e16);
 
         assertEq(IPoolViewer(pool.viewer()).calcDynamicOriginationFee(address(pool), 0), 156);
+    }
+
+    /// @dev Loan debt increases as time passes
+    function testEmaUtilRateBlocksUpdate() public {
+        factory.setPoolParams(address(pool), 10, 0, 10, 85, 100, 16384, 250, 200);// setting base origination fee to 10, enable dynamic part from 24% to 39% utilRate
+
+        uint256 lpTokens = IERC20(cfmm).balanceOf(address(pool));
+        assertGt(lpTokens, 0);
+
+        vm.startPrank(addr1);
+        uint256 tokenId = pool.createLoan(0);
+        assertGt(tokenId, 0);
+
+        usdc.transfer(address(pool), 130_000 * 1e18);
+        weth.transfer(address(pool), 130 * 1e18);
+        pool.increaseCollateral(tokenId, new uint256[](0));
+
+        IGammaPool.PoolData memory poolData = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData.BORROWED_INVARIANT, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED_PLUS_INTEREST, 0);
+        assertGt(poolData.LP_INVARIANT, 0);
+        assertGt(poolData.LP_TOKEN_BALANCE, 0);
+        assertEq(poolData.LP_TOKEN_BORROWED, 0);
+        assertEq(poolData.utilizationRate, 0);
+        assertEq(poolData.accFeeIndex, 1e18);
+        assertEq(poolData.currBlockNumber, 1);
+        assertEq(poolData.LAST_BLOCK_NUMBER, 1);
+        assertEq(poolData.emaUtilRate, 0);
+
+        (uint256 liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
+
+        IPoolViewer viewer = IPoolViewer(pool.viewer());
+
+        IGammaPool.LoanData memory loanData = viewer.loan(address(pool), tokenId);
+        assertEq(loanData.liquidity, liquidityBorrowed);
+        assertGt(loanData.tokensHeld[0], 0);
+        assertGt(loanData.tokensHeld[1], 0);
+
+        IGammaPool.PoolData memory poolData1 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData1.BORROWED_INVARIANT, poolData.BORROWED_INVARIANT);
+        assertGt(poolData1.LP_TOKEN_BORROWED_PLUS_INTEREST, poolData.LP_TOKEN_BORROWED_PLUS_INTEREST);
+        assertLt(poolData1.LP_INVARIANT, poolData.LP_INVARIANT);
+        assertLt(poolData1.LP_TOKEN_BALANCE, poolData.LP_TOKEN_BALANCE);
+        assertGt(poolData1.LP_TOKEN_BORROWED, poolData.LP_TOKEN_BORROWED);
+        assertGt(poolData1.utilizationRate, poolData.utilizationRate);
+        assertEq(poolData1.accFeeIndex, poolData.accFeeIndex);
+        assertEq(poolData1.currBlockNumber, 1);
+        assertEq(poolData1.LAST_BLOCK_NUMBER, 1);
+
+        assertGt(poolData1.emaUtilRate, 250000);
+        assertLt(poolData1.emaUtilRate, 250200);
+
+        assertEq(poolData1.emaUtilRate, poolData1.utilizationRate/1e12);
+
+        vm.roll(2);
+        usdc.transfer(address(pool), 130_000 * 1e18);
+        weth.transfer(address(pool), 130 * 1e18);
+        pool.increaseCollateral(tokenId, new uint256[](0));
+        (liquidityBorrowed,) = pool.borrowLiquidity(tokenId, lpTokens/4, new uint256[](0));
+
+        IGammaPool.PoolData memory poolData2 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertLt(poolData2.emaUtilRate/1e4,poolData2.utilizationRate/1e16);
+
+        vm.roll(51);
+        IGammaPool.PoolData memory poolData3 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData3.utilizationRate/1e16,poolData2.utilizationRate/1e16);
+        assertGt(poolData3.emaUtilRate/1e4,poolData2.emaUtilRate/1e4);
+        assertLt(poolData3.emaUtilRate/1e4,poolData3.utilizationRate/1e16);
+
+        pool.updatePool(0);
+
+        IGammaPool.PoolData memory poolData4 = pool.getPoolData();
+        assertEq(poolData3.emaUtilRate, poolData4.emaUtilRate);
+
+        IGammaPool.PoolData memory poolData5 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData5.utilizationRate,poolData3.utilizationRate);
+        assertGt(poolData5.emaUtilRate/1e4,poolData4.emaUtilRate/1e4);
+        assertLt(poolData5.emaUtilRate/1e4,poolData5.utilizationRate/1e16);
+
+        vm.roll(151);
+        IGammaPool.PoolData memory poolData6 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData6.utilizationRate/1e16,poolData5.utilizationRate/1e16);
+        assertGt(poolData6.emaUtilRate/1e4,poolData5.emaUtilRate/1e4);
+        assertEq(poolData6.emaUtilRate,poolData5.utilizationRate/1e12);
+
+        pool.updatePool(0);
+        poolData1 = pool.getPoolData();
+        assertEq(poolData1.emaUtilRate,poolData6.emaUtilRate);
+        poolData2 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData2.utilizationRate,poolData6.utilizationRate);
+        assertEq(poolData2.emaUtilRate,poolData1.emaUtilRate);
+        assertEq(poolData1.emaUtilRate,poolData2.utilizationRate/1e12);
+
+        vm.roll(152);
+        pool.repayLiquidity(tokenId, lpTokens/4, new uint256[](0), 1, address(0));
+
+        poolData3 = pool.getPoolData();
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate, poolData4.emaUtilRate);
+        assertGt(poolData4.emaUtilRate/1e4 - 20,poolData4.utilizationRate/1e16);
+
+        vm.roll(253);
+
+        poolData3 = pool.getPoolData();
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate,poolData4.emaUtilRate);
+        assertEq(poolData4.emaUtilRate,poolData4.utilizationRate/1e12);
+
+        pool.updatePool(0);
+
+        poolData3 = pool.getPoolData();
+        assertEq(poolData3.emaUtilRate,poolData4.emaUtilRate);
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData4.emaUtilRate/10,poolData4.utilizationRate/1e13);
     }
 }
