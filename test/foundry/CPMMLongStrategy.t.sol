@@ -3343,11 +3343,33 @@ contract CPMMLongStrategyTest is CPMMGammaSwapSetup {
         assertEq(poolData6.emaUtilRate,poolData5.utilizationRate/1e12);
 
         pool.updatePool(0);
-        IGammaPool.PoolData memory poolData7 = pool.getPoolData();
-        assertEq(poolData7.emaUtilRate, poolData6.emaUtilRate);
-        IGammaPool.PoolData memory poolData8 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
-        assertEq(poolData8.utilizationRate,poolData6.utilizationRate);
-        assertEq(poolData8.emaUtilRate,poolData7.emaUtilRate);
-        assertEq(poolData7.emaUtilRate,poolData8.utilizationRate/1e12);
+        poolData1 = pool.getPoolData();
+        assertEq(poolData1.emaUtilRate,poolData6.emaUtilRate);
+        poolData2 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData2.utilizationRate,poolData6.utilizationRate);
+        assertEq(poolData2.emaUtilRate,poolData1.emaUtilRate);
+        assertEq(poolData1.emaUtilRate,poolData2.utilizationRate/1e12);
+
+        vm.roll(152);
+        pool.repayLiquidity(tokenId, lpTokens/4, new uint256[](0), 1, address(0));
+
+        poolData3 = pool.getPoolData();
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate, poolData4.emaUtilRate);
+        assertGt(poolData4.emaUtilRate/1e4 - 20,poolData4.utilizationRate/1e16);
+
+        vm.roll(253);
+
+        poolData3 = pool.getPoolData();
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertGt(poolData3.emaUtilRate,poolData4.emaUtilRate);
+        assertEq(poolData4.emaUtilRate,poolData4.utilizationRate/1e12);
+
+        pool.updatePool(0);
+
+        poolData3 = pool.getPoolData();
+        assertEq(poolData3.emaUtilRate,poolData4.emaUtilRate);
+        poolData4 = IPoolViewer(pool.viewer()).getLatestPoolData(address(pool));
+        assertEq(poolData4.emaUtilRate/10,poolData4.utilizationRate/1e13);
     }
 }
