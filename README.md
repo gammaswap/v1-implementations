@@ -19,6 +19,8 @@ The CPMMMath contract can be used as a library to calculate quantities to trade 
 
 ## Steps to Run GammaSwap Tests Locally
 
+All tests are found in v1-liquidator repository. If you add new tests here, to run them do the following
+
 1. Run `yarn` to install GammaSwap dependencies
 2. Run `yarn test` to run hardhat tests
 3. Run `yarn fuzz` to run foundry tests (Need foundry binaries installed locally)
