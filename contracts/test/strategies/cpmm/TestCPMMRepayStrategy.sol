@@ -104,7 +104,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     function _repayLiquidityWithLP(uint256 tokenId, uint256 collateralId, address to) external virtual override returns(uint256 liquidityPaid, uint128[] memory tokensHeld) {
     }
 
-    function _repayLiquiditySetRatio(uint256 tokenId, uint256 payLiquidity, uint256[] calldata fees, uint256[] calldata ratio) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
+    function _repayLiquiditySetRatio(uint256 tokenId, uint256 payLiquidity, uint256[] calldata ratio) external virtual override returns(uint256 liquidityPaid, uint256[] memory amounts) {
     }
 
     function _calcDeltasForRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256[] calldata ratio) internal override(CPMMBaseRebalanceStrategy, BaseRebalanceStrategy) virtual view returns(int256[] memory deltas) {
