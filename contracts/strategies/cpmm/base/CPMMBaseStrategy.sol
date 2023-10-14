@@ -40,6 +40,12 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
         return BLOCKS_PER_YEAR;
     }
 
+
+    /// @dev See {BaseStrategy-syncCFMM}.
+    function syncCFMM(address cfmm) internal virtual override {
+        ICPMM(cfmm).sync();
+    }
+
     /// @dev See {BaseStrategy-getReserves}.
     function getReserves(address cfmm) internal virtual override view returns(uint128[] memory reserves) {
         reserves = new uint128[](2);

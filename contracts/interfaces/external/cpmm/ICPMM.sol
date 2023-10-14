@@ -33,4 +33,7 @@ interface ICPMM {
     /// @param to - address that will receive output token quantity
     /// @param data - used for flash loan trades
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
+
+    /// @dev Synchronize token balances in CFMM with the amount of balances being tracked by the CFMM
+    function sync() external;
 }
