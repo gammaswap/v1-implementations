@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
 import "../../../strategies/cpmm/liquidation/CPMMLiquidationStrategy.sol";
 
-contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrategy {
+contract TestCPMMLiquidationWithLPStrategy is CPMMLiquidationStrategy, BaseBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
     using GSMath for uint;
@@ -139,6 +139,6 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
     function mintOrigFeeToDevs(uint256 origFeeInv, uint256 totalInvariant) internal virtual override {
     }
 
-    function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256 loanLiquidity, uint128[] memory refund) {
+    function _liquidate(uint256 tokenId) external override virtual returns(uint256 loanLiquidity, uint256 refund) {
     }
 }
