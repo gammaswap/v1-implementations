@@ -13,6 +13,8 @@ This is the repository for the implementation smart contracts of the GammaSwap V
 
 This repository contains concrete implementations of GammaPools and their strategies using the abstract contracts from v1-core
 
+The implementation contracts are what are used to create blueprints of different GammaPools for different protocols (e.g. UniswapV2, Balancer, etc.)
+
 The current implementation contracts in existence are for UniswapV2 and forks of UniswapV2.
 
 The CPMMMath contract can be used as a library to calculate quantities to trade in GammaPool to rebalance a position's collateral for UniswapV2 and its forks
