@@ -31,6 +31,45 @@ contract CPMMMath is ICPMMMath {
         collateral = GSMath.sqrt(tokensHeld0 * tokensHeld1);
     }
 
+    function bitLength(uint256 n) public pure returns (uint256 length) {
+        length = 0;
+        while (n > 0) {
+            length++;
+            n >>= 1;
+        }
+    }
+
+    function lengthDifference(uint256 a, uint256 b) public pure returns (uint256) {
+        uint256 lengthA = bitLength(a);
+        uint256 lengthB = bitLength(b);
+        if(lengthA > lengthB) {
+            return lengthA - lengthB;
+        }
+        return lengthB - lengthA;
+    }
+
+    function calcDeterminant(uint256 a, uint256 b, uint256 c, bool cIsNeg) internal virtual view returns(uint256 det) {
+        // sqrt(b^2 - 4*a*c) because a is positive
+        uint256 maxNum = type(uint112).max;
+        uint256 factor = 1;
+        if(a >= maxNum || b >= maxNum || c >= maxNum) {
+            uint256 _maxNum = GSMath.max(a, GSMath.max(b, c));
+            uint256 bitDiff = ((lengthDifference(_maxNum, maxNum) + 8) / 8) * 8;
+            factor = 2**bitDiff;
+        }
+        uint256 leftVal = (b/factor)**2; // expanded
+        uint256 rightVal = 4 * (a/factor) * (c/factor);
+        if(cIsNeg) {
+            //sqrt(b^2 + 4*a*c)
+            det = GSMath.sqrt(leftVal + rightVal) * factor; // since both are expanded, will contract to correct value
+        } else {
+            //sqrt(b^2 - 4*a*c)
+            if(leftVal < rightVal) revert ComplexNumber();// results in imaginary number
+            det = GSMath.sqrt(leftVal - rightVal)*factor; // since both are expanded, will contract to correct value
+        }
+        return det;
+    }
+
     /// @dev See {ICPMMMath-calcDeltasForRatio}
     /// @notice The calculation takes into consideration the market impact the transaction would have
     /// @notice The equation is derived from solving the quadratic root formula taking into account trading fees
@@ -55,9 +94,9 @@ contract CPMMMath is ICPMMMath {
         // b is always negative because fee2 > fee1 always
         uint256 b;
         {
-            b = 2 * reserve0 * tokensHeld1 * fee1 / fee2;
-            b = b + reserve0 * reserve1 * (fee2 + fee1) / fee2;
-            b = b + tokensHeld0 * reserve1 * (fee2 - fee1) / fee2;
+            b = 2 * tokensHeld1 * (reserve0 * fee1 / fee2);
+            b = b + reserve0 * (reserve1 * (fee2 + fee1) / fee2);
+            b = b + tokensHeld0 * (reserve1 * (fee2 - fee1) / fee2);
             b = b / (10 ** decimals0);
         }
 
@@ -70,24 +109,11 @@ contract CPMMMath is ICPMMMath {
             uint256 rightVal = tokensHeld0 * reserve1;
             (cIsNeg,c) = c > rightVal ? (false,c - rightVal) : (true,rightVal - c);
             c = c / (10**decimals0);
-            c = (reserve0 * c * fee1 / fee2);
+            c = c * (reserve0 * fee1 / fee2); // TODO: find out if could overflow?
             c = c / (10**decimals0);
         }
 
-        uint256 det;
-        {
-            // sqrt(b^2 - 4*a*c) because a is positive
-            uint256 leftVal = b**2; // expanded
-            uint256 rightVal = 4 * a * c;
-            if(cIsNeg) {
-                //sqrt(b^2 + 4*a*c)
-                det = GSMath.sqrt(leftVal + rightVal); // since both are expanded, will contract to correct value
-            } else {
-                //sqrt(b^2 - 4*a*c)
-                if(leftVal < rightVal) revert ComplexNumber();// results in imaginary number
-                det = GSMath.sqrt(leftVal - rightVal); // since both are expanded, will contract to correct value
-            }
-        }
+        uint256 det = calcDeterminant(a, b, c, cIsNeg);
 
         deltas = new int256[](2);
         // remember that a is always positive and b is always negative
