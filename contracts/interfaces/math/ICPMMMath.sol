@@ -77,5 +77,5 @@ interface ICPMMMath {
     /// @param fee2 - trading fee denominator
     /// @return deltas - quantities of reserve tokens to rebalance after withdrawal. The second quadratic root (index 1) is the only feasible trade
     function calcDeltasForWithdrawal(uint256 amount, uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
-        uint256 reserve0, uint256 reserve1, uint256 fee1, uint256 fee2) external pure returns(int256[] memory deltas);
+        uint256 reserve0, uint256 reserve1, uint256 fee1, uint256 fee2) external view returns(int256[] memory deltas);
 }

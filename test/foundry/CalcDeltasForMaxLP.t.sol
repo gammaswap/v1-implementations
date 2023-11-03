@@ -7,7 +7,7 @@ import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
 import "../../contracts/interfaces/math/ICPMMMath.sol";
 import "../../contracts/libraries/cpmm/CPMMMath.sol";
 
-contract MathTest is Test {
+contract CalcDeltasForMaxLP is Test {
 
     ICPMMMath mathLib;
 
@@ -75,6 +75,10 @@ contract MathTest is Test {
             assertGe(GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1)/1e3, collateral0/1e3);
             uint256 cfmmRatio = uint256(reserve1) * 1e18 / uint256(reserve0);
             uint256 tokenRatio = uint256(tokensHeld1) * 1e18 / uint256(tokensHeld0);
+            console.log("cfmmRatio");
+            console.log(cfmmRatio);
+            console.log("tokenRatio");
+            console.log(tokenRatio);
             bool checkRatio = tokensHeld0 >= 1e18 && tokensHeld1 >= 1e18 && reserve0 >= 1e18 && reserve1 >= 1e18;
             if(checkRatio && precision <= 1e18) {
                 assertEq(cfmmRatio/precision,tokenRatio/precision);
@@ -97,27 +101,25 @@ contract MathTest is Test {
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18+1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 
     function testRebalanceToCFMMRatio96x104(uint80 _tokensHeld0, uint80 _tokensHeld1, uint112 _reserve0, uint112 _reserve1) public {
-        //uint128 reserve0 = uint128(bound(_reserve0, 1000, type(uint96).max));
         uint128 reserve1 = uint128(bound(_reserve1, 1000, type(uint104).max));
         uint128 reserve0 = (reserve1 + 2000)/ 2;
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18+1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 
     function testRebalanceToCFMMRatio112x88(uint80 _tokensHeld0, uint80 _tokensHeld1, uint112 _reserve0, uint112 _reserve1) public {
-        //uint128 reserve0 = uint128(bound(_reserve0, 1000, type(uint112).max));
         uint128 reserve1 = uint128(bound(_reserve1, 1000, type(uint88).max));
         uint128 reserve0 = (reserve1 + 2000)/ 2;
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18+1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 
     function testRebalanceToCFMMRatio88x112(uint80 _tokensHeld0, uint80 _tokensHeld1, uint112 _reserve0, uint112 _reserve1) public {
@@ -126,7 +128,7 @@ contract MathTest is Test {
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18+1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 
     function testRebalanceToCFMMRatio96x112(uint80 _tokensHeld0, uint80 _tokensHeld1, uint112 _reserve0, uint112 _reserve1) public {
@@ -135,21 +137,21 @@ contract MathTest is Test {
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint64).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint64).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
 
         reserve0 = uint128(bound(_reserve0, 1, type(uint96).max));
         reserve1 = uint128(bound(_reserve1, 1, type(uint112).max));
         tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint72).max)));
         tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint72).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
 
         reserve0 = uint128(bound(_reserve0, 1, type(uint96).max));
         reserve1 = uint128(bound(_reserve1, 1, type(uint112).max));
         tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 
     function testRebalanceToCFMMRatio112x96(uint80 _tokensHeld0, uint80 _tokensHeld1, uint112 _reserve0, uint112 _reserve1) public {
@@ -158,20 +160,20 @@ contract MathTest is Test {
         uint128 tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint64).max)));
         uint128 tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint64).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
 
         reserve0 = uint128(bound(_reserve0, 1, type(uint96).max));
         reserve1 = uint128(bound(_reserve1, 1, type(uint112).max));
         tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint72).max)));
         tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint72).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
 
         reserve0 = uint128(bound(_reserve0, 1, type(uint112).max));
         reserve1 = uint128(bound(_reserve1, 1, type(uint96).max));
         tokensHeld0 = uint128(bound(_tokensHeld0, 1, GSMath.min(reserve0,type(uint80).max)));
         tokensHeld1 = uint128(bound(_tokensHeld1, 1, GSMath.min(reserve1,type(uint80).max)));
 
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18 + 1);
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 1e18);
     }
 }
