@@ -15,6 +15,57 @@ contract CalcDeltasToRatio is Test {
         mathLib = new CPMMMath();
     }
 
+    function testDiv512x256() public {
+    //function testDiv512x256(uint256 num1, uint256 num2, uint256 num3) public {
+        uint256 num1 = type(uint144).max;
+        uint256 num2 = type(uint128).max; //type(uint144).max;
+
+        (uint256 val0, uint256 val1) = FullMath.mul256x256(num1, num2);
+
+        //uint256 res0 = FullMath.sqrt512(val0, val1);
+        //assertEq(res0, num1);
+        //assertEq(res0, type(uint128).max);
+
+        console.log("vals");
+        console.log(val0);
+        console.log(val1);
+        console.log(type(uint144).max/12);
+        //console.log(res0);
+
+        (uint256 x0, uint256 x1) = FullMath.div512x256(val0, val1, num2);
+
+        console.log("xs");
+        console.log(x0);
+        console.log(x1);
+        console.log("num1");
+        console.log(num1);
+
+        (uint256 v0, uint256 v1) = FullMath.mul512x256(x0, x1, num2);
+
+        console.log("vs");
+        console.log(v0);
+        console.log(v1);
+
+        /*uint256 num1a = type(uint256).max/2;
+        uint256 num2a = type(uint256).max/2;
+
+        (uint256 val0a, uint256 val1a) = FullMath.mul256x256(num1a, num2a);
+
+        uint256 res0a = FullMath.sqrt512(val0a, val1a);
+
+        console.log("valsa");
+        console.log(val0a);
+        console.log(val1a);
+        console.log(num1a);
+        console.log(res0a);
+        /*uint256 numx = FullMath.mulDiv(val1,type(uint248).max,type(uint128).max);
+        (uint256 val0a, uint256 val1a) = (val0/type(uint128).max, numx);
+
+        uint256 denom = GSMath.sqrt(type(uint128).max);
+        uint256 res1 = FullMath.sqrt512(val0a, val1a);
+        assertEq(res1, res0/denom);/**/
+    }
+
     function rebalanceToRatio(uint256[] memory ratio, uint128 tokensHeld0, uint128 tokensHeld1,
         uint128 reserve0, uint128 reserve1, uint256 precision) internal {
         uint256 collateral0 = GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1);

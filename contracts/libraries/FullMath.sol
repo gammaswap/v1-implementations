@@ -123,6 +123,34 @@ library FullMath {
         }
     }
 
+    function div256(uint256 a) internal pure returns(uint256 r) {
+        require(a > 1);
+        assembly {
+            r := add(div(sub(0, a), a), 1)
+        }
+    }
+
+    function mod256(uint256 a) internal pure returns(uint256 r) {
+        require(a != 0);
+        assembly {
+            r := mod(sub(0, a), a)
+        }
+    }
+
+    function div512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 r0, uint256 r1) {
+        uint256 q = div256(b);
+        uint256 r = mod256(b);
+        uint256 t0;
+        uint256 t1;
+        while(a1 != 0) {
+            (t0, t1) = mul256x256(a1, q);
+            (r0, r1) = add512x512(r0, r1, t0, t1);
+            (t0, t1) = mul256x256(a1, r);
+            (a0, a1) = add512x512(t0, t1, a0, 0);
+        }
+        (r0, r1) = add512x512(r0, r1, a0 / b, 0);
+    }
+
     /// @notice Calculate the product of two uint256 numbers
     /// @param a first number (uint256).
     /// @param b second number (uint256).
