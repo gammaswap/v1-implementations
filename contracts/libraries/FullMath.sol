@@ -5,107 +5,6 @@ pragma solidity ^0.8.0;
 /// @notice Facilitates multiplication and division that can have overflow of an intermediate value without any loss of precision
 /// @dev Handles "phantom overflow" i.e., allows multiplication and division where an intermediate value overflows 256 bits
 library FullMath {
-    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
-    /// @param a The multiplicand
-    /// @param b The multiplier
-    /// @param denominator The divisor
-    /// @return result The 256-bit result
-    /// @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
-    function mulDiv(
-        uint256 a,
-        uint256 b,
-        uint256 denominator
-    ) internal pure returns (uint256 result) {
-        // 512-bit multiply [prod1 prod0] = a * b
-        // Compute the product mod 2**256 and mod 2**256 - 1
-        // then use the Chinese Remainder Theorem to reconstruct
-        // the 512 bit result. The result is stored in two 256
-        // variables such that product = prod1 * 2**256 + prod0
-        uint256 prod0; // Least significant 256 bits of the product
-        uint256 prod1; // Most significant 256 bits of the product
-        assembly {
-            let mm := mulmod(a, b, not(0))
-            prod0 := mul(a, b)
-            prod1 := sub(sub(mm, prod0), lt(mm, prod0))
-        }
-
-        // Handle non-overflow cases, 256 by 256 division
-        if (prod1 == 0) {
-            require(denominator > 0);
-            assembly {
-                result := div(prod0, denominator)
-            }
-            return result;
-        }
-
-        // Make sure the result is less than 2**256.
-        // Also prevents denominator == 0
-        require(denominator > prod1);
-
-        ///////////////////////////////////////////////
-        // 512 by 256 division.
-        ///////////////////////////////////////////////
-
-        // Make division exact by subtracting the remainder from [prod1 prod0]
-        // Compute remainder using mulmod
-        uint256 remainder;
-        assembly {
-            remainder := mulmod(a, b, denominator)
-        }
-        // Subtract 256 bit number from 512 bit number
-        assembly {
-            prod1 := sub(prod1, gt(remainder, prod0))
-            prod0 := sub(prod0, remainder)
-        }
-
-        // Factor powers of two out of denominator
-        // Compute largest power of two divisor of denominator.
-        // Always >= 1.
-        //uint256 twos = -denominator & denominator;
-        uint256 twos = uint256(-int256(denominator) & int256(denominator));
-        // Divide denominator by power of two
-        assembly {
-            denominator := div(denominator, twos)
-        }
-
-        // Divide [prod1 prod0] by the factors of two
-        assembly {
-            prod0 := div(prod0, twos)
-        }
-        // Shift in bits from prod1 into prod0. For this we need
-        // to flip `twos` such that it is 2**256 / twos.
-        // If twos is zero, then it becomes one
-        assembly {
-            twos := add(div(sub(0, twos), twos), 1)
-        }
-        prod0 |= prod1 * twos;
-
-        // Invert denominator mod 2**256
-        // Now that denominator is an odd number, it has an inverse
-        // modulo 2**256 such that denominator * inv = 1 mod 2**256.
-        // Compute the inverse by starting with a seed that is correct
-        // correct for four bits. That is, denominator * inv = 1 mod 2**4
-        uint256 inv = (3 * denominator) ^ 2;
-        // Now use Newton-Raphson iteration to improve the precision.
-        // Thanks to Hensel's lifting lemma, this also works in modular
-        // arithmetic, doubling the correct bits in each step.
-        inv *= 2 - denominator * inv; // inverse mod 2**8
-        inv *= 2 - denominator * inv; // inverse mod 2**16
-        inv *= 2 - denominator * inv; // inverse mod 2**32
-        inv *= 2 - denominator * inv; // inverse mod 2**64
-        inv *= 2 - denominator * inv; // inverse mod 2**128
-        inv *= 2 - denominator * inv; // inverse mod 2**256
-
-        // Because the division is now exact we can divide by multiplying
-        // with the modular inverse of denominator. This will give us the
-        // correct result modulo 2**256. Since the precoditions guarantee
-        // that the outcome is less than 2**256, this is the final result.
-        // We don't need to compute the high bits of the result and prod1
-        // is no longer required.
-        result = prod0 * inv;
-        return result;
-    }
-
     /// @notice Calculates ceil(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
     /// @param a The multiplicand
     /// @param b The multiplier
@@ -115,8 +14,8 @@ library FullMath {
         uint256 a,
         uint256 b,
         uint256 denominator
-    ) internal pure returns (uint256 result) {
-        result = mulDiv(a, b, denominator);
+    ) internal view returns (uint256 result) {
+        result = mulDiv256(a, b, denominator);
         if (mulmod(a, b, denominator) > 0) {
             require(result < type(uint256).max);
             result++;
@@ -137,7 +36,130 @@ library FullMath {
         }
     }
 
+    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @param a The multiplicand
+    /// @param b The multiplier
+    /// @param c The divisor
+    /// @return r The 256-bit result
+    function mulDiv256b(uint256 a, uint256 b, uint256 c) internal view returns(uint256) {
+        require(c != 0, "MULDIV_ZERO_DIVISOR"); // satisfies c != 0
+
+        (uint256 r0, uint256 r1) = mul256x256(a, b);
+        (r0, r1) = div512x256(r0, r1, c);
+
+        require(r1 == 0, "MULDIV_OVERFLOW");
+
+        return r0;
+    }
+
+
+    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @param a The multiplicand
+    /// @param b The multiplier
+    /// @param c The divisor
+    /// @return r The 256-bit result
+    function mulDiv256(uint256 a, uint256 b, uint256 c) internal view returns(uint256) {
+        (uint256 r0, uint256 r1) = mulDiv512(a, b, c);
+
+        require(r1 == 0, "MULDIV_OVERFLOW");
+
+        return r0;
+    }
+
+    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @param a The multiplicand
+    /// @param b The multiplier
+    /// @param c The divisor
+    /// @return r The 256-bit result
+    function mulDiv512(uint256 a, uint256 b, uint256 c) internal view returns(uint256, uint256) {
+        require(c != 0, "MULDIV_ZERO_DIVISOR");
+
+        // mul256x256
+
+        uint256 a0;
+        uint256 a1;
+        assembly {
+            let mm := mulmod(a, b, not(0))
+            a0 := mul(a, b)
+            a1 := sub(sub(mm, a0), lt(mm, a0))
+        }
+
+        // div512x256
+        return div512x256(a0, a1, c);
+    }
+
+    function divRem512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 rem) {
+        require(b != 0, "DIVISION_BY_ZERO");
+
+        assembly {
+            // calculate the remainder
+            rem := mulmod(a1, not(0), b)
+            rem := addmod(rem, a1, b)
+            rem := addmod(rem, a0, b)
+        }
+    }
+
     function div512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 r0, uint256 r1) {
+        require(b != 0, "DIVISION_BY_ZERO");
+
+        if(a1 == 0) {
+            return (a0 / b, 0);
+        }
+
+        if(b == 1) {
+            return (a0, a1);
+        }
+
+        uint256 q;
+        uint256 r;
+
+        assembly {
+            q := add(div(sub(0, b), b), 1)
+            r := mod(sub(0, b), b)
+        }
+
+        uint256 t0;
+        uint256 t1;
+
+        while(a1 != 0) {
+            assembly {
+                // (t0,t1) = a1 x q
+                let mm := mulmod(a1, q, not(0))
+                t0 := mul(a1, q)
+                t1 := sub(sub(mm, t0), lt(mm, t0))
+
+                // (r0,r1) = (r0,r1) + (t0,t1)
+                let tmp := add(r0, t0)
+                r1 := add(add(r1, t1), lt(tmp, r0))
+                r0 := tmp
+
+                // (t0,t1) = a1 x r
+                mm := mulmod(a1, r, not(0))
+                t0 := mul(a1, r)
+                t1 := sub(sub(mm, t0), lt(mm, t0))
+
+                // (a0,a1) = (t0,t1) + (a0,0)
+                a0 := add(t0, a0)
+                a1 := add(add(t1, 0), lt(a0, t0))
+            }
+        }
+
+        uint256 c;
+
+        unchecked {
+            c = a0 / b;
+        }
+
+        assembly {
+            let tmp := add(r0, c)
+            r1 := add(add(r1, 0), lt(tmp, r0))
+            r0 := tmp
+        }
+
+        return (r0, r1);
+    }
+
+    function div512x256b(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 r0, uint256 r1) {
         uint256 q = div256(b);
         uint256 r = mod256(b);
         uint256 t0;
@@ -338,6 +360,34 @@ library FullMath {
             }
 
             return s >> (shift / 2);
+        }
+    }
+
+    function eq512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+        return a1 == b1 && a0 == b0;
+    }
+
+    function gt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+        return a1 > b1 || (a1 == b1 && a0 > b0);
+    }
+
+    function lt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+        return a1 < b1 || (a1 == b1 && a0 < b0);
+    }
+
+    function ge512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+        return a1 > b1 || (a1 == b1 && a0 >= b0);
+    }
+
+    function le512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+        return a1 < b1 || (a1 == b1 && a0 <= b0);
+    }
+
+    function bitLength(uint256 n) public pure returns (uint256 length) {
+        length = 0;
+        while (n > 0) {
+            length++;
+            n >>= 1;
         }
     }
 }
