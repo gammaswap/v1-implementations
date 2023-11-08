@@ -21,7 +21,7 @@ contract CalcDeltasToRatio is CalcDeltasBase {
         } // otherwise no trade
 
         (tokensHeld0, tokensHeld1, reserve0, reserve1) = updateTokenQtys(tokensHeld0, tokensHeld1, reserve0, reserve1,
-            uint256(deltas[0]), uint256(deltas[1]));
+            deltas[0], deltas[1]);
 
         if(deltas[0] > 0 || deltas[1] > 0) {
             assertLe(GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1), collateral0);

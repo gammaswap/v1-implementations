@@ -38,10 +38,9 @@ interface ICPMMMath {
     /// @param reserve0 - reserve quantity of token0 in CFMM
     /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @param decimals0 - decimals of token0
-    /// @param decimals1 - decimals of token1
     /// @return deltas - quadratic roots (quantities to trade). The first quadratic root (index 0) is the only feasible trade
     function calcDeltasToCloseSetRatio(uint256 liquidity, uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
-        uint256 reserve0, uint256 reserve1, uint8 decimals0, uint8 decimals1) external view returns(int256[] memory deltas);
+        uint256 reserve0, uint256 reserve1, uint8 decimals0) external view returns(int256[] memory deltas);
 
     /// @dev how much collateral to trade to have enough to close a position
     /// @param liquidity - liquidity debt that needs to be repaid after rebalancing loan's collateral quantities

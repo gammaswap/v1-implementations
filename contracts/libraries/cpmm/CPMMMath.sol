@@ -175,13 +175,11 @@ contract CPMMMath is ICPMMMath {
     /// @notice Since a negative quadratic root means selling, if the result is negative, then the result is wrong
     /// @notice We can flip the reserves, tokensHeld, and ratio to turn a purchase of token0 into a sale of token0
     function calcDeltasToCloseSetRatio(uint256 liquidity, uint256 ratio0, uint256 ratio1, uint256 tokensHeld0, uint256 tokensHeld1,
-        uint256 reserve0, uint256 reserve1, uint8 decimals0, uint8 decimals1) external virtual override view returns(int256[] memory deltas) {
+        uint256 reserve0, uint256 reserve1, uint8 decimals0) external virtual override view returns(int256[] memory deltas) {
         if(tokensHeld0 == 0 || tokensHeld1 == 0) revert ZeroTokensHeld();
         if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
         if(ratio0 == 0 || ratio1 == 0) revert ZeroRatio();
-        if(decimals0 == 0 || decimals1 == 0) revert ZeroDecimals();
-        // phi = liquidity / lastCFMMInvariant
-        //     = L / L_hat
+        if(decimals0 == 0) revert ZeroDecimals();
 
         bool bIsNeg;
         uint256 b;
@@ -238,6 +236,9 @@ contract CPMMMath is ICPMMMath {
             (cIsNeg,c) = (!cIsNeg, FullMath.mulDiv256(reserve0, c, (10 ** decimals0)));
         }
 
+        // phi = liquidity / lastCFMMInvariant
+        //     = L / L_hat
+
         // a = P * (1 + phi)
         //   = ratio1 * (1 + phi) / ratio0
         //   = ratio1 * (phiDec + phi) / ratio0
@@ -246,11 +247,8 @@ contract CPMMMath is ICPMMMath {
         //   = [ratio1 + (ratio1 * L / L_hat)] * decimals0 / ratio0
         uint256 a;
         {
-            reserve1 = GSMath.sqrt(reserve0 * reserve1);
-            //a = (ratio1 * (reserve1 + liquidity) / ratio0);
-            //a = a * (10**((decimals0 + decimals1)/2)) / reserve1;
-            a = reserve1 * ratio0;
-            a = FullMath.mulDiv256(reserve1 + liquidity, ratio1, a);
+            a = GSMath.sqrt(reserve0 * reserve1);
+            a = FullMath.mulDiv256(liquidity + a, ratio1 * (10**decimals0), a * ratio0);
         }
 
         uint256 det = calcDeterminant(a, b, c, cIsNeg);
@@ -262,31 +260,31 @@ contract CPMMMath is ICPMMMath {
             // plus version
             // (-b + det)/2a = (b + det)/2a
             // this is always positive
-            deltas[0] = int256(FullMath.mulDiv256((b + det), (10**decimals1), (2 * a)));
+            deltas[0] = int256(FullMath.mulDiv256((b + det), (10**decimals0), (2 * a)));
 
             // minus version
             // (-b - det)/-2a = (b - det)/2a
             if(b > det) {
                 // x2 is positive
-                deltas[1] = int256(FullMath.mulDiv256((b - det), (10**decimals1), (2 * a)));
+                deltas[1] = int256(FullMath.mulDiv256((b - det), (10**decimals0), (2 * a)));
             } else {
                 // x2 is negative
-                deltas[1]= -int256(FullMath.mulDiv256((det - b), (10**decimals1), (2 * a)));
+                deltas[1]= -int256(FullMath.mulDiv256((det - b), (10**decimals0), (2 * a)));
             }
         } else { // b > 0
             // plus version
             // (-b + det)/2a = (det - b)/2a
             if(det > b) {
                 //  x1 is positive
-                deltas[0] = int256(FullMath.mulDiv256((det - b), (10**decimals1), (2 * a)));
+                deltas[0] = int256(FullMath.mulDiv256((det - b), (10**decimals0), (2 * a)));
             } else {
                 //  x1 is negative
-                deltas[0] = -int256(FullMath.mulDiv256((b - det), (10**decimals1), (2 * a)));
+                deltas[0] = -int256(FullMath.mulDiv256((b - det), (10**decimals0), (2 * a)));
             }
 
             // minus version
             // (-b - det)/-2a = -(b + det)/2a
-            deltas[1] = -int256(FullMath.mulDiv256((b + det), (10**decimals1), (2 * a)));
+            deltas[1] = -int256(FullMath.mulDiv256((b + det), (10**decimals0), (2 * a)));
         }
     }
 
