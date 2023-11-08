@@ -180,6 +180,20 @@ contract CPMMMath is ICPMMMath {
         if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
         if(ratio0 == 0 || ratio1 == 0) revert ZeroRatio();
         if(decimals0 == 0) revert ZeroDecimals();
+        // phi = liquidity / lastCFMMInvariant
+        //     = L / L_hat
+
+        // a = P * (1 + phi)
+        //   = ratio1 * (1 + phi) / ratio0
+        //   = ratio1 * (phiDec + phi) / ratio0
+        //   = ratio1 * (L_hat + L) / (L_hat * ratio0)
+        //   = ratio1 * (1 + L/L_hat) / ratio0
+        //   = [ratio1 + (ratio1 * L / L_hat)] * decimals0 / ratio0
+        uint256 a;
+        {
+            a = GSMath.sqrt(reserve0 * reserve1);
+            a = FullMath.mulDiv256(liquidity + a, ratio1 * (10**decimals0), a * ratio0);
+        }
 
         bool bIsNeg;
         uint256 b;
@@ -234,21 +248,6 @@ contract CPMMMath is ICPMMMath {
             }
 
             (cIsNeg,c) = (!cIsNeg, FullMath.mulDiv256(reserve0, c, (10 ** decimals0)));
-        }
-
-        // phi = liquidity / lastCFMMInvariant
-        //     = L / L_hat
-
-        // a = P * (1 + phi)
-        //   = ratio1 * (1 + phi) / ratio0
-        //   = ratio1 * (phiDec + phi) / ratio0
-        //   = ratio1 * (L_hat + L) / (L_hat * ratio0)
-        //   = ratio1 * (1 + L/L_hat) / ratio0
-        //   = [ratio1 + (ratio1 * L / L_hat)] * decimals0 / ratio0
-        uint256 a;
-        {
-            a = GSMath.sqrt(reserve0 * reserve1);
-            a = FullMath.mulDiv256(liquidity + a, ratio1 * (10**decimals0), a * ratio0);
         }
 
         uint256 det = calcDeterminant(a, b, c, cIsNeg);

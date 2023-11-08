@@ -51,7 +51,7 @@ contract CalcDeltasForMaxLP is CalcDeltasBase {
         // token > cfmm
         reserve0 = tokensHeld0 * 100 * 200; //2_000_000 * 1e18;
         reserve1 = tokensHeld1 * 100; //10_000 * 1e18;
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, decimals[0], decimals[1], precision);/**/
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, decimals[0], decimals[1], precision);
     }
 
     function testRebalanceToCFMMRatioFixed() public {
