@@ -44,7 +44,7 @@ contract CPMMMath is ICPMMMath {
             det = FullMath.sqrt512(leftVal0, leftVal1);// since both are expanded, will contract to correct value
         } else {
             //sqrt(b^2 - 4*a*c)
-            if(leftVal1 < rightVal1 || (leftVal1 == rightVal1 && leftVal0 < rightVal0)) revert ComplexNumber();// results in imaginary number
+            if(FullMath.lt512(leftVal0, leftVal1, rightVal0, rightVal1)) revert ComplexNumber();// results in imaginary number
             (leftVal0, leftVal1) = FullMath.sub512x512(leftVal0, leftVal1, rightVal0, rightVal1);
             det = FullMath.sqrt512(leftVal0, leftVal1);
         }
@@ -62,7 +62,7 @@ contract CPMMMath is ICPMMMath {
             det = FullMath.sqrt512(leftVal0, leftVal1);// since both are expanded, will contract to correct value
         } else {
             //sqrt(b^2 - 4*a*c)
-            if(leftVal1 < rightVal1 || (leftVal1 == rightVal1 && leftVal0 < rightVal0)) revert ComplexNumber();// results in imaginary number
+            if(FullMath.lt512(leftVal0, leftVal1, rightVal0, rightVal1)) revert ComplexNumber();// results in imaginary number
             (leftVal0, leftVal1) = FullMath.sub512x512(leftVal0, leftVal1, rightVal0, rightVal1);
             det = FullMath.sqrt512(leftVal0, leftVal1);
         }
@@ -77,7 +77,7 @@ contract CPMMMath is ICPMMMath {
             (leftVal0, leftVal1) = FullMath.add512x512(leftVal0, leftVal1, rightVal0, rightVal1);
             det = FullMath.sqrt512(leftVal0, leftVal1); // since both are expanded, will contract to correct value
         } else {
-            if(leftVal1 < rightVal1 || (leftVal1 == rightVal1 && leftVal0 < rightVal0)) revert ComplexNumber();// results in imaginary number
+            if(FullMath.lt512(leftVal0, leftVal1, rightVal0, rightVal1)) revert ComplexNumber();// results in imaginary number
             (leftVal0, leftVal1) = FullMath.sub512x512(leftVal0, leftVal1, rightVal0, rightVal1);
             det = FullMath.sqrt512(leftVal0, leftVal1); // since both are expanded, will contract to correct value
         }
@@ -90,7 +90,7 @@ contract CPMMMath is ICPMMMath {
 
         if(cIsNeg) {
             //sqrt(b^2 - 4*a*c)
-            if(leftVal1 < rightVal1 || (leftVal1 == rightVal1 && leftVal0 < rightVal0)) revert ComplexNumber();// results in imaginary number
+            if(FullMath.lt512(leftVal0, leftVal1, rightVal0, rightVal1)) revert ComplexNumber();// results in imaginary number
             (leftVal0, leftVal1) = FullMath.sub512x512(leftVal0, leftVal1, rightVal0, rightVal1);
             det = FullMath.sqrt512(leftVal0, leftVal1);
         } else {
