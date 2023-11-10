@@ -189,20 +189,18 @@ contract CPMMMath is ICPMMMath {
         //   = ratio1 * (L_hat + L) / (L_hat * ratio0)
         //   = ratio1 * (1 + L/L_hat) / ratio0
         //   = [ratio1 + (ratio1 * L / L_hat)] * decimals0 / ratio0
-        uint256 a;
-        {
-            a = GSMath.sqrt(reserve0 * reserve1);
-            a = FullMath.mulDiv256(liquidity + a, ratio1 * (10**decimals0), a * ratio0);
-        }
-
-        bool bIsNeg;
-        uint256 b;
         //   = (ratio1 / ratio0) + (ratio1 * liquidity) / (ratio0 * lastCFMMInvariant)
         //   = (ratio1 * lastCFMMInvariant + ratio1 * liquidity) / (ratio0 * lastCFMMInvariant)
         //   = ratio1 * (lastCFMMInvariant + liquidity) / (ratio0 * lastCFMMInvariant)
         //   = [ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ] / lastCFMMInvariant
         //   = [ratio1 * (lastCFMMInvariant + liquidity) / ratio0 ] * invDecimals / lastCFMMInvariant
+        uint256 a;
+        bool bIsNeg;
+        uint256 b;
         {
+            uint256 lastCFMMInvariant = GSMath.sqrt(reserve0 * reserve1);
+            a = FullMath.mulDiv256(liquidity + lastCFMMInvariant, ratio1 * (10**decimals0), lastCFMMInvariant * ratio0);
+
             // b = -(P * (A_hat * (2 * phi + 1) - A) + B + B_hat)
             //   = -(P * (A_hat * 2 * phi + A_hat - A) + B + B_hat)
             //   = -(P * A_hat * 2 * phi + P * A_hat - P * A + B + B_hat)
@@ -210,7 +208,7 @@ contract CPMMMath is ICPMMMath {
             //   = -(P * (A_hat * 2 * liquidity / lastCFMMInvariant + A_hat - A) + B + B_hat)
             //   = -([ratio1 * (A_hat * 2 * liquidity / lastCFMMInvariant + A_hat - A) / ratio0] + B _ B_hat)
             {
-                b = reserve0 * 2 * liquidity / GSMath.sqrt(reserve0 * reserve1) + reserve0;
+                b = reserve0 * 2 * liquidity / lastCFMMInvariant + reserve0;
                 (bIsNeg, b) = b > tokensHeld0 ? (false, (b - tokensHeld0)) : (true, (tokensHeld0 - b));
                 b = FullMath.mulDiv256(b, ratio1, ratio0);
                 uint256 rightVal = reserve1 + tokensHeld1;
