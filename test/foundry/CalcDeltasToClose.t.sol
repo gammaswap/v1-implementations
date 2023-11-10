@@ -51,7 +51,7 @@ contract CalcDeltasToClose is CalcDeltasBase {
         // token = cfmm
         uint128 reserve0 = tokensHeld0 * 100; //10_000 * 1e18;
         uint128 reserve1 = tokensHeld1 * 100; //1_000_000 * 1e18;
-        rebalanceToClose(true, liquidity, tokensHeld0, tokensHeld1, reserve0, reserve1, precision, expected, 1);
+        rebalanceToClose(true, liquidity, tokensHeld0, tokensHeld1, reserve0, reserve1, precision, expected, 0);
 
         // token > cfmm, rebalance to token0, buy
         reserve0 = tokensHeld0 * 100 * 200; //2_000_000 * 1e18;
@@ -155,6 +155,33 @@ contract CalcDeltasToClose is CalcDeltasBase {
         expected[9] = 0;
 
         rebalanceToCloseCasesByReserves(liquidity, tokensHeld0, tokensHeld1, 1e9, expected);
+    }
+
+    function testRebalanceToCloseFixedWithFees() public {
+        //fee1 = 1000;
+        //fee2 = 1000;
+        uint8[] memory decimals = new uint8[](2);
+        decimals[0] = 18;
+        decimals[1] = 18;
+
+        uint128 tokensHeld0 = uint128(10_000 * (10**decimals[0])); // 100
+        uint128 tokensHeld1 = uint128(1_000_000 * (10**decimals[1])); // 10_000
+
+        uint128 liquidity = uint128(GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1));
+
+        uint256 testCases = 5;
+        uint128[] memory expected = new uint128[](2*testCases);
+        expected[0] = 0;
+        expected[1] = 0;
+        expected[2] = 139622094965630897;
+        expected[3] = 863337681762232596378615;
+        expected[4] = 1704584898593626638353145;
+        expected[5] = 984970494266885971;
+        expected[6] = 9849704942668860;
+        expected[7] = 170458489859362663835310921;
+        expected[8] = 8633376817622325963786;
+        expected[9] = 13962209496563089647;
+        rebalanceToCloseCasesByReserves(liquidity, tokensHeld0, tokensHeld1, 1e20, expected);
     }
 
     function testRebalanceToClose() public {
