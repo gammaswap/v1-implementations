@@ -14,7 +14,7 @@ library FullMath {
         uint256 a,
         uint256 b,
         uint256 denominator
-    ) internal view returns (uint256 result) {
+    ) internal pure returns (uint256 result) {
         result = mulDiv256(a, b, denominator);
         if (mulmod(a, b, denominator) > 0) {
             require(result < type(uint256).max);
@@ -22,43 +22,12 @@ library FullMath {
         }
     }
 
-    function div256(uint256 a) internal pure returns(uint256 r) {
-        require(a > 1);
-        assembly {
-            r := add(div(sub(0, a), a), 1)
-        }
-    }
-
-    function mod256(uint256 a) internal pure returns(uint256 r) {
-        require(a != 0);
-        assembly {
-            r := mod(sub(0, a), a)
-        }
-    }
-
     /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
     /// @param a The multiplicand
     /// @param b The multiplier
     /// @param c The divisor
     /// @return r The 256-bit result
-    function mulDiv256b(uint256 a, uint256 b, uint256 c) internal view returns(uint256) {
-        require(c != 0, "MULDIV_ZERO_DIVISOR"); // satisfies c != 0
-
-        (uint256 r0, uint256 r1) = mul256x256(a, b);
-        (r0, r1) = div512x256(r0, r1, c);
-
-        require(r1 == 0, "MULDIV_OVERFLOW");
-
-        return r0;
-    }
-
-
-    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
-    /// @param a The multiplicand
-    /// @param b The multiplier
-    /// @param c The divisor
-    /// @return r The 256-bit result
-    function mulDiv256(uint256 a, uint256 b, uint256 c) internal view returns(uint256) {
+    function mulDiv256(uint256 a, uint256 b, uint256 c) internal pure returns(uint256) {
         (uint256 r0, uint256 r1) = mulDiv512(a, b, c);
 
         require(r1 == 0, "MULDIV_OVERFLOW");
@@ -71,7 +40,7 @@ library FullMath {
     /// @param b The multiplier
     /// @param c The divisor
     /// @return r The 256-bit result
-    function mulDiv512(uint256 a, uint256 b, uint256 c) internal view returns(uint256, uint256) {
+    function mulDiv512(uint256 a, uint256 b, uint256 c) internal pure returns(uint256, uint256) {
         require(c != 0, "MULDIV_ZERO_DIVISOR");
 
         // mul256x256
@@ -159,26 +128,12 @@ library FullMath {
         return (r0, r1);
     }
 
-    function div512x256b(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 r0, uint256 r1) {
-        uint256 q = div256(b);
-        uint256 r = mod256(b);
-        uint256 t0;
-        uint256 t1;
-        while(a1 != 0) {
-            (t0, t1) = mul256x256(a1, q);
-            (r0, r1) = add512x512(r0, r1, t0, t1);
-            (t0, t1) = mul256x256(a1, r);
-            (a0, a1) = add512x512(t0, t1, a0, 0);
-        }
-        (r0, r1) = add512x512(r0, r1, a0 / b, 0);
-    }
-
     /// @notice Calculate the product of two uint256 numbers
     /// @param a first number (uint256).
     /// @param b second number (uint256).
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function mul256x256(uint256 a, uint256 b) public pure returns (uint256 r0, uint256 r1) {
+    function mul256x256(uint256 a, uint256 b) internal pure returns (uint256 r0, uint256 r1) {
         assembly {
             let mm := mulmod(a, b, not(0))
             r0 := mul(a, b)
@@ -192,7 +147,7 @@ library FullMath {
     /// @param b second number (uint256).
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function mul512x256(uint256 a0, uint256 a1, uint256 b) public pure returns (uint256 r0, uint256 r1) {
+    function mul512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns (uint256 r0, uint256 r1) {
         assembly {
             let mm := mulmod(a0, b, not(0))
             r0 := mul(a0, b)
@@ -208,7 +163,7 @@ library FullMath {
     /// @param b1 higher bits of second number.
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function add512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (uint256 r0, uint256 r1) {
+    function add512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (uint256 r0, uint256 r1) {
         assembly {
             r0 := add(a0, b0)
             r1 := add(add(a1, b1), lt(r0, a0))
@@ -222,7 +177,7 @@ library FullMath {
     /// @param b1 higher bits of second number.
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function sub512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (uint256 r0, uint256 r1) {
+    function sub512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (uint256 r0, uint256 r1) {
         assembly {
             r0 := sub(a0, b0)
             r1 := sub(sub(a1, b1), lt(a0, b0))
@@ -231,7 +186,7 @@ library FullMath {
 
     /// @notice Calculates the square root of x, rounding down.
     /// @dev Uses the Babylonian method https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method.
-    function sqrt256(uint256 x) public pure returns (uint256 s) {
+    function sqrt256(uint256 x) internal pure returns (uint256 s) {
 
         if (x == 0) return 0;
 
@@ -286,7 +241,7 @@ library FullMath {
     /// @param a0 lower bits of first number.
     /// @param a1 higher bits of first number.
     /// @return s The square root as an uint256 of a 512 bit number.
-    function sqrt512(uint256 a0, uint256 a1) public pure returns (uint256 s) {
+    function sqrt512(uint256 a0, uint256 a1) internal pure returns (uint256 s) {
 
         // 256 bit square root is sufficient
         if (a1 == 0) return sqrt256(a0);
@@ -363,27 +318,27 @@ library FullMath {
         }
     }
 
-    function eq512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+    function eq512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 == b1 && a0 == b0;
     }
 
-    function gt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+    function gt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 > b1 || (a1 == b1 && a0 > b0);
     }
 
-    function lt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+    function lt512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 < b1 || (a1 == b1 && a0 < b0);
     }
 
-    function ge512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+    function ge512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 > b1 || (a1 == b1 && a0 >= b0);
     }
 
-    function le512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public pure returns (bool) {
+    function le512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 < b1 || (a1 == b1 && a0 <= b0);
     }
 
-    function bitLength(uint256 n) public pure returns (uint256 length) {
+    function bitLength(uint256 n) internal pure returns (uint256 length) {
         length = 0;
         while (n > 0) {
             length++;
