@@ -104,7 +104,7 @@ contract CalcDeltasToRatio is CalcDeltasBase {
     function testRebalanceForRatio(uint112 _reserve0, uint112 _reserve1, uint8 borrow,
         bool side, uint8 move) public {
         (uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) =
-            createMarketPosition2(_reserve0, _reserve1, borrow, 0, side);
+            createMarketPosition2(_reserve0, _reserve1, borrow, 0, side, 1e6);
 
         uint256[] memory ratio = createRatioParameter(tokensHeld0, tokensHeld1, move);
 

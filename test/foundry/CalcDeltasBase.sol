@@ -111,13 +111,13 @@ contract CalcDeltasBase is Test {
             tokensHeld0, tokensHeld1);
     }
 
-    function createMarketPosition2(uint128 _reserve0, uint128 _reserve1, uint8 borrow, uint8 move, bool side) internal view
+    function createMarketPosition2(uint128 _reserve0, uint128 _reserve1, uint8 borrow, uint8 move, bool side, uint256 floor) internal view
         returns(uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) {
         reserve0 = _reserve0;
         reserve1 = _reserve1;
 
-        if(reserve0 < 1e6) reserve0 = 1e6;
-        if(reserve1 < 1e6) reserve1 = 1e6;
+        if(reserve0 < floor) reserve0 = uint128(floor);
+        if(reserve1 < floor) reserve1 = uint128(floor);
         if(borrow < 128) borrow = 128;
 
         uint256 ratio = reserve1 / reserve0;

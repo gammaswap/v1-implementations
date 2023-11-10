@@ -118,7 +118,7 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         if(amtFactor < 10) amtFactor = 10;
 
         (uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) =
-            createMarketPosition2(_reserve0, _reserve1, borrow, move < 128 ? 128 : move, side);
+            createMarketPosition2(_reserve0, _reserve1, borrow, move < 128 ? 128 : move, side, 1e6);
 
         uint256[] memory ratio = new uint256[](2);
         ratio[0] = tokensHeld0;

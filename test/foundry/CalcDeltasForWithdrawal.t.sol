@@ -126,7 +126,7 @@ contract CalcDeltasForWithdrawal is CalcDeltasBase {
         amtFactor = uint8(bound(amtFactor, 100, 120));
 
         (uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) =
-        createMarketPosition2(_reserve0, _reserve1, borrow, move, side);
+            createMarketPosition2(_reserve0, _reserve1, borrow, move, side, 1e6);
 
         uint256[] memory ratio = createRatioParameter(tokensHeld0, tokensHeld1, move);
 

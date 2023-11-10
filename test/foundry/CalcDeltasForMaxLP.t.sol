@@ -91,7 +91,7 @@ contract CalcDeltasForMaxLP is CalcDeltasBase {
         if(move < 128) move = 128;
 
         (uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) =
-            createMarketPosition2(_reserve0, _reserve1, borrow, move, side);
+            createMarketPosition2(_reserve0, _reserve1, borrow, move, side, 1e6);
 
         rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 18, 18, 1e10);
         rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 6, 18, 1e4);
