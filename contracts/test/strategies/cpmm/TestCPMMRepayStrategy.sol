@@ -120,7 +120,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     function onLoanUpdate(LibStorage.Loan storage _loan, uint256 tokenId) internal virtual override returns(uint256 externalCollateral) {
     }
 
-    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex) internal virtual override {
+    function mintToDevs(uint256 lastFeeIndex, uint256 lastCFMMIndex, uint256 utilizationRate) internal virtual override {
     }
 
     function mintOrigFeeToDevs(uint256 origFeeInv, uint256 totalInvariant) internal virtual override {
