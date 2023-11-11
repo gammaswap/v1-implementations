@@ -5,24 +5,7 @@ pragma solidity ^0.8.0;
 /// @notice Facilitates multiplication and division that can have overflow of an intermediate value without any loss of precision
 /// @dev Handles "phantom overflow" i.e., allows multiplication and division where an intermediate value overflows 256 bits
 library FullMath {
-    /// @notice Calculates ceil(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
-    /// @param a The multiplicand
-    /// @param b The multiplier
-    /// @param denominator The divisor
-    /// @return result The 256-bit result
-    function mulDivRoundingUp(
-        uint256 a,
-        uint256 b,
-        uint256 denominator
-    ) internal pure returns (uint256 result) {
-        result = mulDiv256(a, b, denominator);
-        if (mulmod(a, b, denominator) > 0) {
-            require(result < type(uint256).max);
-            result++;
-        }
-    }
-
-    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @notice Calculates floor(a×b÷c) with full precision. Throws if result overflows a uint256 or denominator == 0
     /// @param a The multiplicand
     /// @param b The multiplier
     /// @param c The divisor
@@ -35,16 +18,17 @@ library FullMath {
         return r0;
     }
 
-    /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @notice Calculates floor(a×b÷c) with full precision and returns a 512 bit number. Never overflows
+    /// @notice Throws if result overflows a uint256 or denominator == 0
     /// @param a The multiplicand
     /// @param b The multiplier
     /// @param c The divisor
-    /// @return r The 256-bit result
-    function mulDiv512(uint256 a, uint256 b, uint256 c) internal pure returns(uint256, uint256) {
+    /// @return r0 lower bits of result of division
+    /// @return r1 lower bits of result of division
+    function mulDiv512(uint256 a, uint256 b, uint256 c) internal pure returns(uint256 r0, uint256 r1) {
         require(c != 0, "MULDIV_ZERO_DIVISOR");
 
         // mul256x256
-
         uint256 a0;
         uint256 a1;
         assembly {
@@ -54,20 +38,31 @@ library FullMath {
         }
 
         // div512x256
-        return div512x256(a0, a1, c);
+        (r0, r1) = div512x256(a0, a1, c);
     }
 
+    /// @notice Calculates the remainder of a division of a 512 bit unsigned integer by a 256 bit integer.
+    /// @param a0 A uint256 representing the low bits of the numerator.
+    /// @param a1 A uint256 representing the high bits of the numerator.
+    /// @param b A uint256 representing the denominator.
+    /// @return rem A uint256 representing the remainder of the division.
     function divRem512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 rem) {
         require(b != 0, "DIVISION_BY_ZERO");
 
         assembly {
-            // calculate the remainder
             rem := mulmod(a1, not(0), b)
             rem := addmod(rem, a1, b)
             rem := addmod(rem, a0, b)
         }
     }
 
+    /// @notice Calculates the division of a 512 bit unsigned integer by a 256 bit integer.
+    /// @dev Source https://medium.com/wicketh/mathemagic-512-bit-division-in-solidity-afa55870a65
+    /// @param a0 uint256 representing the lower bits of the numerator.
+    /// @param a1 uint256 representing the higher bits of the numerator.
+    /// @param b uint256 denominator.
+    /// @return r0 lower bits of the uint512 quotient.
+    /// @return r1 higher bits of the uint512 quotient.
     function div512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns(uint256 r0, uint256 r1) {
         require(b != 0, "DIVISION_BY_ZERO");
 
@@ -113,14 +108,8 @@ library FullMath {
             }
         }
 
-        uint256 c;
-
-        unchecked {
-            c = a0 / b;
-        }
-
         assembly {
-            let tmp := add(r0, c)
+            let tmp := add(r0, div(a0,b))
             r1 := add(add(r1, 0), lt(tmp, r0))
             r0 := tmp
         }
@@ -128,7 +117,8 @@ library FullMath {
         return (r0, r1);
     }
 
-    /// @notice Calculate the product of two uint256 numbers
+    /// @notice Calculate the product of two uint256 numbers. Never overflows
+    /// @dev Source https://medium.com/wicketh/mathemagic-full-multiply-27650fec525d
     /// @param a first number (uint256).
     /// @param b second number (uint256).
     /// @return r0 The result as an uint512. (lower bits).
@@ -142,21 +132,34 @@ library FullMath {
     }
 
     /// @notice Calculates the product of a uint512 and a uint256 number
+    /// @dev Source https://medium.com/wicketh/mathemagic-512-bit-division-in-solidity-afa55870a65
     /// @param a0 lower bits of first number.
     /// @param a1 higher bits of first number.
     /// @param b second number (uint256).
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function mul512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns (uint256 r0, uint256 r1) {
+    function mul512x256(uint256 a0, uint256 a1, uint256 b) internal view returns (uint256 r0, uint256 r1) {
+        uint256 ff;
+
         assembly {
             let mm := mulmod(a0, b, not(0))
             r0 := mul(a0, b)
-            r1 := sub(sub(mm, r0), lt(mm, r0))
-            r1 := add(r1, mul(a1, b))
+            let cc := sub(sub(mm, r0), lt(mm, r0)) // carry from a0*b
+
+            mm := mulmod(a1, b, not(0))
+            let ab := mul(a1, b)
+            ff := sub(sub(mm, ab), lt(mm, ab)) // carry from a1*b
+
+            r1 := add(cc, ab)
+
+            ff := or(ff, lt(r1,ab)) // overflow from (a0,a1)*b
         }
+
+        require(ff < 1, "MULTIPLICATION_OVERFLOW");
     }
 
     /// @notice Calculates the sum of two uint512 numbers
+    /// @dev Source https://medium.com/wicketh/mathemagic-512-bit-division-in-solidity-afa55870a65
     /// @param a0 lower bits of first number.
     /// @param a1 higher bits of first number.
     /// @param b0 lower bits of second number.
@@ -164,13 +167,21 @@ library FullMath {
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
     function add512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (uint256 r0, uint256 r1) {
+        uint256 ff;
+
         assembly {
+            let rr := add(a1, b1)
+            ff := lt(rr, a1)  // carry from a1+b1
             r0 := add(a0, b0)
-            r1 := add(add(a1, b1), lt(r0, a0))
+            r1 := add(rr, lt(r0, a0)) // add carry from a0+b0
+            ff := or(ff,lt(r1, rr))
         }
+
+        require(ff < 1, "ADDITION_OVERFLOW");
     }
 
     /// @notice Calculates the difference of two uint512 numbers
+    /// @dev Source https://medium.com/wicketh/mathemagic-512-bit-division-in-solidity-afa55870a65
     /// @param a0 lower bits of first number.
     /// @param a1 higher bits of first number.
     /// @param b0 lower bits of second number.
@@ -178,143 +189,114 @@ library FullMath {
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
     function sub512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (uint256 r0, uint256 r1) {
+        require(ge512(a0, a1, b0, b1), "SUBTRACTION_UNDERFLOW");
+
         assembly {
             r0 := sub(a0, b0)
             r1 := sub(sub(a1, b1), lt(a0, b0))
         }
     }
 
-    /// @notice Calculates the square root of x, rounding down.
-    /// @dev Uses the Babylonian method https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method.
-    function sqrt256(uint256 x) internal pure returns (uint256 s) {
-
-        if (x == 0) return 0;
+    /// @dev Returns the square root of `a`.
+    /// @param a number to square root
+    /// @return z square root of a
+    function sqrt256(uint256 a) internal pure returns (uint256 z) {
+        if (a == 0) return 0;
 
         assembly {
+            z := 181 // Should be 1, but this saves a multiplication later.
 
-            s := 1
+            let r := shl(7, lt(0xffffffffffffffffffffffffffffffffff, a))
+            r := or(shl(6, lt(0xffffffffffffffffff, shr(r, a))), r)
+            r := or(shl(5, lt(0xffffffffff, shr(r, a))), r)
+            r := or(shl(4, lt(0xffffff, shr(r, a))), r)
+            z := shl(shr(1, r), z)
 
-            let xAux := x
+            // Doesn't overflow since y < 2**136 after above.
+            z := shr(18, mul(z, add(shr(r, a), 65536))) // A mul() saved from z = 181.
 
-            let cmp := or(gt(xAux, 0x100000000000000000000000000000000), eq(xAux, 0x100000000000000000000000000000000))
-            xAux := sar(mul(cmp, 128), xAux)
-            s := shl(mul(cmp, 64), s)
+            // Given worst case multiplicative error of 2.84 above, 7 iterations should be enough.
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
+            z := shr(1, add(div(a, z), z))
 
-            cmp := or(gt(xAux, 0x10000000000000000), eq(xAux, 0x10000000000000000))
-            xAux := sar(mul(cmp, 64), xAux)
-            s := shl(mul(cmp, 32), s)
-
-            cmp := or(gt(xAux, 0x100000000), eq(xAux, 0x100000000))
-            xAux := sar(mul(cmp, 32), xAux)
-            s := shl(mul(cmp, 16), s)
-
-            cmp := or(gt(xAux, 0x10000), eq(xAux, 0x10000))
-            xAux := sar(mul(cmp, 16), xAux)
-            s := shl(mul(cmp, 8), s)
-
-            cmp := or(gt(xAux, 0x100), eq(xAux, 0x100))
-            xAux := sar(mul(cmp, 8), xAux)
-            s := shl(mul(cmp, 4), s)
-
-            cmp := or(gt(xAux, 0x10), eq(xAux, 0x10))
-            xAux := sar(mul(cmp, 4), xAux)
-            s := shl(mul(cmp, 2), s)
-
-            s := shl(mul(or(gt(xAux, 0x8), eq(xAux, 0x8)), 2), s)
-        }
-
-        unchecked {
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            s = (s + x / s) >> 1;
-            uint256 roundedDownResult = x / s;
-            return s >= roundedDownResult ? roundedDownResult : s;
+            // If x+1 is a perfect square, the Babylonian method cycles between floor(sqrt(x)) and ceil(sqrt(x)).
+            // We always return floor. Source https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
+            z := sub(z, lt(div(a, z), z))
         }
     }
 
-    /// @notice Calculates the square root of a 512 bit unsigned integer (rounds down).
-    /// @dev Uses the Karatsuba Square Root method. See https://hal.inria.fr/inria-00072854/document for details.
-    /// @param a0 lower bits of first number.
-    /// @param a1 higher bits of first number.
-    /// @return s The square root as an uint256 of a 512 bit number.
-    function sqrt512(uint256 a0, uint256 a1) internal pure returns (uint256 s) {
-
-        // 256 bit square root is sufficient
+    /// @notice Calculates the square root of a 512 bit unsigned integer, rounds down.
+    /// @dev Uses Karatsuba Square Root method. Source https://hal.inria.fr/inria-00072854/document.
+    /// @param a0 lower bits of 512 bit number.
+    /// @param a1 higher bits of 512 bit number.
+    /// @return z The square root as an uint256 of a 512 bit number.
+    function sqrt512(uint256 a0, uint256 a1) internal pure returns (uint256 z) {
         if (a1 == 0) return sqrt256(a0);
 
-        // Algorithm below has pre-condition a1 >= 2**254
         uint256 shift;
 
         assembly {
-            let digits := mul(lt(a1, 0x100000000000000000000000000000000), 128)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            let bits := mul(128, lt(a1, 0x100000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x1000000000000000000000000000000000000000000000000), 64)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(64, lt(a1, 0x1000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x100000000000000000000000000000000000000000000000000000000), 32)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(32, lt(a1, 0x100000000000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x1000000000000000000000000000000000000000000000000000000000000), 16)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(16, lt(a1, 0x1000000000000000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x100000000000000000000000000000000000000000000000000000000000000), 8)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(8, lt(a1, 0x100000000000000000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x1000000000000000000000000000000000000000000000000000000000000000), 4)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(4, lt(a1, 0x1000000000000000000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            digits := mul(lt(a1, 0x4000000000000000000000000000000000000000000000000000000000000000), 2)
-            a1 := shl(digits, a1)
-            shift := add(shift, digits)
+            bits := mul(2, lt(a1, 0x4000000000000000000000000000000000000000000000000000000000000000))
+            shift := add(bits, shift)
+            a1 := shl(bits, a1)
 
-            a1 := or(a1, shr(sub(256, shift), a0))
+            a1 := or(shr(sub(256, shift), a0), a1)
             a0 := shl(shift, a0)
         }
 
-        uint256 sp = sqrt256(a1);
-        uint256 rp = a1 - (sp * sp);
-
-        uint256 nom;
-        uint256 denom;
-        uint256 u;
-        uint256 q;
+        uint256 z1 = sqrt256(a1);
 
         assembly {
-            nom := or(shl(128, rp), shr(128, a0))
-            denom := shl(1, sp)
-            q := div(nom, denom)
-            u := mod(nom, denom)
+            let rz := sub(a1, mul(z1, z1))
+            let numerator := or(shl(128, rz), shr(128, a0))
+            let denominator := shl(1, z1)
 
-            let carry := shr(128, rp)
+            let q := div(numerator, denominator)
+            let r := mod(numerator, denominator)
+
+            let carry := shr(128, rz)
             let x := mul(carry, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-            q := add(q, div(x, denom))
-            u := add(u, add(carry, mod(x, denom)))
-            q := add(q, div(u, denom))
-            u := mod(u, denom)
-        }
 
-        unchecked {
-            s = (sp << 128) + q;
+            q := add(div(x, denominator), q)
+            r := add(add(carry, mod(x, denominator)), r)
+            q := add(div(r, denominator), q)
+            r := mod(r, denominator)
 
-            uint256 rl = ((u << 128) | (a0 & 0xffffffffffffffffffffffffffffffff));
-            uint256 rr = q * q;
+            z := add(shl(128, z1), q)
 
-            if ((q >> 128) > (u >> 128) || (((q >> 128) == (u >> 128)) && rl < rr)) {
-                s = s - 1;
-            }
+            let rl := or(shl(128, r), and(a0, 0xffffffffffffffffffffffffffffffff))
 
-            return s >> (shift / 2);
+            z := sub(z,gt(or(lt(shr(128, r),shr(128,q)),and(eq(shr(128, r), shr(128,q)),lt(rl,mul(q,q)))),0))
+            z := shr(div(shift,2), z)
         }
     }
 
@@ -336,13 +318,5 @@ library FullMath {
 
     function le512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) internal pure returns (bool) {
         return a1 < b1 || (a1 == b1 && a0 <= b0);
-    }
-
-    function bitLength(uint256 n) internal pure returns (uint256 length) {
-        length = 0;
-        while (n > 0) {
-            length++;
-            n >>= 1;
-        }
     }
 }

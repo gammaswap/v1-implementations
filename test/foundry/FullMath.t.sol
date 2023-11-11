@@ -37,6 +37,23 @@ contract FullMathTest is Test {
         }
     }
 
+    function testSqrtNumSize() public {
+        uint256 num1 = 0x100000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-128+1);
+        num1 = 0x1000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-64+1);
+        num1 = 0x100000000000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-32+1);
+        num1 = 0x1000000000000000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-16+1);
+        num1 = 0x100000000000000000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-8+1);
+        num1 = 0x1000000000000000000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-4+1);
+        num1 = 0x4000000000000000000000000000000000000000000000000000000000000000;
+        assertEq(bitLength(num1), 256-2+1);
+    }
+
     function testCompare512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public {
         uint256 c0;
         uint256 c1;
@@ -44,13 +61,267 @@ contract FullMathTest is Test {
             (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
             assertEq(c0, 0);
             assertEq(c1, 0);
+            assertEq(FullMath.le512(a0, a1, b0, b1), true);
+            assertEq(FullMath.ge512(a0, a1, b0, b1), true);
         } else if(FullMath.lt512(a0, a1, b0, b1)) {
             (c0, c1) = FullMath.sub512x512(b0, b1, a0, a1);
             assertEq(c0 > 0 || c1 > 0, true);
+            assertEq(FullMath.le512(a0, a1, b0, b1), true);
+            assertEq(FullMath.ge512(a0, a1, b0, b1), false);
         } else if(FullMath.gt512(a0, a1, b0, b1)) {
             (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
             assertEq(c0 > 0 || c1 > 0, true);
+            assertEq(FullMath.le512(a0, a1, b0, b1), false);
+            assertEq(FullMath.ge512(a0, a1, b0, b1), true);
         }
+    }
+
+    function testAdd512Fixed() public {
+        (uint256 a0, uint256 a1) = FullMath.add512x512(1, 0, 1, 0);
+        assertEq(a0, 2);
+        assertEq(a1, 0);
+
+        (a0, a1) = FullMath.add512x512(type(uint256).max, 0, 1, 0);
+        assertEq(a0, 0);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(type(uint256).max, 0, 2, 0);
+        assertEq(a0, 1);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(type(uint256).max, 0, 3, 0);
+        assertEq(a0, 2);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(0, 1, 1, 0);
+        assertEq(a0, 1);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(1, 1, 1, 0);
+        assertEq(a0, 2);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(0, 1, 0, 1);
+        assertEq(a0, 0);
+        assertEq(a1, 2);
+
+        (a0, a1) = FullMath.add512x512(type(uint256).max, 0, 0, type(uint256).max);
+        assertEq(a0, type(uint256).max);
+        assertEq(a1, type(uint256).max);
+
+        vm.expectRevert("ADDITION_OVERFLOW");
+        (a0, a1) = FullMath.add512x512(1, 0, type(uint256).max, type(uint256).max);
+    }
+
+    function testAdd512Revert() public {
+        vm.expectRevert("ADDITION_OVERFLOW");
+        FullMath.add512x512(type(uint256).max, type(uint256).max, 1, 0);
+    }
+
+    function testAdd512Revert2() public {
+        vm.expectRevert("ADDITION_OVERFLOW");
+        FullMath.add512x512(0, type(uint256).max, 0, 1);
+    }
+
+    function testAdd512Revert3() public {
+        vm.expectRevert("ADDITION_OVERFLOW");
+        FullMath.add512x512(0, 1, 0, type(uint256).max);
+    }
+
+    function testAdd512Revert4() public {
+        vm.expectRevert("ADDITION_OVERFLOW");
+        FullMath.add512x512(0, type(uint256).max, 0, type(uint256).max);
+    }
+
+    function testAdd512Revert5() public {
+        vm.expectRevert("ADDITION_OVERFLOW");
+        (uint256 r0, uint256 r1) = FullMath.add512x512(type(uint256).max-2, type(uint256).max, 3, 0);
+    }
+
+    function testAddSubtract(uint256 num1, uint256 num2) public {
+        (uint256 a0, uint256 a1) = FullMath.add512x512(num1, 0, num2, 0);
+        bool hasHighBit = a1 > 0;
+
+        (uint256 r0, uint256 r1) = FullMath.sub512x512(a0, a1, num1, 0);
+        assertEq(r0, num2);
+        assertEq(r1, 0);
+        (r0, r1) = FullMath.sub512x512(a0, a1, num2, 0);
+        assertEq(r0, num1);
+        assertEq(r1, 0);
+        assertEq(FullMath.ge512(a0, a1, num1, 0), true);
+        assertEq(FullMath.ge512(a0, a1, num2, 0), true);
+
+        (a0, a1) = FullMath.add512x512(num1, 0, 0, num2);
+        (r0, r1) = FullMath.sub512x512(a0, a1, num1, 0);
+        assertEq(r0, 0);
+        assertEq(r1, num2);
+        (r0, r1) = FullMath.sub512x512(a0, a1, 0, num2);
+        assertEq(r0, num1);
+        assertEq(r1, 0);
+        assertEq(FullMath.ge512(a0, a1, num1, 0), true);
+        assertEq(FullMath.ge512(a0, a1, num2, 0), true);
+
+        (a0, a1) = FullMath.add512x512(0, num1, num2, 0);
+        (r0, r1) = FullMath.sub512x512(a0, a1, 0, num1);
+        assertEq(r0, num2);
+        assertEq(r1, 0);
+
+        (r0, r1) = FullMath.sub512x512(a0, a1, num2, 0);
+        assertEq(r0, 0);
+        assertEq(r1, num1);
+        assertEq(FullMath.ge512(a0, a1, num1, 0), true);
+        assertEq(FullMath.ge512(a0, a1, num2, 0), true);
+
+        if(hasHighBit) {
+            vm.expectRevert("ADDITION_OVERFLOW");
+            FullMath.add512x512(0, num1, 0, num2);
+        }
+    }
+
+    function testAdd512(uint256 num) public {
+        (uint256 a0, uint256 a1) = FullMath.add512x512(0, 1, num, 0);
+        assertEq(a0, num);
+        assertEq(a1, 1);
+
+        (a0, a1) = FullMath.add512x512(0, 0, num, 0);
+        assertEq(a0, num);
+        assertEq(a1, 0);
+
+        (a0, a1) = FullMath.add512x512(0, 0, 0, num);
+        assertEq(a0, 0);
+        assertEq(a1, num);
+
+        (a0, a1) = FullMath.add512x512(1, 0, 0, num);
+        assertEq(a0, 1);
+        assertEq(a1, num);
+
+        (a0, a1) = FullMath.add512x512(1, 0, 1, num);
+        assertEq(a0, 2);
+        assertEq(a1, num);
+
+        if(num > 0) {
+            (a0, a1) = FullMath.add512x512(1, 0, type(uint256).max, num - 1);
+            assertEq(a0, 0);
+            assertEq(a1, num);
+        }
+    }
+
+    function testSub512Fixed() public {
+        (uint256 a0, uint256 a1) = FullMath.sub512x512(0, 1, type(uint256).max, 0);
+        assertEq(a0, 1);
+        assertEq(a1, 0);
+
+        (a0, a1) = FullMath.sub512x512(0, 1, 1, 0);
+        assertEq(a0, type(uint256).max);
+        assertEq(a1, 0);
+
+        (a0, a1) = FullMath.sub512x512(0, 1, 2, 0);
+        assertEq(a0, type(uint256).max - 1);
+        assertEq(a1, 0);
+
+        vm.expectRevert("SUBTRACTION_UNDERFLOW");
+        FullMath.sub512x512(0, 1, 1, 1);
+    }
+
+    function testSub512Revert() public {
+        vm.expectRevert("SUBTRACTION_UNDERFLOW");
+        FullMath.sub512x512(0, 0, 1, 0);
+    }
+
+    function testSub512Revert2() public {
+        vm.expectRevert("SUBTRACTION_UNDERFLOW");
+        FullMath.sub512x512(0, 0, 1, 0);
+    }
+
+    function testSub512Revert3() public {
+        vm.expectRevert("SUBTRACTION_UNDERFLOW");
+        FullMath.sub512x512(0, type(uint256).max, 1, type(uint256).max);
+    }
+
+    function testSub512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public {
+        uint256 c0;
+        uint256 c1;
+        if(FullMath.gt512(a0, a1, b0, b1)) {
+            (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
+            assertEq(FullMath.gt512(c0, c1, 0, 0), true);
+            vm.expectRevert("SUBTRACTION_UNDERFLOW");
+            FullMath.sub512x512(b0, b1, a0, a1);
+        } else if(FullMath.lt512(a0, a1, b0, b1)) {
+            (c0, c1) = FullMath.sub512x512(b0, b1, a0, a1);
+            assertEq(FullMath.gt512(c0, c1, 0, 0), true);
+            vm.expectRevert("SUBTRACTION_UNDERFLOW");
+            FullMath.sub512x512(a0, a1, b0, b1);
+        } else {
+            (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
+            assertEq(FullMath.eq512(c0, c1, 0, 0), true);
+        }
+    }
+
+    function testSqrt512Fixed() public {
+        uint256 x0 = 0;
+        uint256 x1 = 1;
+        uint256 root = FullMath.sqrt512(x0, x1);
+
+        (uint256 a0, uint256 a1) = FullMath.mul256x256(root, root);
+        assertEq(FullMath.eq512(a0, a1, x0, x1), true);
+
+        (uint256 b0, uint256 b1) = FullMath.add512x512(type(uint256).max, 0, 1, 0);
+        assertEq(b0, 0);
+        assertEq(b1, 1);
+
+        (uint256 c0, uint256 c1) = FullMath.sub512x512(b0, b1, type(uint256).max, 0);
+        assertEq(c0, 1);
+        assertEq(c1, 0);
+
+        (uint256 d0, uint256 d1) = FullMath.sub512x512(b0, b1, 1, 0);
+        assertEq(d0, type(uint256).max);
+        assertEq(d1, 0);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint128).max);
+        assertEq(root, type(uint192).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint144).max);
+        assertEq(root, type(uint200).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint160).max);
+        assertEq(root, type(uint208).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint176).max);
+        assertEq(root, type(uint216).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint192).max);
+        assertEq(root, type(uint224).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint208).max);
+        assertEq(root, type(uint232).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint224).max);
+        assertEq(root, type(uint240).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint224).max);
+        assertEq(root, type(uint240).max);
+
+        root = FullMath.sqrt512(type(uint256).max, type(uint240).max);
+        assertEq(root, type(uint248).max);
+
+        root = FullMath.sqrt512(0, type(uint256).max);
+        assertEq(root, type(uint256).max);
+
+        (a0, a1) = FullMath.mul256x256(type(uint200).max, type(uint200).max);
+        root = FullMath.sqrt512(a0, a1);
+        assertEq(root, type(uint200).max);
+
+        (a0, a1) = FullMath.mul256x256(type(uint240).max, type(uint240).max);
+        root = FullMath.sqrt512(a0, a1);
+        assertEq(root, type(uint240).max);
+
+        (a0, a1) = FullMath.mul256x256(type(uint256).max, type(uint256).max);
+        root = FullMath.sqrt512(a0, a1);
+        assertEq(root, type(uint256).max);
+
+        (a0, a1) = FullMath.mul256x256(type(uint136).max, type(uint200).max);
+        root = FullMath.sqrt512(a0, a1);
+        assertEq(root, type(uint168).max - (2**31));
     }
 
     function testSqrt512(uint256 num1, uint256 num2) public {
@@ -72,12 +343,13 @@ contract FullMathTest is Test {
         assertEq(y0, _y0);
         assertEq(y1, _y1);
 
-        if(num1 > 0 && num2 > 0) {
+        if(num1 > 0 && num2 > 0 && num1 != num2) {
             //num1*num2
             (uint256 z0, uint256 z1) = FullMath.mul256x256(num1, num2);
             uint256 z = FullMath.sqrt512(z0, z1);
 
-            // x = y => x*x = x*y = y*y || x < y => x*x < x*y < y*y
+            // z = sqrt(x*y) => z*z = x*y
+            // x = y => x*x = z*z = y*y || x < y => x*x < z*z < y*y
             if(FullMath.eq512(x0, x1, y0, y1)) {
                 assertEq(x0, z0);
                 assertEq(x1, z1);
@@ -86,15 +358,29 @@ contract FullMathTest is Test {
                 assertEq(x, z);
                 assertEq(y, z);
             } else if(FullMath.lt512(x0, x1, y0, y1)) {
-                assertEq(FullMath.le512(x0, x1, z0, z1), true);
-                assertEq(FullMath.ge512(y0, y1, z0, z1), true);
-                assertLe(x, z);
-                assertGe(y, z);
+                (_y0, _y1) = FullMath.sub512x512(y0, y1, z0, z1);
+                assertEq(FullMath.gt512(_y0, _y1, 0, 0), true);
+                (_x0, _x1) = FullMath.sub512x512(z0, z1, x0, x1);
+                assertEq(FullMath.gt512(_x0, _x1, 0, 0), true);
+
+                assertEq(FullMath.lt512(x0, x1, z0, z1), true);
+                assertEq(FullMath.gt512(y0, y1, z0, z1), true);
+
+                assertLe(x, z); // equal because sqrt512 rounds down
+                assertGt(y, z);
             } else {
-                assertEq(FullMath.ge512(x0, x1, z0, z1), true);
-                assertEq(FullMath.le512(y0, y1, z0, z1), true);
-                assertGe(x, z);
-                assertLe(y, z);
+                (_x0, _x1) = FullMath.sub512x512(x0, x1, z0, z1);
+                assertEq(FullMath.gt512(_x0, _x1, 0, 0), true);
+                (_y0, _y1) = FullMath.sub512x512(z0, z1, y0, y1);
+                assertEq(FullMath.gt512(_y0, _y1, 0, 0), true);
+
+                assertEq(FullMath.gt512(x0, x1, z0, z1), true);
+                assertEq(FullMath.lt512(y0, y1, z0, z1), true);
+
+                assertEq(FullMath.gt512(x0, x1, z0, z1), true);
+                assertEq(FullMath.lt512(y0, y1, z0, z1), true);
+                assertGt(x, z);
+                assertLe(y, z); // equal because sqrt512 rounds down
             }
         }
     }
@@ -205,7 +491,7 @@ contract FullMathTest is Test {
         }
     }
 
-    function testMulFixed256x256() public {
+    function testMul256x256Fixed() public {
         uint256 num1 = 5;
         uint256 num2 = 10;
 
@@ -274,13 +560,13 @@ contract FullMathTest is Test {
         assertEq(v1, num2 - 1);
     }
 
-    function testMul516x256_128(uint128 a0, uint128 a1, uint128 b) public {
+    function testMul512x256_128(uint128 a0, uint128 a1, uint128 b) public {
         (uint256 v0, uint256 v1) = FullMath.mul512x256(a0, a1, b);
         assertEq(v0, uint256(a0) * b);
         assertEq(v1, uint256(a1) * b);
     }
 
-    function testMul516x256_256(uint256 a0, uint128 a1, uint128 b) public {
+    function testMul512x256_256(uint256 a0, uint128 a1, uint128 b) public {
         uint256 mm;
         uint256 r0;
         uint256 r;
@@ -294,14 +580,70 @@ contract FullMathTest is Test {
         assertEq(v1, uint256(a1) * b + r);
     }
 
-    function testMul516x256(uint256 num1, uint256 num2) public {
+    function testMul512x256(uint256 num1, uint256 num2) public {
         (uint256 u0, uint256 u1) = FullMath.mul256x256(num1, num2);
         (uint256 v0, uint256 v1) = FullMath.mul512x256(num1, 0, num2);
         assertEq(v0, u0);
         assertEq(v1, u1);
+
+        if(u1 > 0) {
+            vm.expectRevert("MULTIPLICATION_OVERFLOW");
+            (uint256 x0, uint256 x1) = FullMath.mul512x256(0, num1, num2);
+        }
     }
 
-    function testMulFixed516x256() public {
+    function testMul512x256Revert(uint256 num1, uint256 num2, uint256 num3) public {
+        (uint256 x0, uint256 x1) = FullMath.mul256x256(num1, num3);
+        (uint256 u0, uint256 u1) = FullMath.mul256x256(num2, num3);
+
+        if(u0 > 0 && u1 == 0 && x1 > 0) {
+            (uint256 y0, uint256 y1) = FullMath.add512x512(u0, 0, x1, 0);
+            if(y1 > 0) {
+                vm.expectRevert("MULTIPLICATION_OVERFLOW");
+                FullMath.mul512x256(num1, num2, num3);
+            }
+        }
+    }
+
+    function testMul512x256Revert1() public {
+        uint256 num1 = type(uint256).max;
+        uint256 num2 = type(uint256).max;
+        uint256 num3 = 2;
+        vm.expectRevert("MULTIPLICATION_OVERFLOW");
+        FullMath.mul512x256(num1, num2, num3);
+    }
+
+    function testMul512x256Revert2() public {
+        uint256 num1 = type(uint128).max;
+        uint256 num2 = type(uint128).max;
+        uint256 num3 = uint256(type(uint128).max)+2;
+
+        (uint256 a0, uint256 a1) = FullMath.mul512x256(num1, num2, num3);
+        (uint256 r0, uint256 r1) = FullMath.div512x256(a0, a1, num3);
+        assertEq(r0, num1);
+        assertEq(r1, num2);
+
+        num1++;
+        vm.expectRevert("MULTIPLICATION_OVERFLOW");
+        FullMath.mul512x256(num1, num2, num3);
+    }
+
+    function testMul512x256Revert3() public {
+        uint256 num1 = uint256(type(uint240).max) + uint256(type(uint104).max) + 2;
+        uint256 num2 = uint256(type(uint120).max) + 1;
+        uint256 num3 = uint256(type(uint136).max);
+
+        (uint256 a0, uint256 a1) = FullMath.mul512x256(num1, num2, num3);
+        (uint256 r0, uint256 r1) = FullMath.div512x256(a0, a1, num3);
+        assertEq(r0, num1);
+        assertEq(r1, num2);
+
+        ++num1;
+        vm.expectRevert("MULTIPLICATION_OVERFLOW");
+        FullMath.mul512x256(num1, num2, num3);
+    }
+
+    function testMul512x256Fixed() public {
         uint256 num1 = 23948237429384;
         uint256 num2 = 0;
         uint256 num3 = 942304;
@@ -336,6 +678,9 @@ contract FullMathTest is Test {
         (u0, u1) = FullMath.mul256x256(num1, num3);
         assertEq(v0, u0);
         assertEq(v1, num2*num3);
+
+        vm.expectRevert("MULTIPLICATION_OVERFLOW");
+        FullMath.mul512x256(0, type(uint256).max, 2);
     }
 
     function testDivFixed512x256_128(uint128 num1, uint128 num2, uint128 num3) public {
