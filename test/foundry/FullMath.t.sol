@@ -564,6 +564,12 @@ contract FullMathTest is Test {
         (uint256 v0, uint256 v1) = FullMath.mul512x256(a0, a1, b);
         assertEq(v0, uint256(a0) * b);
         assertEq(v1, uint256(a1) * b);
+
+        if(b > 0) {
+            (v0, v1) = FullMath.div512x256(v0, v1, b);
+            assertEq(v0, uint256(a0));
+            assertEq(v1, uint256(a1));
+        }
     }
 
     function testMul512x256_256(uint256 a0, uint128 a1, uint128 b) public {
@@ -578,6 +584,12 @@ contract FullMathTest is Test {
         (uint256 v0, uint256 v1) = FullMath.mul512x256(a0, a1, b);
         assertEq(v0, r0);
         assertEq(v1, uint256(a1) * b + r);
+
+        if(b > 0) {
+            (v0, v1) = FullMath.div512x256(v0, v1, b);
+            assertEq(v0, uint256(a0));
+            assertEq(v1, uint256(a1));
+        }
     }
 
     function testMul512x256(uint256 num1, uint256 num2) public {
@@ -589,6 +601,18 @@ contract FullMathTest is Test {
         if(u1 > 0) {
             vm.expectRevert("MULTIPLICATION_OVERFLOW");
             (uint256 x0, uint256 x1) = FullMath.mul512x256(0, num1, num2);
+        } else {
+            if(num2 > 0) {
+                (uint256 x0, uint256 x1) = FullMath.div512x256(v0, v1, num2);
+                assertEq(x0, num1);
+                assertEq(x1, 0);
+            }
+
+            if(num1 > 0) {
+                (uint256 x0, uint256 x1) = FullMath.div512x256(v0, v1, num1);
+                assertEq(x0, num2);
+                assertEq(x1, 0);
+            }
         }
     }
 

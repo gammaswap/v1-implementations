@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
 import "../../../strategies/cpmm/liquidation/CPMMBatchLiquidationStrategy.sol";
@@ -122,7 +122,7 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         updateLoan(s.loans[tokenId]);
     }
 
-    function calcBorrowRate(uint256, uint256, address, address) internal override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
+    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
         return (1e19,1e19);
     }
 
