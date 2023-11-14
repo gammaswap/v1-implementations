@@ -24,7 +24,8 @@ contract CPMMShortStrategy is CPMMBaseStrategy, ShortStrategySync {
     function _getLatestCFMMReserves(bytes memory _cfmm) public virtual override view returns(uint128[] memory reserves) {
         address cfmm_ = abi.decode(_cfmm, (address));
         reserves = new uint128[](2);
-        (reserves[0], reserves[1],) = ICPMM(cfmm_).getReserves(); // return uint256 to avoid casting
+        reserves[0] = uint128(GammaSwapLibrary.balanceOf(ICPMM(cfmm_).token0(), cfmm_));
+        reserves[1] = uint128(GammaSwapLibrary.balanceOf(ICPMM(cfmm_).token1(), cfmm_));
     }
 
     /// @dev See {IShortStrategy-_getLatestCFMMInvariant}.

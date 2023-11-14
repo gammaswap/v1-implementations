@@ -6,6 +6,12 @@ pragma solidity >=0.8.0;
 /// @notice Interface to get reserve tokens, deposit liquidity, withdraw liquidity, and swap tokens
 /// @dev Interface assumes an UniswapV2 implementation. Function mint() is used to deposit and burn() to withdraw
 interface ICPMM {
+    /// @dev Get token0 address from CFMM
+    function token0() external view returns(address);
+
+    /// @dev Get token1 address from CFMM
+    function token1() external view returns(address);
+
     /// @notice Read reserve token quantities in the AMM, and timestamp of last update
     /// @dev Reserve quantities come back as uint112 although we store them as uint128
     /// @return reserve0 - quantity of token0 held in AMM
