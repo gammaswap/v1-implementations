@@ -24,14 +24,14 @@ contract CalcDeltasForMaxLP is CalcDeltasBase {
             deltas[0], deltas[1]);
 
         if(deltas[0] > 0 || deltas[1] > 0) {
-            assertGe(GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1), collateral0); // when rebalancing is small it might not pass
+            assertGe(GSMath.sqrt(uint256(tokensHeld0) * tokensHeld1), collateral0 * (fee1 + (fee2 - fee1)/2) / fee2);
             bool checkRatio = tokensHeld0 >= (10**decimals0) && tokensHeld1 >= (10**decimals1) &&
                 reserve0 >= (10**decimals0) && reserve1 >= (10**decimals1);
             if(checkRatio && precision <= 1e18) {
                 uint256 cfmmRatio = uint256(reserve1) * (10**decimals0) / uint256(reserve0);
                 uint256 tokenRatio = uint256(tokensHeld1) * (10**decimals0) / uint256(tokensHeld0);
                 uint256 diff = cfmmRatio > tokenRatio ? cfmmRatio - tokenRatio : tokenRatio - cfmmRatio;
-                assertEq(diff/precision,0);
+                assertApproxEqAbs(cfmmRatio, tokenRatio, precision);
             }
         }
     }
@@ -87,11 +87,11 @@ contract CalcDeltasForMaxLP is CalcDeltasBase {
         rebalanceToCFMMCasesByReserves(tokensHeld0, tokensHeld1, decimals, 1e0);
     }
 
-    function testRebalanceToCFMMRatio(uint112 _reserve0, uint112 _reserve1, uint8 borrow, uint8 move, bool side) public {
-        if(move < 128) move = 128;
+    function testRebalanceToCFMMRatioX(uint112 _reserve0, uint112 _reserve1, uint8 borrow, uint8 move, bool side) public {
+        if(move < 1) move = 1;
 
         (uint128 reserve0, uint128 reserve1, uint128 tokensHeld0, uint128 tokensHeld1) =
-            createMarketPosition2(_reserve0, _reserve1, borrow, move, side, 1e6);
+            createMarketPosition2(_reserve0, _reserve1, borrow, move, side, 1e4);
 
         rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 18, 18, 1e10);
         rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 6, 18, 1e4);

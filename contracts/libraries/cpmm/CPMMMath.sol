@@ -24,7 +24,7 @@ contract CPMMMath is ICPMMMath {
         if(reserve0 == 0 || reserve1 == 0) revert ZeroReserves();
         if(fee1 == 0 || fee2 == 0) revert ZeroFees();
 
-        uint256 soldToken = reserve1 * delta * fee2 / ((reserve0 - delta) * fee1);
+        uint256 soldToken = reserve1 * delta * fee2 / ((reserve0 - delta) * fee1) + 1;
         require(soldToken <= tokensHeld1, "SOLD_TOKEN_GT_TOKENS_HELD1");
 
         tokensHeld1 -= soldToken;
