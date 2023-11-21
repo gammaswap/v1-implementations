@@ -13,6 +13,7 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
 
     error MissingMathLib();
     error CollateralIdGte2();
+    error LowPostTradeCollateral();
 
     /// @return mathLib - contract containing complex mathematical functions
     address immutable public mathLib;
@@ -44,6 +45,7 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
 
     /// @dev See {BaseRebalanceStrategy-_calcCollateralPostTrade}.
     function _calcCollateralPostTrade(int256[] memory deltas, uint128[] memory tokensHeld, uint128[] memory reserves) internal override virtual view returns(uint256 collateral) {
+        uint256 minCollateral = calcInvariant(address(0), tokensHeld) * (tradingFee1 + (tradingFee2 - tradingFee1) / 2)/ tradingFee2;
         if(deltas[0] > 0) {
             collateral = _calcCollateralPostTradeStaticCall(uint256(deltas[0]), tokensHeld[0], tokensHeld[1], reserves[0], reserves[1]);
         } else if(deltas[1] > 0) {
@@ -51,6 +53,7 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         } else {
             collateral = calcInvariant(address(0), tokensHeld);
         }
+        if(collateral < minCollateral) revert LowPostTradeCollateral();
     }
 
     /// @dev See {BaseRebalanceStrategy-_calcDeltasForMaxLP}.

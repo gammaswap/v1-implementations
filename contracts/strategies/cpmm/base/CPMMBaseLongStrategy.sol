@@ -12,6 +12,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
     error BadDelta();
     error ZeroReserves();
+    error InvalidTradingFee();
 
     /// @return tradingFee1 - numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 immutable public tradingFee1;
@@ -26,7 +27,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @dev `baseRate`, `factor`, and `maxApy`
     constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_,
         uint80 factor_, uint80 maxApy_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
-
+        if(tradingFee1_ > tradingFee2_) revert InvalidTradingFee();
         tradingFee1 = tradingFee1_;
         tradingFee2 = tradingFee2_;
     }
