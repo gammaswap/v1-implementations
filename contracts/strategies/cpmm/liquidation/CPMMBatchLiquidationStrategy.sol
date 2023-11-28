@@ -10,11 +10,11 @@ import "../base/CPMMBaseRebalanceStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract CPMMBatchLiquidationStrategy is CPMMBaseRebalanceStrategy, BatchLiquidationStrategy {
 
-    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `feeSource_`,
     /// @dev `baseRate`, `factor`, and `maxApy`
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_,
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
         uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMBaseRebalanceStrategy(mathLib_, maxTotalApy_,
-        blocksPerYear_, tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+        blocksPerYear_, tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
     }
 
     /// @dev See {BatchLiquidationStrategy-_calcMaxCollateralNotMktImpact}.

@@ -14,9 +14,9 @@ contract TestCPMMLiquidationWithLPStrategy is CPMMLiquidationStrategy, BaseBorro
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_,
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
         uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMLiquidationStrategy(mathLib_, maxTotalApy_, blocksPerYear_,
-        tradingFee1_, tradingFee2_, baseRate_, factor_, maxApy_) {
+        tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
     }
 
     function setPoolParams(uint8 liquidationFee, uint8 ltvThreshold) external virtual {
