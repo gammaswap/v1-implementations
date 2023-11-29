@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseLongStrategy.sol";
 import "./CPMMBaseStrategy.sol";
+import "../../../interfaces/external/IFeeSource.sol";
 
 /// @title Base Long Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
@@ -14,22 +15,25 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     error ZeroReserves();
     error InvalidTradingFee();
 
+    /// @return feeSource - source of tradingFee for tradingFee1
+    address immutable public feeSource;
+
     /// @return tradingFee1 - numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 immutable public tradingFee1;
 
     /// @return tradingFee2 - denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
-    uint16 immutable public tradingFee2;
+    uint16 constant public tradingFee2 = 1e3;
 
     /// @return Returns the minimum liquidity borrowed amount.
     uint256 constant public MIN_BORROW = 1e3;
 
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `baseRate`, `factor`, and `maxApy`
-    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, uint16 tradingFee2_, uint64 baseRate_,
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address _feeSource, uint64 baseRate_,
         uint80 factor_, uint80 maxApy_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
-        if(tradingFee1_ > tradingFee2_) revert InvalidTradingFee();
+        if(tradingFee1_ > tradingFee2) revert InvalidTradingFee();
         tradingFee1 = tradingFee1_;
-        tradingFee2 = tradingFee2_;
+        feeSource = _feeSource;
     }
 
     /// @return Returns the minimum liquidity borrowed amount.
@@ -43,8 +47,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
-        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant;
-        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant;
+        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant + 1;
+        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant + 1;
     }
 
     /// @dev See {BaseLongStrategy-beforeRepay}.
@@ -151,6 +155,10 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
+        uint16 _tradingFee1 = tradingFee1;
+        if(feeSource == address(0)) {
+            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
+        }
         uint256 amountOutWithFee = amountOut * tradingFee1;
         uint256 denominator = (reserveOut * tradingFee2) + amountOutWithFee;
         return amountOutWithFee * reserveIn / denominator;
@@ -164,6 +172,10 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
+        uint16 _tradingFee1 = tradingFee1;
+        if(feeSource == address(0)) {
+            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
+        }
         uint256 denominator = (reserveIn - amountIn) * tradingFee1;
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
     }
