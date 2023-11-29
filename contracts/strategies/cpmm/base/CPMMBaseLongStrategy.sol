@@ -47,8 +47,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
-        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant;
-        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant;
+        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant + 1;
+        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant + 1;
     }
 
     /// @dev See {BaseLongStrategy-beforeRepay}.
