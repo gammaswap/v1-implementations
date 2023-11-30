@@ -42,13 +42,18 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
-    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override view
         returns(uint256[] memory amounts) {
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
         amounts[0] = liquidity * reserves[0] / lastCFMMInvariant + 1;
         amounts[1] = liquidity * reserves[1] / lastCFMMInvariant + 1;
+
+        if(maxAmounts.length == 2) {
+            amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
+            amounts[1] = GSMath.min(amounts[1], maxAmounts[1]);
+        }
     }
 
     /// @dev See {BaseLongStrategy-beforeRepay}.

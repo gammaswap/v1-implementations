@@ -67,7 +67,7 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
         uint256[] memory amounts;
-        amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity);
+        amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity, new uint128[](0));
         return(amounts[0], amounts[1]);
     }
 
