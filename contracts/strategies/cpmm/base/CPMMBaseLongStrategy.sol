@@ -155,11 +155,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
-        uint16 _tradingFee1 = tradingFee1;
-        if(feeSource == address(0)) {
-            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
-        }
-        uint256 amountOutWithFee = amountOut * tradingFee1;
+        uint256 amountOutWithFee = amountOut * getTradingFee1();
         uint256 denominator = (reserveOut * tradingFee2) + amountOutWithFee;
         return amountOutWithFee * reserveIn / denominator;
     }
@@ -172,11 +168,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
-        uint16 _tradingFee1 = tradingFee1;
-        if(feeSource == address(0)) {
-            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
-        }
-        uint256 denominator = (reserveIn - amountIn) * tradingFee1;
+        uint256 denominator = (reserveIn - amountIn) * getTradingFee1();
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
+    }
+
+    function getTradingFee1() internal view returns(uint16) {
+        return feeSource == address(0) ? tradingFee1 : 1000 - IFeeSource(feeSource).gsFee();
     }
 }
