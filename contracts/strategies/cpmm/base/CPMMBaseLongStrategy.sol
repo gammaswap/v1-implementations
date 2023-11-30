@@ -42,13 +42,18 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
-    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity) internal virtual override view
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override view
         returns(uint256[] memory amounts) {
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
         amounts[0] = liquidity * reserves[0] / lastCFMMInvariant + 1;
         amounts[1] = liquidity * reserves[1] / lastCFMMInvariant + 1;
+
+        if(maxAmounts.length == 2) {
+            amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
+            amounts[1] = GSMath.min(amounts[1], maxAmounts[1]);
+        }
     }
 
     /// @dev See {BaseLongStrategy-beforeRepay}.
@@ -155,11 +160,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
-        uint16 _tradingFee1 = tradingFee1;
-        if(feeSource == address(0)) {
-            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
-        }
-        uint256 amountOutWithFee = amountOut * tradingFee1;
+        uint256 amountOutWithFee = amountOut * getTradingFee1();
         uint256 denominator = (reserveOut * tradingFee2) + amountOutWithFee;
         return amountOutWithFee * reserveIn / denominator;
     }
@@ -172,11 +173,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
-        uint16 _tradingFee1 = tradingFee1;
-        if(feeSource == address(0)) {
-            _tradingFee1 = 1000 - IFeeSource(feeSource).gsFee();
-        }
-        uint256 denominator = (reserveIn - amountIn) * tradingFee1;
+        uint256 denominator = (reserveIn - amountIn) * getTradingFee1();
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
+    }
+
+    function getTradingFee1() internal view returns(uint16) {
+        return feeSource == address(0) ? tradingFee1 : 1000 - IFeeSource(feeSource).gsFee();
     }
 }

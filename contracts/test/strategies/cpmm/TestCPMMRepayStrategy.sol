@@ -29,7 +29,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     }
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        uint256[] memory amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity);
+        uint256[] memory amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity, new uint128[](0));
         return(amounts[0], amounts[1]);
     }
 

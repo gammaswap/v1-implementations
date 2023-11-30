@@ -46,9 +46,9 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         _loan = s.loans[tokenId];
     }
 
-    function getPoolData(uint256 tokenId) external virtual view returns(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lpTokenBorrowedPlusInterest,
+    function getPoolData() external virtual view returns(uint256 lpTokenBalance, uint256 lpTokenBorrowed, uint256 lpTokenBorrowedPlusInterest,
         uint128 borrowedInvariant, uint128 lpInvariant, uint128 lastCFMMInvariant, uint256 lastCFMMTotalSupply, uint128[] memory tokenBalance,
-        uint48 lastBlockNumber, uint96 accFeeIndex, LibStorage.Loan memory _loan) {
+        uint48 lastBlockNumber, uint96 accFeeIndex) {
         lpTokenBalance = s.LP_TOKEN_BALANCE;
         lpTokenBorrowed = s.LP_TOKEN_BORROWED;
         lpTokenBorrowedPlusInterest = s.LP_TOKEN_BORROWED_PLUS_INTEREST;
@@ -59,9 +59,6 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         tokenBalance = s.TOKEN_BALANCE;
         lastBlockNumber = s.LAST_BLOCK_NUMBER;
         accFeeIndex = s.accFeeIndex;
-        if(tokenId > 0) {
-            _loan = s.loans[tokenId];
-        }
     }
 
     function setTokenBalances(uint256 tokenId, uint128 collateral0, uint128 collateral1, uint128 balance0, uint128 balance1) external virtual {
@@ -70,6 +67,12 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         loan.tokensHeld[1] = collateral1;
         s.TOKEN_BALANCE[0] = balance0;
         s.TOKEN_BALANCE[1] = balance1;
+    }
+
+    function setCFMMReserves(uint128 reserve0, uint128 reserve1, uint128 lastCFMMInvariant) external virtual {
+        s.CFMM_RESERVES[0] = reserve0;
+        s.CFMM_RESERVES[1] = reserve1;
+        s.lastCFMMInvariant = lastCFMMInvariant;
     }
 
     function depositLPTokens(uint256 tokenId) external virtual {
@@ -85,6 +88,29 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
 
     function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
         return (1e19,1e19);
+    }
+
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
+        // Revert if borrowing all CFMM LP tokens in pool
+        if(lpTokens >= s.LP_TOKEN_BALANCE) revert ExcessiveBorrowing();
+
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        // Update liquidity debt to include accrued interest since last update
+        uint256 loanLiquidity = updateLoan(_loan);
+
+        // Withdraw reserve tokens from CFMM that lpTokens represent
+        amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
+
+        // Add withdrawn tokens as part of loan collateral
+        (uint128[] memory tokensHeld,) = updateCollateral(_loan);
+
+        // Add liquidity debt to total pool debt and start tracking loan
+        (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
+
+        // Check that loan is not undercollateralized
+        if(!hasMargin(calcInvariant(s.cfmm, tokensHeld), loanLiquidity, _ltvThreshold())) revert HasMargin(); // Revert if loan does not have enough collateral
     }
 
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
