@@ -299,7 +299,7 @@ contract CPMMMath is ICPMMMath {
         uint256 left = reserve * liquidity;
         uint256 right = collateral * lastCFMMInvariant;
         bool isNeg = right > left;
-        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity);
+        uint256 _delta = (isNeg ? right - left : left - right) / (lastCFMMInvariant + liquidity) + 1;
         delta = isNeg ? -int256(_delta) : int256(_delta);
     }
 

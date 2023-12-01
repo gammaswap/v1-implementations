@@ -79,8 +79,8 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
 
         deltas = new int256[](2);
 
-        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.
-        calcDeltasToClose, (liquidity, calcInvariant(address(0), reserves), tokensHeld[collateralId], reserves[collateralId])));
+        (bool success, bytes memory data) = mathLib.staticcall(abi.encodeCall(ICPMMMath.calcDeltasToClose,
+            (liquidity, calcInvariant(address(0), reserves), tokensHeld[collateralId], reserves[collateralId])));
         require(success && data.length >= 1);
 
         deltas[collateralId] = abi.decode(data, (int256));
