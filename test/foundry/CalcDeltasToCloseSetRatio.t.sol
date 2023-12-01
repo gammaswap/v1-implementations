@@ -8,10 +8,20 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         uint128 reserve0, uint128 reserve1, uint8[] memory decimals, uint256 precision) internal {
         int256[] memory deltas = new int256[](2);
 
-        deltas = mathLib.calcDeltasToCloseSetRatio(liquidity, ratio[0], ratio[1], tokensHeld0, tokensHeld1,
-            reserve0, reserve1, (decimals[0] + decimals[1])/2);
-        (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
-
+        {
+            uint8 avgDecimals = (decimals[0] + decimals[1])/2;
+            uint256 leftVal = ratio[1] * (10**avgDecimals);
+            uint256 rightVal = ratio[0] * (10**avgDecimals);
+            if(leftVal > rightVal) {
+                deltas = mathLib.calcDeltasToCloseSetRatio(liquidity, ratio[0], ratio[1], tokensHeld0, tokensHeld1,
+                    reserve0, reserve1, avgDecimals);
+                (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
+            } else if(leftVal < rightVal){
+                deltas = mathLib.calcDeltasToCloseSetRatio(liquidity, ratio[1], ratio[0], tokensHeld1, tokensHeld0,
+                    reserve1, reserve0, avgDecimals);
+                (deltas[0], deltas[1]) = (0, deltas[1]); // swap result, 1st root (index 0) is the only feasible trade
+            }
+        }
         (tokensHeld0, tokensHeld1, reserve0, reserve1) = updateTokenQtys(tokensHeld0, tokensHeld1, reserve0, reserve1,
             deltas[0], deltas[1]);
 
