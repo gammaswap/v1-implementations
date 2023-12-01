@@ -32,13 +32,15 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     function _calcDeltasToCloseSetRatio(uint128[] memory tokensHeld, uint128[] memory reserves, uint256 liquidity, uint256[] memory ratio) internal override virtual view returns(int256[] memory deltas) {
         deltas = new int256[](2);
 
-        uint256 leftVal = uint256(reserves[0]) * uint256(tokensHeld[1]);
-        uint256 rightVal = uint256(reserves[1]) * uint256(tokensHeld[0]);
+        uint8 invDecimals = (s.decimals[0] + s.decimals[1])/2;
+        uint256 factor = 10**invDecimals;
+        uint256 leftVal = uint256(ratio[1]) * factor;
+        uint256 rightVal = uint256(ratio[0]) * factor;
         if(leftVal > rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], ratio[0], ratio[1], (s.decimals[0] + s.decimals[1])/2);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], ratio[0], ratio[1], invDecimals);
             (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
         } else if(leftVal < rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], ratio[1], ratio[0], (s.decimals[1] + s.decimals[1])/2);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], ratio[1], ratio[0], invDecimals);
             (deltas[0], deltas[1]) = (0, deltas[1]); // swap result, 1st root (index 0) is the only feasible trade
         }
     }
