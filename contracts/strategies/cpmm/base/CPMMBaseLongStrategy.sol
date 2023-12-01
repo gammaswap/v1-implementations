@@ -47,8 +47,12 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
         amounts = new uint256[](2);
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
-        amounts[0] = liquidity * reserves[0] / lastCFMMInvariant + 1;
-        amounts[1] = liquidity * reserves[1] / lastCFMMInvariant + 1;
+
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 expectedLPTokens = liquidity * s.lastCFMMTotalSupply / lastCFMMInvariant;
+
+        amounts[0] = expectedLPTokens * reserves[0] / lastCFMMTotalSupply + 1;
+        amounts[1] = expectedLPTokens * reserves[1] / lastCFMMTotalSupply + 1;
 
         if(maxAmounts.length == 2) {
             amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
