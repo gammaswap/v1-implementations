@@ -35,10 +35,10 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
         uint256 leftVal = uint256(reserves[0]) * uint256(tokensHeld[1]);
         uint256 rightVal = uint256(reserves[1]) * uint256(tokensHeld[0]);
         if(leftVal > rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], ratio[0], ratio[1], s.decimals[0]);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[0], tokensHeld[1], reserves[0], reserves[1], ratio[0], ratio[1], (s.decimals[0] + s.decimals[1])/2);
             (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
         } else if(leftVal < rightVal) {
-            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], ratio[1], ratio[0], s.decimals[1]);
+            deltas = _calcDeltasToCloseSetRatioStaticCall(liquidity, tokensHeld[1], tokensHeld[0], reserves[1], reserves[0], ratio[1], ratio[0], (s.decimals[1] + s.decimals[1])/2);
             (deltas[0], deltas[1]) = (0, deltas[1]); // swap result, 1st root (index 0) is the only feasible trade
         }
     }

@@ -9,27 +9,24 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         int256[] memory deltas = new int256[](2);
 
         deltas = mathLib.calcDeltasToCloseSetRatio(liquidity, ratio[0], ratio[1], tokensHeld0, tokensHeld1,
-            reserve0, reserve1, decimals[0]);
+            reserve0, reserve1, (decimals[0] + decimals[1])/2);
         (deltas[0], deltas[1]) = (deltas[1], 0); // swap result, 1st root (index 0) is the only feasible trade
 
         (tokensHeld0, tokensHeld1, reserve0, reserve1) = updateTokenQtys(tokensHeld0, tokensHeld1, reserve0, reserve1,
             deltas[0], deltas[1]);
 
-        if(deltas[0] != 0 || deltas[1] != 0) {
-            uint256 lastCFMMInvariant = GSMath.sqrt(uint256(reserve0) * reserve1);
-            uint256 payToken0 = liquidity * reserve0 / lastCFMMInvariant;
-            uint256 payToken1 = liquidity * reserve1 / lastCFMMInvariant;
-            tokensHeld0 -= uint128(payToken0);
-            tokensHeld1 -= uint128(payToken1);
-            reserve0 += uint128(payToken0);
-            reserve1 += uint128(payToken1);
-            bool checkRatio = tokensHeld0 >= (10**decimals[0]) && tokensHeld1 >= (10**decimals[1]) && reserve0 >= (10**decimals[0]) && reserve1 >= (10**decimals[1]);
-            if(checkRatio && precision <= 1e18) {
-                uint256 _ratio = uint256(ratio[1]) * (10**decimals[0]) / uint256(ratio[0]);
-                uint256 tokenRatio = uint256(tokensHeld1) * (10**decimals[0]) / uint256(tokensHeld0);
-                uint256 diff = tokenRatio > _ratio ? tokenRatio - _ratio : _ratio - tokenRatio;
-                assertEq(diff/precision,0);
-            }
+        uint256 lastCFMMInvariant = GSMath.sqrt(uint256(reserve0) * reserve1);
+        uint256 payToken0 = liquidity * reserve0 / lastCFMMInvariant;
+        uint256 payToken1 = liquidity * reserve1 / lastCFMMInvariant;
+        tokensHeld0 -= uint128(payToken0);
+        tokensHeld1 -= uint128(payToken1);
+        reserve0 += uint128(payToken0);
+        reserve1 += uint128(payToken1);
+        bool checkRatio = tokensHeld0 >= (10**decimals[0]) && tokensHeld1 >= (10**decimals[1]) && reserve0 >= (10**decimals[0]) && reserve1 >= (10**decimals[1]);
+        if(checkRatio && precision <= 1e18) {
+            uint256 _ratio = uint256(ratio[1]) * (10**decimals[0]) / uint256(ratio[0]);
+            uint256 tokenRatio = uint256(tokensHeld1) * (10**decimals[0]) / uint256(tokensHeld0);
+            assertApproxEqRel(_ratio,tokenRatio,precision);
         }
     }
 
@@ -84,7 +81,7 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         decimals[0] = 18;
         decimals[1] = 18;
 
-        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e2);
+        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e14);
     }
 
     function testRebalanceToCloseSetRatioFixed18x6() public {
@@ -95,7 +92,7 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         decimals[0] = 18;
         decimals[1] = 6;
 
-        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e2);
+        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e14);
     }
 
     function testRebalanceToCloseSetRatioFixed6x18() public {
@@ -106,7 +103,7 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         decimals[0] = 6;
         decimals[1] = 18;
 
-        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e13);
+        rebalanceToCloseSetRatioCasesByRatio(decimals, 1e14);
     }
 
     function testRebalanceToCloseSetRatio(bool side, uint8 amtFactor, uint8 move, uint8 borrow,
@@ -130,6 +127,6 @@ contract CalcDeltasToCloseSetRatio is CalcDeltasBase {
         decimals[0] = 18;
         decimals[1] = 18;
 
-        rebalanceToCloseSetRatio(liquidity, ratio, tokensHeld0, tokensHeld1, reserve0, reserve1, decimals, 1e10);
+        rebalanceToCloseSetRatio(liquidity, ratio, tokensHeld0, tokensHeld1, reserve0, reserve1, decimals, 1e14);
     }
 }
