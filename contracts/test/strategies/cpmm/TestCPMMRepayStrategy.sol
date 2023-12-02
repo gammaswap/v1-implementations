@@ -63,8 +63,8 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
         (loan.tokensHeld[0], loan.tokensHeld[1], s.TOKEN_BALANCE[0], s.TOKEN_BALANCE[1]) = (collateral0, collateral1, balance0, balance1);
     }
 
-    function setCFMMReserves(uint128 reserve0, uint128 reserve1, uint128 lastCFMMInvariant) external virtual {
-        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], s.lastCFMMInvariant) = (reserve0, reserve1, lastCFMMInvariant);
+    function setCFMMReserves(uint128 reserve0, uint128 reserve1, uint128 lastCFMMInvariant, uint256 lastCFMMTotalSupply) external virtual {
+        (s.CFMM_RESERVES[0], s.CFMM_RESERVES[1], s.lastCFMMInvariant, s.lastCFMMTotalSupply) = (reserve0, reserve1, lastCFMMInvariant, lastCFMMTotalSupply);
     }
 
     function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
