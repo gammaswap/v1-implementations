@@ -18,7 +18,7 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
     }
 
     function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
-        origFee = originationFee();
+        return originationFee();
         origFee = discount > origFee ? 0 : (origFee - discount);
     }
 
@@ -88,29 +88,6 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
 
     function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
         return (1e19,1e19);
-    }
-
-    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
-        // Revert if borrowing all CFMM LP tokens in pool
-        if(lpTokens >= s.LP_TOKEN_BALANCE) revert ExcessiveBorrowing();
-
-        // Get loan for tokenId, revert if not loan creator
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-
-        // Update liquidity debt to include accrued interest since last update
-        uint256 loanLiquidity = updateLoan(_loan);
-
-        // Withdraw reserve tokens from CFMM that lpTokens represent
-        amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
-
-        // Add withdrawn tokens as part of loan collateral
-        (uint128[] memory tokensHeld,) = updateCollateral(_loan);
-
-        // Add liquidity debt to total pool debt and start tracking loan
-        (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
-
-        // Check that loan is not undercollateralized
-        if(!hasMargin(calcInvariant(s.cfmm, tokensHeld), loanLiquidity, _ltvThreshold())) revert HasMargin(); // Revert if loan does not have enough collateral
     }
 
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
