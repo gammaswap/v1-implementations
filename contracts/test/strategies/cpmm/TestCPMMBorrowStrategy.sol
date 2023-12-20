@@ -24,7 +24,7 @@ contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {
-        s.initialize(_factory, _cfmm, 1, _tokens, _decimals);
+        s.initialize(_factory, _cfmm, 1, _tokens, _decimals, 1e3);
         s.origFee = 0;
     }
 

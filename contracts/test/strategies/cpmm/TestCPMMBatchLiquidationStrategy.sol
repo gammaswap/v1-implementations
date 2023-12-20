@@ -20,7 +20,7 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
-        s.initialize(factory_, cfmm_, 1, tokens_, decimals_);
+        s.initialize(factory_, cfmm_, 1, tokens_, decimals_, 1e3);
     }
 
     function cfmm() public view returns(address) {
@@ -148,6 +148,9 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         // Check that loan is not undercollateralized
         uint256 collateral = calcInvariant(s.cfmm, tokensHeld);
         checkLoanMargin(collateral, loanLiquidity);
+    }
+
+    function updateLoanPrice(uint256, uint256, uint256, uint256) internal override virtual view returns(uint256) {
     }
 
     function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {

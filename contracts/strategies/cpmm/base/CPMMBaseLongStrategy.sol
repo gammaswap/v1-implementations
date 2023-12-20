@@ -24,8 +24,8 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return tradingFee2 - denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
     uint16 constant public tradingFee2 = 1e3;
 
-    /// @return Returns the minimum liquidity borrowed amount.
-    uint256 constant public MIN_BORROW = 1e3;
+    /// @return Returns the minimum liquidity payment amount.
+    uint256 constant public MIN_PAY = 1e3;
 
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `baseRate`, `factor`, and `maxApy`
@@ -36,9 +36,9 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         feeSource = _feeSource;
     }
 
-    /// @return Returns the minimum liquidity borrowed amount.
-    function minBorrow() internal virtual override view returns(uint256) {
-        return MIN_BORROW;
+    /// @return Returns the minimum liquidity amount to pay.
+    function minPay() internal virtual override view returns(uint256) {
+        return MIN_PAY;
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
