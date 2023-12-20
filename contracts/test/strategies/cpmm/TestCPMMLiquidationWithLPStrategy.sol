@@ -34,7 +34,7 @@ contract TestCPMMLiquidationWithLPStrategy is CPMMLiquidationStrategy, BaseBorro
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
-        s.initialize(factory_, cfmm_, 1, tokens_, decimals_);
+        s.initialize(factory_, cfmm_, 1, tokens_, decimals_, 1e3);
         s.origFee = 0;
     }
 

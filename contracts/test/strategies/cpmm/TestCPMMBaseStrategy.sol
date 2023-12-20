@@ -15,7 +15,7 @@ contract TestCPMMBaseStrategy is CPMMBaseStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
-        s.initialize(msg.sender, cfmm, 1, tokens, decimals);
+        s.initialize(msg.sender, cfmm, 1, tokens, decimals, 1e3);
     }
 
     function getCFMM() public virtual view returns(address) {

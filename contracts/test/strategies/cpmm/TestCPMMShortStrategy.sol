@@ -12,7 +12,7 @@ contract TestCPMMShortStrategy is CPMMShortStrategy {
     }
 
     function initialize(address cfmm, address[] calldata tokens, uint8[] calldata decimals) external virtual {
-        s.initialize(msg.sender, cfmm, 1, tokens, decimals);
+        s.initialize(msg.sender, cfmm, 1, tokens, decimals, 1e3);
     }
 
     function testCalcDeposits(uint256[] calldata amountsDesired, uint256[] calldata amountsMin) public virtual view returns(uint256[] memory amounts, address payee) {
