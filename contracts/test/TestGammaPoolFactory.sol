@@ -34,6 +34,9 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
 
     }
 
+    function updateProtocol(uint16 _protocolId, address _newImplementation) external override virtual {
+    }
+
     function createPool(uint16, address, address[] calldata, bytes calldata) external override virtual returns(address) {
         return address(0);
     }
