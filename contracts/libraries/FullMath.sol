@@ -138,7 +138,7 @@ library FullMath {
     /// @param b second number (uint256).
     /// @return r0 The result as an uint512. (lower bits).
     /// @return r1 The result as an uint512. (higher bits).
-    function mul512x256(uint256 a0, uint256 a1, uint256 b) internal view returns (uint256 r0, uint256 r1) {
+    function mul512x256(uint256 a0, uint256 a1, uint256 b) internal pure returns (uint256 r0, uint256 r1) {
         uint256 ff;
 
         assembly {
