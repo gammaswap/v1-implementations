@@ -72,7 +72,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
     }
 
     /// @dev See {IBorrowStrategy-_borrowLiquidity}.
-    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata) external virtual override returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata) external virtual override returns(uint256 liquidityBorrowed, uint256[] memory amounts, uint128[] memory tokensHeld) {
         // Revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= s.LP_TOKEN_BALANCE) revert ExcessiveBorrowing();
 
@@ -86,7 +86,7 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
         amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
 
         // Add withdrawn tokens as part of loan collateral
-        (uint128[] memory tokensHeld,) = updateCollateral(_loan);
+        (tokensHeld,) = updateCollateral(_loan);
 
         // Add liquidity debt to total pool debt and start tracking loan
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
