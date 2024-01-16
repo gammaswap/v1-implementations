@@ -59,6 +59,10 @@ contract TestGammaPoolFactory is IGammaPoolFactory, AbstractRateParamsStore {
         return protocol;
     }
 
+    function getProtocolBeacon(uint16) external override view returns (address) {
+        return address(0);
+    }
+
     function allPoolsLength() external override pure returns (uint256) {
         return 0;
     }
