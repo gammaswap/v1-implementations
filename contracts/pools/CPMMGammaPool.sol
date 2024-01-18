@@ -18,9 +18,6 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
 
     using LibStorage for LibStorage.Storage;
 
-    /// @return tokenCount - number of tokens expected in CFMM
-    uint8 constant public tokenCount = 2;
-
     /// @return cfmmFactory - factory contract that created CFMM
     address immutable public cfmmFactory;
 
@@ -41,7 +38,7 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
 
     /// @dev See {IGammaPool-createLoan}
     function createLoan(uint16 refId) external lock virtual override returns(uint256 tokenId) {
-        tokenId = s.createLoan(tokenCount, refId); // save gas using constant variable tokenCount
+        tokenId = s.createLoan(2, refId); // only 2 token pair
         emit LoanCreated(msg.sender, tokenId, refId);
     }
 
@@ -62,7 +59,7 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
     /// @dev See {IGammaPool-validateCFMM}
     function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
         if(!GammaSwapLibrary.isContract(_cfmm)) revert NotContract(); // Not a smart contract (hence not a CFMM) or not instantiated yet
-        if(_tokens.length != tokenCount) revert InvalidTokensLength();
+        if(_tokens.length != 2) revert InvalidTokensLength();
 
         // Order tokens to match order of tokens in CFMM
         _tokensOrdered = new address[](2);
