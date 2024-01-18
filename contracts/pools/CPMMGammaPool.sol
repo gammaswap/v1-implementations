@@ -50,9 +50,12 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
         return GSMath.sqrt(uint256(tokensHeld[0]) * tokensHeld[1]);
     }
 
-    /// @dev See {GammaPoolERC4626.getLastCFMMPrice}.
+    /// @dev See {GammaPoolERC4626._getLastCFMMPrice}.
     function _getLastCFMMPrice() internal virtual override view returns(uint256) {
         uint128[] memory _reserves = _getLatestCFMMReserves();
+        if(_reserves[0] == 0) {
+            return 0;
+        }
         return _reserves[1] * (10 ** s.decimals[0]) / _reserves[0];
     }
 
