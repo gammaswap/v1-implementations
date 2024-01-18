@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 /// @title Interface for Constant Product Market Maker contract implementations
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Interface to get reserve tokens, deposit liquidity, withdraw liquidity, and swap tokens
-/// @dev Interface assumes an UniswapV2 interface implementation. Function mint() is used to deposit and burn() to withdraw
+/// @dev Interface assumes an UniswapV2 interface. Function mint() is used to deposit and burn() to withdraw
 interface ICPMM {
     /// @dev Get token0 address from CFMM
     function token0() external view returns(address);
