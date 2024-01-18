@@ -93,7 +93,7 @@ contract CalcDeltasForMaxLP is CalcDeltasBase {
             createMarketPosition2(_reserve0, _reserve1, borrow, move, side, 1e4);
 
         rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 18, 18, 1e10);// 0.000001%
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 6, 18, 1e14); // 0.01%
-        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 18, 6, 1e14); // 0.01%
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 6, 18, 2*1e14); // 0.02%
+        rebalanceToCFMM(tokensHeld0, tokensHeld1, reserve0, reserve1, 18, 6, 2*1e14); // 0.02%
     }
 }
