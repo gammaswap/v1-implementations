@@ -27,10 +27,11 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return Returns the minimum liquidity payment amount.
     uint256 constant public MIN_PAY = 1e3;
 
-    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
-    /// @dev `baseRate`, `factor`, and `maxApy`
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `feeSource`,
+    /// @dev `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address _feeSource, uint64 baseRate_,
-        uint80 factor_, uint80 maxApy_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
+        uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_,
+        optimalUtilRate_, slope1_, slope2_) {
         if(tradingFee1_ > tradingFee2) revert InvalidTradingFee();
         tradingFee1 = tradingFee1_;
         feeSource = _feeSource;

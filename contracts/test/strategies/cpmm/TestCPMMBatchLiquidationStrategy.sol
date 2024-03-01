@@ -15,8 +15,8 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
-        uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMBatchLiquidationStrategy(mathLib_, maxTotalApy_,
-        blocksPerYear_, tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
+        uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBatchLiquidationStrategy(mathLib_,
+        maxTotalApy_, blocksPerYear_, tradingFee1_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
@@ -122,8 +122,8 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         updateLoan(s.loans[tokenId]);
     }
 
-    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
-        return (1e19,1e19);
+    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LinearKinkedRateModel) virtual view returns(uint256,uint256,uint256,uint256) {
+        return (1e19,1e19,5000,1e18);
     }
 
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {
@@ -160,5 +160,13 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.
     function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
         return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
+    }
+
+    function validateParameters(bytes calldata _data) external override(IRateModel, LinearKinkedRateModel) virtual view returns(bool) {
+        return true;
+    }
+
+    function getRateModelParams(address paramsStore, address pool) public virtual override view returns(uint64, uint64, uint64, uint64) {
+        return (baseRate, optimalUtilRate, slope1, slope2);
     }
 }

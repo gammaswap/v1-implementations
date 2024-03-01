@@ -10,8 +10,9 @@ contract TestCPMMRepayStrategy is CPMMRepayStrategy, BorrowStrategy {
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    constructor(address mathLib_, uint16 tradingFee1_, address feeSource_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        CPMMRepayStrategy(mathLib_, 1e19, 2252571, tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint16 tradingFee1_, address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_,
+        uint64 slope1_, uint64 slope2_) CPMMRepayStrategy(mathLib_, 1e19, 2252571, tradingFee1_, feeSource_, baseRate_,
+        optimalUtilRate_, slope1_, slope2_) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {

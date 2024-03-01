@@ -19,10 +19,10 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     address immutable public mathLib;
 
     /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`,
-    /// @dev `feeSource_`, `baseRate`, `factor`, and `maxApy`
+    /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
-        uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMBaseLongStrategy(maxTotalApy_, blocksPerYear_,
-        tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
+        uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseLongStrategy(maxTotalApy_,
+        blocksPerYear_, tradingFee1_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
 
         if(mathLib_ == address(0)) revert MissingMathLib();
         mathLib = mathLib_;
