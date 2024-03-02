@@ -10,10 +10,10 @@ import "../base/CPMMBaseLongStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract CPMMExternalRebalanceStrategy is CPMMBaseLongStrategy, ExternalRebalanceStrategy {
 
-    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `feeSource`,
-    /// @dev `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
-    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
+    /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_, address feeSource_,
         uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseLongStrategy(maxTotalApy_,
-        blocksPerYear_, tradingFee1_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+        blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 }

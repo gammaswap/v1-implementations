@@ -18,11 +18,11 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     /// @return mathLib - contract containing complex mathematical functions
     address immutable public mathLib;
 
-    /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`,
+    /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
-        uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseLongStrategy(maxTotalApy_,
-        blocksPerYear_, tradingFee1_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
+        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseLongStrategy(maxTotalApy_,
+        blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
 
         if(mathLib_ == address(0)) revert MissingMathLib();
         mathLib = mathLib_;
@@ -134,7 +134,7 @@ abstract contract CPMMBaseRebalanceStrategy is BaseRebalanceStrategy, CPMMBaseLo
     /// @param reserve1 - reserve quantity of token1 in CFMM
     /// @return collateral - collateral after transaction in terms of liquidity invariant
     function _calcCollateralPostTradeStaticCall(uint256 preCollateral, uint256 delta, uint128 tokensHeld0, uint128 tokensHeld1, uint256 reserve0, uint256 reserve1) internal virtual view returns(uint256 collateral) {
-        uint16 _tradingFee1 = getTradingFee1();
+        uint256 _tradingFee1 = getTradingFee1();
         uint256 minCollateral = preCollateral * (_tradingFee1 + (tradingFee2 - _tradingFee1) / 2)/ tradingFee2;
 
         // always buys
