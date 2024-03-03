@@ -12,9 +12,9 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
-        uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMLiquidationStrategy(mathLib_, maxTotalApy_, blocksPerYear_,
-        tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
+        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMLiquidationStrategy(mathLib_,
+        maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
@@ -86,8 +86,8 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         s.LP_INVARIANT = lpInvariant;
     }
 
-    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
-        return (1e19,1e19);
+    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LinearKinkedRateModel) virtual view returns(uint256,uint256,uint256,uint256) {
+        return (1e19,1e19,5000,1e18);
     }
 
     /// @dev See {BaseLongStrategy-getCurrentCFMMPrice}.

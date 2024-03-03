@@ -14,9 +14,9 @@ contract TestCPMMLiquidationWithLPStrategy is CPMMLiquidationStrategy, BaseBorro
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address feeSource_,
-        uint64 baseRate_, uint80 factor_, uint80 maxApy_) CPMMLiquidationStrategy(mathLib_, maxTotalApy_, blocksPerYear_,
-        tradingFee1_, feeSource_, baseRate_, factor_, maxApy_) {
+    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
+        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMLiquidationStrategy(mathLib_,
+        maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function setPoolParams(uint8 liquidationFee, uint8 ltvThreshold) external virtual {
@@ -99,8 +99,8 @@ contract TestCPMMLiquidationWithLPStrategy is CPMMLiquidationStrategy, BaseBorro
         updateLoan(s.loans[tokenId]);
     }
 
-    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LogDerivativeRateModel) virtual view returns(uint256,uint256) {
-        return (1e19,1e19);
+    function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LinearKinkedRateModel) virtual view returns(uint256,uint256,uint256,uint256) {
+        return (1e19,1e19,5000,1e18);
     }
 
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual returns(uint256 liquidityBorrowed, uint256[] memory amounts) {

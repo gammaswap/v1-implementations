@@ -18,9 +18,9 @@ contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint16 tradingFee1_, address feeSource_, uint64 baseRate_, uint80 factor_,
-        uint80 maxApy_) CPMMBorrowStrategy(mathLib_, 1e19, 2252571, tradingFee1_, feeSource_, baseRate_,
-        factor_, maxApy_) {
+    constructor(address mathLib_, uint24 tradingFee1_, uint24 tradingFee2_, address feeSource_, uint64 baseRate_,
+        uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBorrowStrategy(mathLib_, 1e19, 2252571,
+        tradingFee1_, tradingFee1_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function initialize(address _factory, address _cfmm, address[] calldata _tokens, uint8[] calldata _decimals) external virtual {

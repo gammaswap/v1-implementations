@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@gammaswap/v1-core/contracts/rates/LogDerivativeRateModel.sol";
+import "@gammaswap/v1-core/contracts/rates/LinearKinkedRateModel.sol";
 import "@gammaswap/v1-core/contracts/strategies/base/BaseStrategy.sol";
 import "../../../interfaces/external/cpmm/ICPMM.sol";
 
@@ -10,7 +10,7 @@ import "../../../interfaces/external/cpmm/ICPMM.sol";
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Common functions used by all concrete strategy implementations for Constant Product Market Maker
 /// @dev This implementation was specifically designed to work with UniswapV2. Inherits Rate Model
-abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
+abstract contract CPMMBaseStrategy is BaseStrategy, LinearKinkedRateModel {
 
     error MaxTotalApy();
 
@@ -20,11 +20,11 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
 
-    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `factor`, and `maxApy`
-    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint80 factor_, uint80 maxApy_)
-        LogDerivativeRateModel(baseRate_, factor_, maxApy_) {
+    /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
+        LinearKinkedRateModel(baseRate_, optimalUtilRate_, slope1_, slope2_) {
         // maxTotalApy (CFMM Fees + GammaSwap interest rate) can't be >= maxApy (max GammaSwap interest rate)
-        if(maxTotalApy_ < maxApy_) revert MaxTotalApy();
+        if(maxTotalApy_ == 0 || maxTotalApy_ < baseRate_ + slope1_ + slope2_) revert MaxTotalApy();
 
         MAX_TOTAL_APY = maxTotalApy_;
         BLOCKS_PER_YEAR = blocksPerYear_;
@@ -39,7 +39,6 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LogDerivativeRateModel {
     function blocksPerYear() internal virtual override view returns(uint256) {
         return BLOCKS_PER_YEAR;
     }
-
 
     /// @dev See {BaseStrategy-syncCFMM}.
     function syncCFMM(address cfmm) internal virtual override {

@@ -19,20 +19,22 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     address immutable public feeSource;
 
     /// @return tradingFee1 - numerator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
-    uint16 immutable public tradingFee1;
+    uint24 immutable public tradingFee1;
 
     /// @return tradingFee2 - denominator in tradingFee calculation (e.g amount * tradingFee1 / tradingFee2)
-    uint16 constant public tradingFee2 = 1e3;
+    uint24 immutable public tradingFee2 ;
 
     /// @return Returns the minimum liquidity payment amount.
     uint256 constant public MIN_PAY = 1e3;
 
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
-    /// @dev `baseRate`, `factor`, and `maxApy`
-    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint16 tradingFee1_, address _feeSource, uint64 baseRate_,
-        uint80 factor_, uint80 maxApy_) CPMMBaseStrategy(maxTotalApy_, blocksPerYear_, baseRate_, factor_, maxApy_) {
-        if(tradingFee1_ > tradingFee2) revert InvalidTradingFee();
+    /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
+    constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_, address _feeSource,
+        uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBaseStrategy(maxTotalApy_,
+        blocksPerYear_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+        if(tradingFee1_ > tradingFee2_) revert InvalidTradingFee();
         tradingFee1 = tradingFee1_;
+        tradingFee2 = tradingFee2_;
         feeSource = _feeSource;
     }
 
@@ -181,7 +183,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
     }
 
-    function getTradingFee1() internal view returns(uint16) {
-        return feeSource == address(0) ? tradingFee1 : 1000 - IFeeSource(feeSource).gsFee();
+    function getTradingFee1() internal view returns(uint24) {
+        return feeSource == address(0) ? tradingFee1 : tradingFee2 - IFeeSource(feeSource).gsFee();
     }
 }
