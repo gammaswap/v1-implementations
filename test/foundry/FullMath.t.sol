@@ -25,7 +25,9 @@ contract FullMathTest is Test {
     }
 
     function testGSMathSqrt(uint256 x) public {
-        assertEq(GSMath.sqrt(x),sqrt(x));
+        uint256 sqrtVal = sqrt(x);
+        assertEq(GSMath.sqrt(x),sqrtVal);
+        assertEq(FullMath.sqrt256(x),sqrtVal);
     }
 
     function testSqrt(uint8 num1, uint8 num2) public {
