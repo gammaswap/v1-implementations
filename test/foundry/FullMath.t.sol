@@ -8,6 +8,28 @@ import "../../contracts/libraries/FullMath.sol";
 
 contract FullMathTest is Test {
 
+    // Babylonian Method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)
+    function sqrt(uint256 y) internal pure returns (uint256 z) {
+        unchecked {
+            if (y > 3) {
+                z = y;
+                uint256 x = y / 2 + 1;
+                while (x < z) {
+                    z = x;
+                    x = (y / x + x) / 2;
+                }
+            } else if (y != 0) {
+                z = 1;
+            }
+        }
+    }
+
+    function testGSMathSqrt(uint256 x) public {
+        uint256 sqrtVal = sqrt(x);
+        assertEq(GSMath.sqrt(x),sqrtVal);
+        assertEq(FullMath.sqrt256(x),sqrtVal);
+    }
+
     function testSqrt(uint8 num1, uint8 num2) public {
         num1 = uint8(bound(num1, 1, 1000));
         num2 = uint8(bound(num2, 1, 1000));
