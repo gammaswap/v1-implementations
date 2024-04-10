@@ -51,6 +51,16 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LinearKinkedRateModel {
         (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
     }
 
+    /// @dev See {BaseStrategy-getReserves}.
+    function getLPReserves(address cfmm, bool isLatest) internal virtual override view returns(uint128[] memory reserves) {
+        if(isLatest) {
+            reserves = new uint128[](2);
+            (reserves[0], reserves[1],) = ICPMM(cfmm).getReserves();
+        } else {
+            reserves = s.CFMM_RESERVES;
+        }
+    }
+
     /// @dev See {BaseStrategy-depositToCFMM}.
     function depositToCFMM(address cfmm, address to, uint256[] memory) internal virtual override returns(uint256) {
         return ICPMM(cfmm).mint(to);
