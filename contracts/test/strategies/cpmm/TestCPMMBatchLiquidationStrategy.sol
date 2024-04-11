@@ -169,4 +169,8 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     function getRateModelParams(address paramsStore, address pool) public virtual override view returns(uint64, uint64, uint64, uint64) {
         return (baseRate, optimalUtilRate, slope1, slope2);
     }
+
+    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {
+        return 0;
+    }
 }
