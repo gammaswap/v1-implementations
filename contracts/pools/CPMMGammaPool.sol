@@ -37,7 +37,7 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
     }
 
     /// @dev See {IGammaPool-createLoan}
-    function createLoan(uint16 refId) external lock virtual override returns(uint256 tokenId) {
+    function createLoan(uint16 refId) external lock virtual override whenNotPaused(9) returns(uint256 tokenId) {
         tokenId = s.createLoan(2, refId); // only 2 token pair
         emit LoanCreated(msg.sender, tokenId, refId);
     }
