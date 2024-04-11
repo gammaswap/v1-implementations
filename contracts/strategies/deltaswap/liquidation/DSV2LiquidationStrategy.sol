@@ -4,12 +4,11 @@ pragma solidity 0.8.21;
 import "../../../interfaces/external/deltaswap/IDSPair.sol";
 import "../../cpmm/liquidation/CPMMLiquidationStrategy.sol";
 
-/// @title Liquidation Strategy concrete implementation contract for Constant Product Market Maker
+/// @title Liquidation Strategy concrete implementation contract for Streaming Yield Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by LiquidationStrategy and defines internal functions specific to CPMM implementation
-/// @dev This implementation was specifically designed to work with UniswapV2
-contract DSLiquidationStrategy is CPMMLiquidationStrategy {
-
+/// @dev This implementation was specifically designed to work with DeltaSwapV2's streaming yield
+contract DSV2LiquidationStrategy is CPMMLiquidationStrategy {
     /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,

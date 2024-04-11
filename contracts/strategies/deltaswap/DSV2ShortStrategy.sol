@@ -3,7 +3,11 @@ pragma solidity ^0.8.0;
 import "../../interfaces/external/deltaswap/IDSPair.sol";
 import "../cpmm/CPMMShortStrategy.sol";
 
-contract DSShortStrategy is CPMMShortStrategy {
+/// @title External Long Strategy concrete implementation contract for Streaming Yield Constant Product Market Maker
+/// @author Daniel D. Alcarraz (https://github.com/0xDanr)
+/// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
+/// @dev This implementation was specifically designed to work with DeltaSwapV2's streaming yield
+contract DSV2ShortStrategy is CPMMShortStrategy {
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_,
         uint64 slope2_) CPMMShortStrategy(maxTotalApy_, blocksPerYear_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
