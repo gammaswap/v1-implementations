@@ -13,6 +13,13 @@ contract DSV2ShortStrategy is CPMMShortStrategy {
         uint64 slope2_) CPMMShortStrategy(maxTotalApy_, blocksPerYear_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
+    /// @dev See {IShortStrategy-_getLatestCFMMInvariant}.
+    function _getLatestCFMMInvariant(bytes memory _cfmm) public virtual override view returns(uint256 cfmmInvariant) {
+        address cfmm_ = abi.decode(_cfmm, (address));
+        uint128[] memory reserves = getLPReserves(cfmm_, true);
+        cfmmInvariant = calcInvariant(address(0), reserves);
+    }
+
     /// @dev See {BaseStrategy-getReserves}.
     function getLPReserves(address cfmm, bool isLatest) internal virtual override(BaseStrategy, CPMMBaseStrategy) view returns(uint128[] memory reserves) {
         (reserves[0], reserves[1],) = IDSPair(cfmm).getLPReserves();
