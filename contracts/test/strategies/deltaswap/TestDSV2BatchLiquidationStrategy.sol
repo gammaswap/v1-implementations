@@ -2,9 +2,9 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
-import "../../../strategies/cpmm/liquidation/CPMMBatchLiquidationStrategy.sol";
+import "../../../strategies/deltaswap/liquidation/DSV2BatchLiquidationStrategy.sol";
 
-contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseBorrowStrategy {
+contract TestDSV2BatchLiquidationStrategy is DSV2BatchLiquidationStrategy, BaseBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
     using GSMath for uint;
@@ -15,7 +15,7 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
-        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBatchLiquidationStrategy(mathLib_,
+        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) DSV2BatchLiquidationStrategy(mathLib_,
         maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 

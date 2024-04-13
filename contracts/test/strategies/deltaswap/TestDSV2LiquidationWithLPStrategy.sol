@@ -2,9 +2,9 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseBorrowStrategy.sol";
-import "../../../strategies/cpmm/liquidation/CPMMBatchLiquidationStrategy.sol";
+import "../../../strategies/deltaswap/liquidation/DSV2LiquidationStrategy.sol";
 
-contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseBorrowStrategy {
+contract TestDSV2LiquidationWithLPStrategy is DSV2LiquidationStrategy, BaseBorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
     using GSMath for uint;
@@ -15,12 +15,27 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
-        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBatchLiquidationStrategy(mathLib_,
+        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) DSV2LiquidationStrategy(mathLib_,
         maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+    }
+
+    function setPoolParams(uint8 liquidationFee, uint8 ltvThreshold) external virtual {
+        s.liquidationFee = liquidationFee;
+        s.ltvThreshold = ltvThreshold;
+    }
+
+    function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
+        origFee = originationFee();
+        origFee = discount > origFee ? 0 : (origFee - discount);
+    }
+
+    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {
+        return baseOrigFee;
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
         s.initialize(factory_, cfmm_, 1, tokens_, decimals_, 1e3);
+        s.origFee = 0;
     }
 
     function cfmm() public view returns(address) {
@@ -63,44 +78,6 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         s.CFMM_RESERVES[0] = reserve0;
         s.CFMM_RESERVES[1] = reserve1;
         s.lastCFMMInvariant = lastCFMMInvariant;
-    }
-
-    function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        uint256[] memory amounts;
-        amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity, new uint128[](0));
-        return(amounts[0], amounts[1]);
-    }
-
-    function testBeforeRepay(uint256 tokenId, uint256[] memory amounts) external virtual {
-        beforeRepay(s.loans[tokenId], amounts);
-    }
-
-    // selling exactly amountOut
-    function testCalcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtIn(amountOut, reserveOut, reserveIn);
-    }
-
-    // buying exactly amountIn
-    function testCalcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) external virtual view returns (uint256) {
-        return calcAmtOut(amountIn, reserveOut, reserveIn);
-    }
-
-    function testCalcActualOutAmount(address token, address to, uint256 amount, uint256 balance, uint256 collateral) external virtual {
-        uint256 actualOutAmount = calcActualOutAmt(token, to, amount, balance, collateral);
-        emit ActualOutAmount(actualOutAmount);
-    }
-
-    function testBeforeSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual returns(uint256[] memory outAmts, uint256[] memory inAmts) {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (outAmts, inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
-        emit CalcAmounts(outAmts, inAmts);
-    }
-
-    function testSwapTokens(uint256 tokenId, int256[] calldata deltas) external virtual {
-        LibStorage.Loan storage loan = s.loans[tokenId];
-        (uint256[] memory outAmts, uint256[] memory inAmts) = beforeSwapTokens(loan, deltas, s.CFMM_RESERVES);
-        swapTokens(loan, outAmts, inAmts);
-        emit CalcAmounts(outAmts, inAmts);
     }
 
     function depositLPTokens(uint256 tokenId) external virtual {
@@ -150,9 +127,6 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         checkLoanMargin(collateral, loanLiquidity);
     }
 
-    function updateLoanPrice(uint256, uint256, uint256, uint256) internal override virtual view returns(uint256) {
-    }
-
     function checkLoanMargin(uint256 collateral, uint256 liquidity) internal virtual view {
         if(!hasMargin(collateral, liquidity, _ltvThreshold())) revert HasMargin(); // Revert if loan does not have enough collateral
     }
@@ -162,15 +136,9 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
     }
 
-    function validateParameters(bytes calldata _data) external override(IRateModel, LinearKinkedRateModel) virtual view returns(bool) {
-        return true;
+    function mintOrigFeeToDevs(uint256 origFeeInv, uint256 totalInvariant) internal virtual override {
     }
 
-    function getRateModelParams(address paramsStore, address pool) public virtual override view returns(uint64, uint64, uint64, uint64) {
-        return (baseRate, optimalUtilRate, slope1, slope2);
-    }
-
-    function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {
-        return 0;
+    function _liquidate(uint256 tokenId) external override virtual returns(uint256 loanLiquidity, uint256 refund) {
     }
 }
