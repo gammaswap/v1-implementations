@@ -173,4 +173,23 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {
         return 0;
     }
+
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override {
+    }
+
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override(BaseLongStrategy,CPMMBaseLongStrategy) view returns(uint256[] memory amounts) {
+        amounts = new uint256[](2);
+        uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
+
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 expectedLPTokens = liquidity * lastCFMMTotalSupply / lastCFMMInvariant;
+
+        amounts[0] = expectedLPTokens * reserves[0] / lastCFMMTotalSupply + 1;
+        amounts[1] = expectedLPTokens * reserves[1] / lastCFMMTotalSupply + 1;
+
+        if(maxAmounts.length == 2) {
+            amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
+            amounts[1] = GSMath.min(amounts[1], maxAmounts[1]);
+        }
+    }
 }
