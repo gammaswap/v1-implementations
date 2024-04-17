@@ -14,7 +14,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     error BadDelta();
     error ZeroReserves();
     error InvalidTradingFee();
-    error InsufficientTokeRepayment();
+    error InsufficientTokenRepayment();
 
     /// @return feeSource - source of tradingFee for tradingFee1
     address immutable public feeSource;
@@ -60,12 +60,12 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         if(maxAmounts.length == 2) {
             if(amounts[0] > maxAmounts[0]) {
                 unchecked {
-                    if(amounts[0] - maxAmounts[0] > 1000) revert InsufficientTokeRepayment();
+                    if(amounts[0] - maxAmounts[0] > 1000) revert InsufficientTokenRepayment();
                 }
             }
             if(amounts[1] > maxAmounts[1]) {
                 unchecked {
-                    if(amounts[1] - maxAmounts[1] > 1000) revert InsufficientTokeRepayment();
+                    if(amounts[1] - maxAmounts[1] > 1000) revert InsufficientTokenRepayment();
                 }
             }
             amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
