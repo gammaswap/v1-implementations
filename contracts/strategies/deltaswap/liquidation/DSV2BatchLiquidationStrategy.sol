@@ -18,7 +18,7 @@ contract DSV2BatchLiquidationStrategy is CPMMBatchLiquidationStrategy {
 
     /// @dev See {BaseStrategy-getReserves}.
     function getLPReserves(address cfmm, bool isLatest) internal virtual override(BaseStrategy, CPMMBaseStrategy) view returns(uint128[] memory reserves) {
-        uint128[] memory reserves = new uint128[](2);
+        reserves = new uint128[](2);
         (reserves[0], reserves[1],) = IDSPair(cfmm).getLPReserves();
     }
 
