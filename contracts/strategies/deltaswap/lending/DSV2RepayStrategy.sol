@@ -17,6 +17,44 @@ contract DSV2RepayStrategy is CPMMRepayStrategy {
 
     /// @dev See {BaseStrategy-getReserves}.
     function getLPReserves(address cfmm, bool isLatest) internal virtual override(BaseStrategy, CPMMBaseStrategy) view returns(uint128[] memory reserves) {
+        uint128[] memory reserves = new uint128[](2);
         (reserves[0], reserves[1],) = IDSPair(cfmm).getLPReserves();
+    }
+
+    /// @dev See {CPMMBaseLongStrategy-getTradingFee1}.
+    function getTradingFee1() internal virtual override view returns(uint24) {
+        (,uint24 gsFee,,,) = IDSPair(s.cfmm).getFeeParameters();
+        return tradingFee2 - gsFee;
+    }
+
+    /// @dev See {BaseLongStrategy-calcTokensToRepay}.
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override(BaseLongStrategy, CPMMBaseLongStrategy) view
+        returns(uint256[] memory amounts) {
+        amounts = new uint256[](2);
+        uint256 lastCFMMInvariant = calcInvariant(address(0), s.CFMM_RESERVES);
+
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 expectedLPTokens = liquidity * lastCFMMTotalSupply / lastCFMMInvariant;
+
+        uint256 rootK1 = calcInvariant(address(0), s.CFMM_RESERVES);
+        uint256 rootK0 = IDSPair(s.cfmm).rootK0();
+
+        amounts[0] = (expectedLPTokens * s.CFMM_RESERVES[0] / lastCFMMTotalSupply) * rootK0 / rootK1 + 10;
+        amounts[1] = (expectedLPTokens * s.CFMM_RESERVES[1] / lastCFMMTotalSupply) * rootK0 / rootK1 + 10;
+
+        if(maxAmounts.length == 2) {
+            if(amounts[0] > maxAmounts[0]) {
+                unchecked {
+                    if(amounts[0] - maxAmounts[0] > 1000) revert InsufficientTokenRepayment();
+                }
+            }
+            if(amounts[1] > maxAmounts[1]) {
+                unchecked {
+                    if(amounts[1] - maxAmounts[1] > 1000) revert InsufficientTokenRepayment();
+                }
+            }
+            amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);
+            amounts[1] = GSMath.min(amounts[1], maxAmounts[1]);
+        }
     }
 }

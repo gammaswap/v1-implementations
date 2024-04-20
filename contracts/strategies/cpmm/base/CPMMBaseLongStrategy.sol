@@ -114,7 +114,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @return outAmt0 - expected amount of token0 to send to CFMM (sell)
     /// @return outAmt1 - expected amount of token1 to send to CFMM (sell)
     function calcInAndOutAmounts(LibStorage.Loan storage _loan, uint256 reserve0, uint256 reserve1, int256 delta0, int256 delta1)
-        internal returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
+        internal virtual returns(uint256 inAmt0, uint256 inAmt1, uint256 outAmt0, uint256 outAmt1) {
         // can only have one non zero delta
         if(!((delta0 != 0 && delta1 == 0) || (delta0 == 0 && delta1 != 0))) revert BadDelta();
 
@@ -161,7 +161,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param balance - total balance of `token` in GammaPool
     /// @param collateral - `token` collateral available in loan
     /// @return outAmt - amount of `token` actually sent to recipient (`to`)
-    function calcActualOutAmt(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal
+    function calcActualOutAmt(address token, address to, uint256 amount, uint256 balance, uint256 collateral) internal virtual
         returns(uint256) {
 
         uint256 balanceBefore = GammaSwapLibrary.balanceOf(token, to); // check balance before transfer
@@ -174,7 +174,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param reserveOut - amount in CFMM of token being sold
     /// @param reserveIn - amount in CFMM of token being bought
     /// @return amtIn - amount expected to receive in GammaPool (calculated bought amount)
-    function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
+    function calcAmtIn(uint256 amountOut, uint256 reserveOut, uint256 reserveIn) internal virtual view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
         uint256 amountOutWithFee = amountOut * getTradingFee1();
@@ -187,14 +187,14 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     /// @param reserveOut - amount in CFMM of token being sold
     /// @param reserveIn - amount in CFMM of token being bought
     /// @return amtOut - amount expected to send to GammaPool (calculated sold amount)
-    function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal view returns (uint256) {
+    function calcAmtOut(uint256 amountIn, uint256 reserveOut, uint256 reserveIn) internal virtual view returns (uint256) {
         if(reserveOut == 0 || reserveIn == 0) revert ZeroReserves(); // revert if either reserve quantity in CFMM is zero
 
         uint256 denominator = (reserveIn - amountIn) * getTradingFee1();
         return (reserveOut * amountIn * tradingFee2 / denominator) + 1;
     }
 
-    function getTradingFee1() internal view returns(uint24) {
+    function getTradingFee1() internal virtual view returns(uint24) {
         return feeSource == address(0) ? tradingFee1 : tradingFee2 - IFeeSource(feeSource).gsFee();
     }
 }
