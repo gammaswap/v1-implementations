@@ -174,7 +174,7 @@ contract TestDSV2BatchLiquidationStrategy is DSV2BatchLiquidationStrategy, BaseB
         return 0;
     }
 
-    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override {
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override view {
     }
 
     function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override(BaseLongStrategy,CPMMBaseLongStrategy) view returns(uint256[] memory amounts) {

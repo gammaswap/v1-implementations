@@ -19,6 +19,13 @@ contract DSV2ExternalLiquidationStrategy is CPMMExternalLiquidationStrategy {
 
     /// @dev See {BaseStrategy-getReserves}.
     function getLPReserves(address cfmm, bool isLatest) internal virtual override(BaseStrategy, CPMMBaseStrategy) view returns(uint128[] memory reserves) {
+        uint128[] memory reserves = new uint128[](2);
         (reserves[0], reserves[1],) = IDSPair(cfmm).getLPReserves();
+    }
+
+    /// @dev See {CPMMBaseLongStrategy-getTradingFee1}.
+    function getTradingFee1() internal virtual override view returns(uint24) {
+        (,uint24 gsFee,,,) = IDSPair(s.cfmm).getFeeParameters();
+        return tradingFee2 - gsFee;
     }
 }

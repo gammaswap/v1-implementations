@@ -8,4 +8,15 @@ interface IDSPair {
     /// @return reserve1 - quantity of token1 held in AMM
     /// @return blockTimestampLast - timestamp of the last update block
     function getLPReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+
+    /// @dev Get parameters used in fee calculation
+    /// @return _gammaPool - gammapool DeltaSwap pool is for
+    /// @return _gsFee - swap fee for gammaswap only
+    /// @return _dsFee - swap fee
+    /// @return _dsFeeThreshold - trehshold at which fees apply to swaps
+    /// @return _yieldPeriod - yield period in seconds
+    function getFeeParameters() external view returns(address _gammaPool, uint24 _gsFee, uint24 _dsFee, uint24 _dsFeeThreshold, uint24 _yieldPeriod);
+
+    /// @dev Geometric mean of LP reserves
+    function rootK0() external view returns(uint112);
 }
