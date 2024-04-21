@@ -45,7 +45,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
     }
 
     /// @dev See {BaseLongStrategy-calcTokensToRepay}.
-    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts) internal virtual override view
+    function calcTokensToRepay(uint128[] memory reserves, uint256 liquidity, uint128[] memory maxAmounts, bool isLiquidation) internal virtual override view
         returns(uint256[] memory amounts) {
 
         amounts = new uint256[](2);
@@ -57,15 +57,28 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         amounts[0] = expectedLPTokens * reserves[0] / lastCFMMTotalSupply + 1;
         amounts[1] = expectedLPTokens * reserves[1] / lastCFMMTotalSupply + 1;
 
-        if(maxAmounts.length == 2) {
-            if(amounts[0] > maxAmounts[0]) {
-                unchecked {
-                    if(amounts[0] - maxAmounts[0] > 1000) revert InsufficientTokenRepayment();
-                }
+        if(!isLiquidation) {
+            uint256 actualLPTokens0 = amounts[0] * lastCFMMTotalSupply / reserves[0];
+            uint256 actualLPTokens1 = amounts[1] * lastCFMMTotalSupply / reserves[1];
+
+            if(actualLPTokens0 < actualLPTokens1) {
+                amounts[0] = amounts[1] * reserves[0] / reserves[1];
+            } else {
+                amounts[1] = amounts[0] * reserves[1] / reserves[0];
             }
-            if(amounts[1] > maxAmounts[1]) {
-                unchecked {
-                    if(amounts[1] - maxAmounts[1] > 1000) revert InsufficientTokenRepayment();
+        }
+
+        if(maxAmounts.length == 2) {
+            if(isLiquidation) {
+                if(amounts[0] > maxAmounts[0]) {
+                    unchecked {
+                        if(amounts[0] - maxAmounts[0] > 1000) revert InsufficientTokenRepayment();
+                    }
+                }
+                if(amounts[1] > maxAmounts[1]) {
+                    unchecked {
+                        if(amounts[1] - maxAmounts[1] > 1000) revert InsufficientTokenRepayment();
+                    }
                 }
             }
             amounts[0] = GSMath.min(amounts[0], maxAmounts[0]);

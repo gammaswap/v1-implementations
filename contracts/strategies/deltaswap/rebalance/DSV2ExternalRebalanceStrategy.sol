@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.21;
 
-import "../../../interfaces/external/deltaswap/IDSPair.sol";
+import "../../../interfaces/external/deltaswap/IDSV2Pair.sol";
 import "../../cpmm/rebalance/CPMMExternalRebalanceStrategy.sol";
 
 /// @title External Long Strategy concrete implementation contract for Streaming Yield Constant Product Market Maker
@@ -19,12 +19,12 @@ contract DSV2ExternalRebalanceStrategy is CPMMExternalRebalanceStrategy {
     /// @dev See {BaseStrategy-getReserves}.
     function getLPReserves(address cfmm, bool isLatest) internal virtual override(BaseStrategy, CPMMBaseStrategy) view returns(uint128[] memory reserves) {
         reserves = new uint128[](2);
-        (reserves[0], reserves[1],) = IDSPair(cfmm).getLPReserves();
+        (reserves[0], reserves[1],) = IDSV2Pair(cfmm).getLPReserves();
     }
 
     /// @dev See {CPMMBaseLongStrategy-getTradingFee1}.
     function getTradingFee1() internal virtual override view returns(uint24) {
-        (,uint24 gsFee,,,) = IDSPair(s.cfmm).getFeeParameters();
+        (,,,uint16 gsFee,,,) = IDSV2Pair(s.cfmm).getFeeParameters();
         return tradingFee2 - gsFee;
     }
 }

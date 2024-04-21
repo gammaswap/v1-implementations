@@ -30,7 +30,7 @@ contract TestDSV2RepayStrategy is DSV2RepayStrategy, BorrowStrategy {
     }
 
     function testCalcTokensToRepay(uint256 liquidity) external virtual view returns(uint256, uint256) {
-        uint256[] memory amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity, new uint128[](0));
+        uint256[] memory amounts = calcTokensToRepay(s.CFMM_RESERVES, liquidity, new uint128[](0), false);
         return(amounts[0], amounts[1]);
     }
 
