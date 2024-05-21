@@ -14,9 +14,10 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
     event ActualOutAmount(uint256 outAmount);
     event CalcAmounts(uint256[] outAmts, uint256[] inAmts);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
-        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMBatchLiquidationStrategy(mathLib_,
-        maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+    constructor(address liquidator_, address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_,
+        uint24 tradingFee2_, address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
+        CPMMBatchLiquidationStrategy(liquidator_, mathLib_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_,
+        feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function initialize(address factory_, address cfmm_, address[] calldata tokens_, uint8[] calldata decimals_) external virtual {
@@ -107,10 +108,13 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
         // Update CFMM LP token amount tracked by GammaPool and invariant in CFMM belonging to GammaPool
         updateIndex();
         updateCollateral(s.loans[tokenId]);
-        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
+        /*uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
         uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
         s.LP_TOKEN_BALANCE = lpTokenBalance;
-        s.LP_INVARIANT = lpInvariant;
+        s.LP_INVARIANT = lpInvariant;/**/
+
+        s.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
+        s.LP_INVARIANT = uint128(convertLPToInvariant(s.LP_TOKEN_BALANCE , s.lastCFMMInvariant, s.lastCFMMTotalSupply));
     }
 
     function getBalances() external virtual view returns(uint256 lpTokenBalance, uint256 lpInvariant) {
@@ -168,6 +172,10 @@ contract TestCPMMBatchLiquidationStrategy is CPMMBatchLiquidationStrategy, BaseB
 
     function getRateModelParams(address paramsStore, address pool) public virtual override view returns(uint64, uint64, uint64, uint64) {
         return (baseRate, optimalUtilRate, slope1, slope2);
+    }
+
+    function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal override virtual view returns(uint256 origFee) {
+        return 0;
     }
 
     function _calcDynamicOriginationFee(uint256 baseOrigFee, uint256 utilRate, uint256 lowUtilRate, uint256 minUtilRate1, uint256 minUtilRate2, uint256 feeDivisor) internal virtual override view returns(uint256) {

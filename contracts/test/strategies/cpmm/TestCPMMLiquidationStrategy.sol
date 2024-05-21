@@ -12,9 +12,10 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
-        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) CPMMLiquidationStrategy(mathLib_,
-        maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+    constructor(address liquidator_, address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_,
+        uint24 tradingFee2_, address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
+        CPMMLiquidationStrategy(liquidator_, mathLib_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_,
+        baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
@@ -80,10 +81,8 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
         updateIndex();
         updateLoan(s.loans[tokenId]);
         updateCollateral(s.loans[tokenId]);
-        uint256 lpTokenBalance = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
-        uint128 lpInvariant = uint128(convertLPToInvariant(lpTokenBalance, s.lastCFMMInvariant, s.lastCFMMTotalSupply));
-        s.LP_TOKEN_BALANCE = lpTokenBalance;
-        s.LP_INVARIANT = lpInvariant;
+        s.LP_TOKEN_BALANCE = GammaSwapLibrary.balanceOf(s.cfmm, address(this));
+        s.LP_INVARIANT = uint128(convertLPToInvariant(s.LP_TOKEN_BALANCE , s.lastCFMMInvariant, s.lastCFMMTotalSupply));
     }
 
     function calcBorrowRate(uint256, uint256, address, address) public override(AbstractRateModel, LinearKinkedRateModel) virtual view returns(uint256,uint256,uint256,uint256) {
@@ -100,4 +99,10 @@ contract TestCPMMLiquidationStrategy is CPMMLiquidationStrategy, BaseBorrowStrat
 
     function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256 loanLiquidity, uint128[] memory refund) {
     }
+
+    function onLoanUpdate(LibStorage.Loan storage _loan, uint256 tokenId) internal override virtual returns(uint256 externalCollateral) {
+    }
+    /*function updateLoanPrice(uint256 newLiquidity, uint256 currPrice, uint256 liquidity, uint256 lastPx) internal override virtual view returns(uint256) {
+        return lastPx;
+    }/**/
 }
