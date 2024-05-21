@@ -12,9 +12,10 @@ contract TestDSV2LiquidationStrategy is DSV2LiquidationStrategy, BaseBorrowStrat
 
     event LoanCreated(address indexed caller, uint256 tokenId);
 
-    constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
-        address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_) DSV2LiquidationStrategy(mathLib_,
-        maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
+    constructor(address liquidator_, address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_,
+        uint24 tradingFee2_, address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
+        DSV2LiquidationStrategy(liquidator_, mathLib_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_,
+        baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
     function _calcOriginationFee(uint256 liquidityBorrowed, uint256 borrowedInvariant, uint256 lpInvariant, uint256 lowUtilRate, uint256 discount) internal virtual override view returns(uint256 origFee) {
@@ -99,5 +100,8 @@ contract TestDSV2LiquidationStrategy is DSV2LiquidationStrategy, BaseBorrowStrat
     }
 
     function _liquidateWithLP(uint256 tokenId) external override virtual returns(uint256 loanLiquidity, uint128[] memory refund) {
+    }
+
+    function onLoanUpdate(LibStorage.Loan storage _loan, uint256 tokenId) internal override virtual returns(uint256 externalCollateral) {
     }
 }
