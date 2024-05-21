@@ -14,7 +14,7 @@ contract CPMMExternalLiquidationStrategy is CPMMBaseLiquidationStrategy, Externa
     /// @dev `tradingFee1`, `tradingFee2`, `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(address liquidator_, address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_,
         uint24 tradingFee2_, address feeSource_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
-        CPMMBaseLiquidationStrategy(mathLib_, liquidator_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_,
+        CPMMBaseLiquidationStrategy(liquidator_, mathLib_, maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_,
         feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 }
