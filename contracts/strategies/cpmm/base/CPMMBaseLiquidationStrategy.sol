@@ -25,7 +25,7 @@ abstract contract CPMMBaseLiquidationStrategy is BaseLiquidationStrategy, CPMMBa
     }
 
     /// @dev If LIQUIDATOR is set then check that address calling liquidation function is LIQUIDATOR
-    function _checkLiquidator(address _sender) internal override virtual {
-        if(LIQUIDATOR != address(0) && LIQUIDATOR != _sender) revert NotLiquidator();
+    function _beforeLiquidation() internal override virtual {
+        if(LIQUIDATOR != address(0) && LIQUIDATOR != msg.sender) revert NotLiquidator();
     }
 }
