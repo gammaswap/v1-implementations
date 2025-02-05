@@ -64,4 +64,10 @@ abstract contract VaultBaseStrategy is BaseStrategy {
             revert MaxUtilizationRate();
         }
     }
+
+    function getAdjLPTokenBalance() internal virtual view returns(uint256 lpTokenBalance) {
+        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+        lpTokenBalance = s.LP_TOKEN_BALANCE;
+        lpTokenBalance = lpTokenBalance >= reservedLPTokens ? lpTokenBalance - reservedLPTokens : 0;
+    }
 }

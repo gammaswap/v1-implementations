@@ -46,9 +46,7 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
 
     /// @dev See {IBorrowStrategy-_borrowLiquidity}.
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual override lock returns(uint256 liquidityBorrowed, uint256[] memory amounts, uint128[] memory tokensHeld) {
-        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
-        uint256 lpTokenBalance = s.LP_TOKEN_BALANCE;
-        lpTokenBalance = lpTokenBalance >= reservedLPTokens ? lpTokenBalance - reservedLPTokens : 0;
+        uint256 lpTokenBalance = getAdjLPTokenBalance();
 
         // Revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= lpTokenBalance) revert ExcessiveBorrowing();
