@@ -21,4 +21,9 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
         internal virtual override(BaseStrategy,VaultBaseStrategy) returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
         return super.updateStore(lastFeeIndex, borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply);
     }
+
+    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseStrategy) view {
+        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
 }

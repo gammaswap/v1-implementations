@@ -23,4 +23,9 @@ abstract contract VaultBaseRebalanceStrategy is CPMMBaseRebalanceStrategy, Vault
         override(BaseLongStrategy,VaultBaseLongStrategy) returns(uint256 liquidity) {
         return super.updateLoanLiquidity(_loan, accFeeIndex);
     }
+
+    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseLongStrategy) view {
+        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
 }

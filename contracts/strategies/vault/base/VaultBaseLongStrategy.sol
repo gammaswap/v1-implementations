@@ -25,4 +25,9 @@ abstract contract VaultBaseLongStrategy is CPMMBaseLongStrategy, VaultBaseStrate
         _loan.liquidity = uint128(liquidity);
         _loan.rateIndex = uint80(accFeeIndex);
     }
+
+    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseStrategy) view {
+        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
 }

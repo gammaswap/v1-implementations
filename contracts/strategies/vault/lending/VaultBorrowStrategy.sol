@@ -11,6 +11,8 @@ import "../base/VaultBaseRebalanceStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, RebalanceStrategy {
 
+    using LibStorage for LibStorage.Storage;
+
     /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_,
@@ -35,5 +37,54 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
     function updateLoanLiquidity(LibStorage.Loan storage _loan, uint256 accFeeIndex) internal virtual
         override(BaseLongStrategy,VaultBaseRebalanceStrategy) returns(uint256 liquidity) {
         return super.updateLoanLiquidity(_loan, accFeeIndex);
+    }
+
+    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseRebalanceStrategy) view {
+        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
+
+    /// @dev See {IBorrowStrategy-_borrowLiquidity}.
+    function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual override lock returns(uint256 liquidityBorrowed, uint256[] memory amounts, uint128[] memory tokensHeld) {
+        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+        uint256 lpTokenBalance = s.LP_TOKEN_BALANCE;
+        lpTokenBalance = lpTokenBalance >= reservedLPTokens ? lpTokenBalance - reservedLPTokens : 0;
+
+        // Revert if borrowing all CFMM LP tokens in pool
+        if(lpTokens >= lpTokenBalance) revert ExcessiveBorrowing();
+
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        // Update liquidity debt to include accrued interest since last update
+        uint256 loanLiquidity = updateLoan(_loan);
+
+        checkExpectedUtilizationRate(lpTokens, true);
+
+        // Withdraw reserve tokens from CFMM that lpTokens represent
+        amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
+
+        // Add withdrawn tokens as part of loan collateral
+        (tokensHeld,) = updateCollateral(_loan);
+
+        // Add liquidity debt to total pool debt and start tracking loan
+        (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
+
+        if(isRatioValid(ratio)) {
+            //get current reserves without updating
+            uint128[] memory _reserves = getReserves(s.cfmm);
+            int256[] memory deltas = _calcDeltasForRatio(tokensHeld, _reserves, ratio);
+            if(isDeltasValid(deltas)) {
+                (tokensHeld,) = rebalanceCollateral(_loan, deltas, _reserves);
+            }
+        }
+
+        // Check that loan is not undercollateralized
+        checkMargin(calcInvariant(s.cfmm, tokensHeld) + onLoanUpdate(_loan, tokenId), loanLiquidity);
+
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.BORROW_LIQUIDITY);
+
+        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, s.CFMM_RESERVES, TX_TYPE.BORROW_LIQUIDITY);
     }
 }

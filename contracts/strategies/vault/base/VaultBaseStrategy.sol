@@ -41,4 +41,27 @@ abstract contract VaultBaseStrategy is BaseStrategy {
             GSMath.max(block.number - s.LAST_BLOCK_NUMBER, s.emaMultiplier)));
         s.LAST_BLOCK_NUMBER = uint40(block.number);
     }
+
+    /// @dev Revert if lpTokens withdrawal causes utilization rate to go over 98%
+    /// @param lpTokens - lpTokens expected to change utilization rate
+    /// @param isLoan - true if lpTokens are being borrowed
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override view {
+        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+
+        uint256 reservedLPInvariant = convertLPToInvariant(reservedLPTokens, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 lpTokenInvariant = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 lpInvariant = s.LP_INVARIANT;
+        lpInvariant = lpInvariant >= reservedLPInvariant ? lpInvariant - reservedLPInvariant : 0;
+
+        if(lpInvariant < lpTokenInvariant) revert NotEnoughLPInvariant();
+        unchecked {
+            lpInvariant = lpInvariant - lpTokenInvariant;
+        }
+        uint256 borrowedInvariant = s.BORROWED_INVARIANT + (isLoan ? lpTokenInvariant : 0) + reservedLPInvariant;
+        if(calcUtilizationRate(lpInvariant, borrowedInvariant) > 98e16) {
+            revert MaxUtilizationRate();
+        }
+    }
 }

@@ -30,4 +30,9 @@ contract VaultLiquidationStrategy is CPMMLiquidationStrategy, VaultBaseRebalance
         override(BaseLongStrategy,VaultBaseRebalanceStrategy) returns(uint256 liquidity) {
         return super.updateLoanLiquidity(_loan, accFeeIndex);
     }
+
+    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseRebalanceStrategy) view {
+        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
 }
