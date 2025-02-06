@@ -39,25 +39,55 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
         return super.updateLoanLiquidity(_loan, accFeeIndex);
     }
 
-    /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
-    function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseRebalanceStrategy) view {
-        return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    /// @dev Revert if lpTokens withdrawal causes utilization rate to go over 98%
+    /// @param lpTokens - lpTokens expected to change utilization rate
+    /// @param isRefType3 - true if loan borrowed is of refType 3
+    function checkExpectedUtilizationRate(uint256 lpTokens, bool isRefType3) internal virtual
+        override(BaseStrategy,VaultBaseRebalanceStrategy) view {
+        uint256 lastCFMMInvariant = s.lastCFMMInvariant;
+        uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
+
+        uint256 lpInvariant = s.LP_INVARIANT;
+        uint256 reservedLPInvariant = 0;
+        if(!isRefType3) {
+            reservedLPInvariant = convertLPToInvariant(s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS)),
+                lastCFMMInvariant, lastCFMMTotalSupply);
+                lpInvariant = lpInvariant >= reservedLPInvariant ? lpInvariant - reservedLPInvariant : 0;
+        }
+
+        uint256 lpTokenInvariant = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
+        if(lpInvariant < lpTokenInvariant) revert NotEnoughLPInvariant();
+        unchecked {
+            lpInvariant = lpInvariant - lpTokenInvariant;
+        }
+        uint256 borrowedInvariant = s.BORROWED_INVARIANT + lpTokenInvariant + reservedLPInvariant;
+        if(calcUtilizationRate(lpInvariant, borrowedInvariant) > 98e16) {
+            revert MaxUtilizationRate();
+        }
     }
 
     /// @dev See {IBorrowStrategy-_borrowLiquidity}.
     function _borrowLiquidity(uint256 tokenId, uint256 lpTokens, uint256[] calldata ratio) external virtual override lock returns(uint256 liquidityBorrowed, uint256[] memory amounts, uint128[] memory tokensHeld) {
-        uint256 lpTokenBalance = getAdjLPTokenBalance();
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        bool isRefType3 = _loan.refType == 3; // if refType3 include reserved LP tokens
+
+        uint256 lpTokenBalance = isRefType3 ? s.LP_TOKEN_BALANCE : getAdjLPTokenBalance();
 
         // Revert if borrowing all CFMM LP tokens in pool
         if(lpTokens >= lpTokenBalance) revert ExcessiveBorrowing();
 
-        // Get loan for tokenId, revert if not loan creator
-        LibStorage.Loan storage _loan = _getLoan(tokenId);
-
         // Update liquidity debt to include accrued interest since last update
         uint256 loanLiquidity = updateLoan(_loan);
 
-        checkExpectedUtilizationRate(lpTokens, true);
+        checkExpectedUtilizationRate(lpTokens, isRefType3);
+
+        if(isRefType3) {
+            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+            if(lpTokens >= reservedLPTokens) revert ExcessiveBorrowing();
+            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens - lpTokens);
+        }
 
         // Withdraw reserve tokens from CFMM that lpTokens represent
         amounts = withdrawFromCFMM(s.cfmm, address(this), lpTokens);
@@ -67,6 +97,11 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
 
         // Add liquidity debt to total pool debt and start tracking loan
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
+
+        if(isRefType3) {
+            uint256 reservedBorrowedInvariant = s.getUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT));
+            s.setUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant + liquidityBorrowed);
+        }
 
         if(isRatioValid(ratio)) {
             //get current reserves without updating
