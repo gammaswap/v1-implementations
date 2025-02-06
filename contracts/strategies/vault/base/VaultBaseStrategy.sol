@@ -25,7 +25,10 @@ abstract contract VaultBaseStrategy is BaseStrategy {
         internal virtual override returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
         // Accrue interest to borrowed liquidity
         uint256 reservedBorrowedInvariant = s.getUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT));
-        borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
+        borrowedInvariant = GSMath.max(borrowedInvariant,reservedBorrowedInvariant);
+        unchecked {
+            borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
+        }
         newBorrowedInvariant = accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex) + reservedBorrowedInvariant;
         s.BORROWED_INVARIANT = uint128(newBorrowedInvariant);
 
