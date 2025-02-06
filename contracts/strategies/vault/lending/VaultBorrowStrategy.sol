@@ -52,7 +52,10 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
         if(!isRefType3) {
             reservedLPInvariant = convertLPToInvariant(s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS)),
                 lastCFMMInvariant, lastCFMMTotalSupply);
-                lpInvariant = lpInvariant >= reservedLPInvariant ? lpInvariant - reservedLPInvariant : 0;
+            reservedLPInvariant = GSMath.min(lpInvariant, reservedLPInvariant);
+            unchecked {
+                lpInvariant = lpInvariant - reservedLPInvariant;
+            }
         }
 
         uint256 lpTokenInvariant = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);

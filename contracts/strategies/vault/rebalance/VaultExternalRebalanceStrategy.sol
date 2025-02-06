@@ -10,6 +10,11 @@ import "../base/VaultBaseLongStrategy.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebalanceStrategy {
 
+    error InvalidRefType();
+    error InvalidReservedLPTokens();
+
+    using LibStorage for LibStorage.Storage;
+
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_, uint24 tradingFee2_, address feeSource_,
@@ -34,5 +39,37 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
     /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
     function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override(BaseStrategy,VaultBaseLongStrategy) view {
         return super.checkExpectedUtilizationRate(lpTokens, isLoan);
+    }
+
+    function _reserveLPTokens(uint256 tokenId, uint256 lpTokens, bool isReserve) external virtual lock returns(uint256) {
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        if(_loan.refType == 3) revert InvalidRefType();
+
+        updateLoan(_loan);
+
+        if(isReserve) {
+            uint256 lpTokenBalance = getAdjLPTokenBalance();
+
+            // Revert if reserving all remaining CFMM LP tokens in pool
+            if(lpTokens >= lpTokenBalance) revert InvalidReservedLPTokens();
+
+            checkExpectedUtilizationRate(lpTokens, true);
+
+            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens + lpTokens);
+        } else {
+            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+
+            lpTokens = GSMath.min(reservedLPTokens, lpTokens);
+            unchecked {
+                reservedLPTokens = reservedLPTokens - lpTokens;
+            }
+
+            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
+        }
+
+        return lpTokens;
     }
 }
