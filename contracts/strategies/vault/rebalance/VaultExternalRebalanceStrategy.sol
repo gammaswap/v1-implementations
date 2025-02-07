@@ -2,16 +2,17 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/rebalance/ExternalRebalanceStrategy.sol";
+import "../../../interfaces/vault/strategies/IVaultStrategy.sol";
 import "../base/VaultBaseLongStrategy.sol";
 
 /// @title Vault External Long Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebalanceStrategy {
+contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebalanceStrategy, IVaultStrategy {
 
     error InvalidRefType();
-    error InvalidReservedLPTokens();
+    error ExcessiveLPTokensReserved();
 
     using LibStorage for LibStorage.Storage;
 
@@ -41,7 +42,8 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
         return super.checkExpectedUtilizationRate(lpTokens, isLoan);
     }
 
-    function _reserveLPTokens(uint256 tokenId, uint256 lpTokens, bool isReserve) external virtual lock returns(uint256) {
+    /// @dev See {IVaultStrategy-_reserveLPTokens}.
+    function _reserveLPTokens(uint256 tokenId, uint256 lpTokens, bool isReserve) external virtual override lock returns(uint256) {
         // Get loan for tokenId, revert if not loan creator
         LibStorage.Loan storage _loan = _getLoan(tokenId);
 
@@ -53,21 +55,22 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
             uint256 lpTokenBalance = getAdjLPTokenBalance();
 
             // Revert if reserving all remaining CFMM LP tokens in pool
-            if(lpTokens >= lpTokenBalance) revert InvalidReservedLPTokens();
+            if(lpTokens >= lpTokenBalance) revert ExcessiveLPTokensReserved();
 
             checkExpectedUtilizationRate(lpTokens, true);
 
-            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
-            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens + lpTokens);
+            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+
+            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens + lpTokens);
         } else {
-            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
 
             lpTokens = GSMath.min(reservedLPTokens, lpTokens);
             unchecked {
                 reservedLPTokens = reservedLPTokens - lpTokens;
             }
 
-            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
+            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
         }
 
         return lpTokens;

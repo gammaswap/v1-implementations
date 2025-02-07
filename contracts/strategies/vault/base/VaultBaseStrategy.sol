@@ -2,6 +2,7 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/base/BaseStrategy.sol";
+import "../../../interfaces/vault/IVaultGammaPool.sol";
 
 /// @title Vault Base Strategy abstract contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
@@ -10,9 +11,6 @@ import "@gammaswap/v1-core/contracts/strategies/base/BaseStrategy.sol";
 abstract contract VaultBaseStrategy is BaseStrategy {
 
     using LibStorage for LibStorage.Storage;
-
-    /// @dev enum indices for storage fields saved for balancer AMMsx
-    enum StorageIndexes { RESERVED_BORROWED_INVARIANT, RESERVED_LP_TOKENS }
 
     /// @dev Update pool invariant, LP tokens borrowed plus interest, interest rate index, and last block update
     /// @param lastFeeIndex - interest accrued to loans in GammaPool
@@ -24,8 +22,8 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     function updateStore(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply)
         internal virtual override returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
         // Accrue interest to borrowed liquidity
-        uint256 reservedBorrowedInvariant = s.getUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT));
-        borrowedInvariant = GSMath.max(borrowedInvariant,reservedBorrowedInvariant);
+        uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
+        reservedBorrowedInvariant = GSMath.min(borrowedInvariant,reservedBorrowedInvariant);
         unchecked {
             borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
         }
@@ -51,7 +49,7 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override view {
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+        uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
 
         uint256 reservedLPInvariant = convertLPToInvariant(reservedLPTokens, lastCFMMInvariant, lastCFMMTotalSupply);
         uint256 lpTokenInvariant = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
@@ -69,9 +67,9 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     }
 
     function getAdjLPTokenBalance() internal virtual view returns(uint256 lpTokenBalance) {
-        uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+        uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
         lpTokenBalance = s.LP_TOKEN_BALANCE;
-        reservedLPTokens = GSMath.min(reservedLPTokens, lpTokenBalance);
+        reservedLPTokens = GSMath.min(lpTokenBalance, reservedLPTokens);
         unchecked {
             lpTokenBalance = lpTokenBalance - reservedLPTokens;
         }

@@ -50,7 +50,7 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
         uint256 lpInvariant = s.LP_INVARIANT;
         uint256 reservedLPInvariant = 0;
         if(!isRefType3) {
-            reservedLPInvariant = convertLPToInvariant(s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS)),
+            reservedLPInvariant = convertLPToInvariant(s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS)),
                 lastCFMMInvariant, lastCFMMTotalSupply);
             reservedLPInvariant = GSMath.min(lpInvariant, reservedLPInvariant);
             unchecked {
@@ -87,9 +87,12 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
         checkExpectedUtilizationRate(lpTokens, isRefType3);
 
         if(isRefType3) {
-            uint256 reservedLPTokens = s.getUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS));
+            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
             if(lpTokens >= reservedLPTokens) revert ExcessiveBorrowing();
-            s.setUint256(uint256(StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens - lpTokens);
+            unchecked {
+                reservedLPTokens = reservedLPTokens - lpTokens;
+            }
+            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
         }
 
         // Withdraw reserve tokens from CFMM that lpTokens represent
@@ -102,8 +105,8 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, Reba
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
 
         if(isRefType3) {
-            uint256 reservedBorrowedInvariant = s.getUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT));
-            s.setUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant + liquidityBorrowed);
+            uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
+            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant + liquidityBorrowed);
         }
 
         if(isRatioValid(ratio)) {

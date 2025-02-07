@@ -43,7 +43,7 @@ abstract contract VaultBaseRepayStrategy is BaseRepayStrategy, VaultBaseRebalanc
 
         uint256 initLiquidityPaid = GSMath.min(loanInitLiquidity, liquidity * loanInitLiquidity / loanLiquidity);
 
-        uint256 _paidLiquidity = GSMath.max(_loan.liquidity, remainingLiquidity);
+        uint256 _paidLiquidity = _loan.liquidity;
 
         unchecked {
             // Calculate loan's outstanding liquidity invariant principal after liquidity payment
@@ -55,7 +55,7 @@ abstract contract VaultBaseRepayStrategy is BaseRepayStrategy, VaultBaseRebalanc
             // Calculate loan's outstanding liquidity invariant after liquidity payment
             remainingLiquidity = loanLiquidity - GSMath.min(loanLiquidity, liquidity);
 
-            _paidLiquidity = _paidLiquidity - remainingLiquidity;
+            _paidLiquidity = _paidLiquidity - GSMath.min(_paidLiquidity, remainingLiquidity);
         }
 
         // Can't be less than min liquidity to avoid rounding issues
@@ -78,11 +78,12 @@ abstract contract VaultBaseRepayStrategy is BaseRepayStrategy, VaultBaseRebalanc
         }
 
         if(_loan.refType == 3 && _paidLiquidity > 0) {
-            uint256 reservedBorrowedInvariant = GSMath.max(s.getUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT)), _paidLiquidity);
+            uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
+            _paidLiquidity = GSMath.min(reservedBorrowedInvariant, _paidLiquidity);
             unchecked {
                 reservedBorrowedInvariant = reservedBorrowedInvariant - _paidLiquidity;
             }
-            s.setUint256(uint256(StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant);
+            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant);
         }
     }
 }
