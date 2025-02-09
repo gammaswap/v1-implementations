@@ -12,35 +12,17 @@ abstract contract VaultBaseStrategy is BaseStrategy {
 
     using LibStorage for LibStorage.Storage;
 
-    /// @dev Update pool invariant, LP tokens borrowed plus interest, interest rate index, and last block update
-    /// @param lastFeeIndex - interest accrued to loans in GammaPool
+    /// @dev Accrue interest to borrowed invariant amount
     /// @param borrowedInvariant - liquidity invariant borrowed in the GammaPool
-    /// @param lastCFMMInvariant - liquidity invariant in CFMM
-    /// @param lastCFMMTotalSupply - total supply of LP tokens issued by CFMM
-    /// @return accFeeIndex - liquidity invariant lpTokenBalance represents
-    /// @return newBorrowedInvariant - borrowed liquidity invariant after interest accrual
-    function updateStore(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply)
-        internal virtual override returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
-        // Accrue interest to borrowed liquidity
+    /// @param lastFeeIndex - interest accrued to loans in GammaPool
+    /// @return newBorrowedInvariant - borrowed invariant with accrued interest
+    function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual override view returns(uint256) {
         uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
         reservedBorrowedInvariant = GSMath.min(borrowedInvariant,reservedBorrowedInvariant);
         unchecked {
             borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
         }
-        newBorrowedInvariant = accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex) + reservedBorrowedInvariant;
-        s.BORROWED_INVARIANT = uint128(newBorrowedInvariant);
-
-        // Convert borrowed liquidity to corresponding CFMM LP tokens using current conversion rate
-        s.LP_TOKEN_BORROWED_PLUS_INTEREST = convertInvariantToLP(newBorrowedInvariant, lastCFMMTotalSupply, lastCFMMInvariant);
-        uint256 lpInvariant = convertLPToInvariant(s.LP_TOKEN_BALANCE, lastCFMMInvariant, lastCFMMTotalSupply);
-        s.LP_INVARIANT = uint128(lpInvariant);
-
-        // Update GammaPool's interest rate index and update last block updated
-        accFeeIndex = s.accFeeIndex * lastFeeIndex / 1e18;
-        s.accFeeIndex = uint80(accFeeIndex);
-        s.emaUtilRate = uint32(_calcUtilRateEma(calcUtilizationRate(lpInvariant, newBorrowedInvariant), s.emaUtilRate,
-            GSMath.max(block.number - s.LAST_BLOCK_NUMBER, s.emaMultiplier)));
-        s.LAST_BLOCK_NUMBER = uint40(block.number);
+        return  super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex) + reservedBorrowedInvariant;
     }
 
     /// @dev Revert if lpTokens withdrawal causes utilization rate to go over 98%

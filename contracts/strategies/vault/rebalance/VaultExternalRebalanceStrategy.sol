@@ -23,11 +23,10 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
         blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
-    /// @dev Update total interest charged except for reserved LP tokens
-    /// @dev See {BaseStrategy-updateStore}.
-    function updateStore(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply)
-        internal virtual override(BaseStrategy,VaultBaseLongStrategy) returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
-        return super.updateStore(lastFeeIndex, borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply);
+    /// @dev See {BaseStrategy-accrueBorrowedInvariant}.
+    function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual
+        override(BaseStrategy,VaultBaseLongStrategy) view returns(uint256) {
+        return super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
     }
 
     /// @dev Update loan's liquidity debt with interest charged except when loan is of refType 3

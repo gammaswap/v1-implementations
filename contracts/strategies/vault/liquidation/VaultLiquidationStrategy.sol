@@ -9,6 +9,7 @@ import "../base/VaultBaseLiquidationStrategy.sol";
 /// @notice Sets up variables used by LiquidationStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
 contract VaultLiquidationStrategy is CPMMLiquidationStrategy, VaultBaseLiquidationStrategy {
+
     /// @dev Initializes the contract by setting `liquidator`, `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`,
     /// @dev `tradingFee1`, `tradingFee2`, `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(address liquidator_, address mathLib_, uint256 maxTotalApy_, uint256 blocksPerYear_, uint24 tradingFee1_,
@@ -17,11 +18,10 @@ contract VaultLiquidationStrategy is CPMMLiquidationStrategy, VaultBaseLiquidati
         feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
-    /// @dev Update total interest charged except for reserved LP tokens
-    /// @dev See {BaseStrategy-updateStore}.
-    function updateStore(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply)
-        internal virtual override(BaseStrategy,VaultBaseLiquidationStrategy) returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
-        return super.updateStore(lastFeeIndex, borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply);
+    /// @dev See {BaseStrategy-accrueBorrowedInvariant}.
+    function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual
+        override(BaseStrategy,VaultBaseLiquidationStrategy) view returns(uint256) {
+        return super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
     }
 
     /// @dev Update loan's liquidity debt with interest charged except when loan is of refType 3

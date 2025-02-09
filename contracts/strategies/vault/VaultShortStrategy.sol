@@ -17,11 +17,10 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
         CPMMShortStrategy(maxTotalApy_, blocksPerYear_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
-    /// @dev Update total interest charged except for reserved LP tokens
-    /// @dev See {BaseStrategy-updateStore}.
-    function updateStore(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply)
-        internal virtual override(BaseStrategy,VaultBaseStrategy) returns(uint256 accFeeIndex, uint256 newBorrowedInvariant) {
-        return super.updateStore(lastFeeIndex, borrowedInvariant, lastCFMMInvariant, lastCFMMTotalSupply);
+    /// @dev See {BaseStrategy-accrueBorrowedInvariant}.
+    function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual
+        override(BaseStrategy,VaultBaseStrategy) view returns(uint256) {
+        return super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
     }
 
     /// @dev See {BaseStrategy-checkExpectedUtilizationRate}.
@@ -39,7 +38,7 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
         updateIndex();
 
         // Convert GS LP tokens (`shares`) to CFMM LP tokens (`assets`)
-        assets = convertToAssets(shares);
+        assets = convertToAssets(shares, false);
         // revert if request is for 0 CFMM LP tokens
         if(assets == 0) revert ZeroAssets();
 
@@ -59,7 +58,7 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
         if(assets > getAdjLPTokenBalance()) revert ExcessiveWithdrawal();
 
         // Convert CFMM LP tokens to GS LP tokens
-        shares = convertToShares(assets);
+        shares = convertToShares(assets, true);
 
         // Revert if redeeming 0 GS LP tokens
         if(shares == 0) revert ZeroShares();
@@ -74,7 +73,7 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
         updateIndex();
 
         // Convert GS LP tokens to CFMM LP tokens
-        assets = convertToAssets(shares);
+        assets = convertToAssets(shares, false);
         if(assets == 0) revert ZeroAssets(); // revert if withdrawing 0 CFMM LP tokens
 
         // Revert if not enough CFMM LP tokens to withdraw
