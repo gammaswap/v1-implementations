@@ -13,14 +13,9 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
 
     using LibStorage for LibStorage.Storage;
 
-    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`,
+    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`, `rebalanceStrategy`,
     /// @dev `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
-    constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy,
-        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _viewer,
-        address _externalRebalanceStrategy, address _externalLiquidationStrategy, address _cfmmFactory,
-        bytes32 _cfmmInitCodeHash) CPMMGammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy,
-        _shortStrategy, _liquidationStrategy, _batchLiquidationStrategy, _viewer, _externalRebalanceStrategy,
-        _externalLiquidationStrategy, _cfmmFactory, _cfmmInitCodeHash) {
+    constructor(InitializationParams memory params) CPMMGammaPool(params) {
     }
 
     /// @dev See {IVaultGammaPool-reserveLPTokens}

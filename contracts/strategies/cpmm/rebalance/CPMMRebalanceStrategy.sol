@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.21;
 
-import "@gammaswap/v1-core/contracts/strategies/lending/BorrowStrategy.sol";
+import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
+import "../../../interfaces/cpmm/strategies/ICPMMRebalanceStrategy.sol";
 import "../base/CPMMBaseRebalanceStrategy.sol";
 
-/// @title Borrow Strategy concrete implementation contract for Constant Product Market Maker
+/// @title Rebalance Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by BorrowStrategy and RebalanceStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract CPMMBorrowStrategy is CPMMBaseRebalanceStrategy, BorrowStrategy {
+contract CPMMRebalanceStrategy is CPMMBaseRebalanceStrategy, RebalanceStrategy, ICPMMRebalanceStrategy {
+
+    using LibStorage for LibStorage.Storage;
 
     /// @dev Initializes the contract by setting `mathLib`, `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `tradingFee1`, `tradingFee2`,
     /// @dev `feeSource`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
@@ -17,8 +20,13 @@ contract CPMMBorrowStrategy is CPMMBaseRebalanceStrategy, BorrowStrategy {
         maxTotalApy_, blocksPerYear_, tradingFee1_, tradingFee2_, feeSource_, baseRate_, optimalUtilRate_, slope1_, slope2_) {
     }
 
-    /// @dev See {BaseBorrowStrategy-getCurrentCFMMPrice}.
-    function getCurrentCFMMPrice() internal virtual override view returns(uint256) {
-        return s.CFMM_RESERVES[1] * (10 ** s.decimals[0]) / s.CFMM_RESERVES[0];
+    /// @dev See {ICPMMRebalanceStrategy-_setMaxTotalAPY}.
+    function _setMaxTotalAPY(uint256 _maxTotalAPY) external virtual override {
+        if(msg.sender != s.factory) revert Forbidden(); // only factory is allowed to set Max Total APY
+        if(_maxTotalAPY > 0 && _maxTotalAPY < baseRate + slope1 + slope2) revert MaxTotalApy();
+
+        s.setUint256(uint256(MAX_TOTAL_APY_KEY), _maxTotalAPY);
+
+        emit SetMaxTotalAPY(_maxTotalAPY);
     }
 }

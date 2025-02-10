@@ -2,14 +2,13 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/lending/BorrowStrategy.sol";
-import "@gammaswap/v1-core/contracts/strategies/rebalance/RebalanceStrategy.sol";
 import "../base/VaultBaseRebalanceStrategy.sol";
 
-/// @title Vault Borrow and Rebalance Strategy concrete implementation contract for Vault GammaPool Constant Product Market Maker
+/// @title Rebalance Strategy concrete implementation contract for Vault GammaPool Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by BorrowStrategy and RebalanceStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy, RebalanceStrategy {
+contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
 
     using LibStorage for LibStorage.Storage;
 

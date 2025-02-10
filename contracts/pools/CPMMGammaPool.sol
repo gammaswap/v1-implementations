@@ -6,11 +6,13 @@ import "@gammaswap/v1-core/contracts/base/GammaPoolExternal.sol";
 import "@gammaswap/v1-core/contracts/libraries/AddressCalculator.sol";
 import "@gammaswap/v1-core/contracts/libraries/GammaSwapLibrary.sol";
 import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
+import "../interfaces/cpmm/strategies/ICPMMRebalanceStrategy.sol";
+import "../interfaces/cpmm/ICPMMGammaPool.sol";
 
 /// @title GammaPool implementation for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev This implementation is specifically for validating UniswapV2Pair and clone contracts
-contract CPMMGammaPool is GammaPool, GammaPoolExternal {
+contract CPMMGammaPool is GammaPool, GammaPoolExternal, ICPMMGammaPool {
 
     error NotContract();
     error BadProtocol();
@@ -24,16 +26,14 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
     /// @return cfmmInitCodeHash - init code hash of CFMM
     bytes32 immutable public cfmmInitCodeHash;
 
-    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`,
+    /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`, `rebalanceStrategy`,
     /// @dev `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
-    constructor(uint16 _protocolId, address _factory, address _borrowStrategy, address _repayStrategy,
-        address _shortStrategy, address _liquidationStrategy, address _batchLiquidationStrategy, address _viewer,
-        address _externalRebalanceStrategy, address _externalLiquidationStrategy, address _cfmmFactory, bytes32 _cfmmInitCodeHash)
-        GammaPool(_protocolId, _factory, _borrowStrategy, _repayStrategy, _borrowStrategy, _shortStrategy,
-        _liquidationStrategy, _batchLiquidationStrategy, _viewer)
-        GammaPoolExternal(_externalRebalanceStrategy, _externalLiquidationStrategy) {
-        cfmmFactory = _cfmmFactory;
-        cfmmInitCodeHash = _cfmmInitCodeHash;
+    constructor(InitializationParams memory params) GammaPool(params.protocolId, params.factory, params.borrowStrategy,
+        params.repayStrategy, params.rebalanceStrategy, params.shortStrategy, params.liquidationStrategy,
+        params.batchLiquidationStrategy, params.viewer) GammaPoolExternal(params.externalRebalanceStrategy,
+        params.externalLiquidationStrategy) {
+        cfmmFactory = params.cfmmFactory;
+        cfmmInitCodeHash = params.cfmmInitCodeHash;
     }
 
     /// @dev See {IGammaPool-createLoan}
@@ -69,5 +69,15 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal {
         if(_cfmm != AddressCalculator.calcAddress(cfmmFactory,keccak256(abi.encodePacked(_tokensOrdered[0], _tokensOrdered[1])),cfmmInitCodeHash)) {
             revert BadProtocol();
         }
+    }
+
+    /// @dev See {ICPMMGammaPool-setMaxTotalAPY}
+    function setMaxTotalAPY(uint256 _maxTotalAPY) external virtual override {
+        abi.decode(callStrategy(rebalanceStrategy, abi.encodeCall(ICPMMRebalanceStrategy._setMaxTotalAPY, _maxTotalAPY)), ());
+    }
+
+    /// @dev See {IGammaPoolExternal-liquidateExternally}
+    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual whenNotPaused(25) returns(uint256 loanLiquidity, uint256[] memory refund) {
+        return (0, new uint256[](0));
     }
 }
