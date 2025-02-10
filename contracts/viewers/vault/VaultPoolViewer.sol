@@ -2,8 +2,8 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/base/PoolViewer.sol";
-import "../interfaces/vault/IVaultGammaPool.sol";
-import "../interfaces/vault/IVaultPoolViewer.sol";
+import "../../interfaces/vault/IVaultGammaPool.sol";
+import "../../interfaces/vault/IVaultPoolViewer.sol";
 
 /// @title Implementation of Viewer Contract for Vault GammaPool
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
