@@ -58,7 +58,7 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
     /// @dev See {GammaPoolERC4626-_totalAssetsAndSupply}
     function _totalAssetsAndSupply() internal view virtual override returns (uint256 assets, uint256 supply) {
         address _factory = s.factory;
-        (assets, supply) = IVaultShortStrategy(vaultImplementation()).totalAssetsAndSupply(
+        (assets, supply) = IVaultShortStrategy(vaultImplementation()).totalReservedAssetsAndSupply(
             IVaultShortStrategy.VaultReservedBalancesParams({
                 factory: _factory,
                 pool: address(this),

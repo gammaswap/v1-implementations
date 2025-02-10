@@ -84,8 +84,8 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy, IVaultShort
         withdrawAssets(msg.sender, to, from, assets, shares, false);
     }
 
-    /// @dev See {IVaultShortStrategy-totalAssetsAndSupply}.
-    function totalAssetsAndSupply(IVaultShortStrategy.VaultReservedBalancesParams memory _params) external virtual override view returns(uint256 assets, uint256 supply) {
+    /// @dev See {IVaultShortStrategy-totalReservedAssetsAndSupply}.
+    function totalReservedAssetsAndSupply(IVaultShortStrategy.VaultReservedBalancesParams memory _params) external virtual override view returns(uint256 assets, uint256 supply) {
         // use lastFeeIndex and cfmmFeeIndex to hold maxCFMMFeeLeverage and spread respectively
         (uint256 borrowRate, uint256 utilizationRate, uint256 lastFeeIndex, uint256 cfmmFeeIndex) = calcBorrowRate(_params.LP_INVARIANT,
             _params.BORROWED_INVARIANT, _params.paramsStore, _params.pool);

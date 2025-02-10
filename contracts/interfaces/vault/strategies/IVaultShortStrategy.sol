@@ -43,5 +43,5 @@ interface IVaultShortStrategy {
     /// @param vaultReservedBalanceParams - parameters from GammaPool to calculate current total GS LP Tokens and CFMM LP Tokens after fees and interest
     /// @return assets - total CFMM LP tokens in existence in the pool (real and virtual) including accrued interest
     /// @return supply - total GS LP tokens in the pool including accrued interest
-    function totalAssetsAndSupply(VaultReservedBalancesParams memory vaultReservedBalanceParams) external view returns(uint256 assets, uint256 supply);
+    function totalReservedAssetsAndSupply(VaultReservedBalancesParams memory vaultReservedBalanceParams) external view returns(uint256 assets, uint256 supply);
 }
