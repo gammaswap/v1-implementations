@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.0;
 
-import "@gammaswap/v1-core/contracts/interfaces/IGammaPool.sol";
-
 /// @title Interface for Vault GammaPool smart contract
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev Used as template for building other Vault GammaPool contract implementations

@@ -3,11 +3,12 @@ pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/base/PoolViewer.sol";
 import "../interfaces/vault/IVaultGammaPool.sol";
+import "../interfaces/vault/IVaultPoolViewer.sol";
 
 /// @title Implementation of Viewer Contract for Vault GammaPool
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev Used make complex view function calls from GammaPool's storage data (e.g. updated loan and pool debt)
-contract VaultPoolViewer is PoolViewer {
+contract VaultPoolViewer is PoolViewer, IVaultPoolViewer {
 
     /// @inheritdoc PoolViewer
     function _getUpdatedLoans(address pool, IGammaPool.LoanData[] memory _loans) internal virtual override view returns(IGammaPool.LoanData[] memory) {
@@ -177,5 +178,22 @@ contract VaultPoolViewer is PoolViewer {
         data.lastPrice = IGammaPool(pool).getLastCFMMPrice();
         data.lastCFMMInvariant = uint128(lastCFMMInvariant);
         data.lastCFMMTotalSupply = lastCFMMTotalSupply;
+    }
+
+    /// @dev Returns vault pool storage data updated to their latest values
+    /// @notice Difference with getVaultPoolData() is this struct is what PoolData would return if an update of the GammaPool were to occur at the current block
+    /// @param pool - address of pool to get pool data for
+    /// @return data - struct containing all relevant global state variables and descriptive information of GammaPool. Used to avoid making multiple calls
+    function getLatestVaultPoolData(address pool) public virtual override view returns(IVaultPoolViewer.VaultPoolData memory data) {
+        (data.reservedBorrowedInvariant, data.reservedLPTokens) = IVaultGammaPool(pool).getReservedBalances();
+        data.poolData = getLatestPoolData(pool);
+    }
+
+    /// @dev Return vault pool storage data
+    /// @param pool - address of pool to get pool data for
+    /// @return data - struct containing all relevant global state variables and descriptive information of GammaPool. Used to avoid making multiple calls
+    function getVaultPoolData(address pool) public virtual override view returns(IVaultPoolViewer.VaultPoolData memory data) {
+        (data.reservedBorrowedInvariant, data.reservedLPTokens) = IVaultGammaPool(pool).getReservedBalances();
+        data.poolData = IGammaPool(pool).getPoolData();
     }
 }
