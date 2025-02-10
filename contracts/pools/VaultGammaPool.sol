@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.21;
 
-import "../interfaces/vault/strategies/IVaultStrategy.sol";
+import "../interfaces/vault/strategies/IVaultReserveStrategy.sol";
+import "../interfaces/vault/strategies/IVaultShortStrategy.sol";
 import "../interfaces/vault/IVaultGammaPool.sol";
 import "./CPMMGammaPool.sol";
 
@@ -24,7 +25,7 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
 
     /// @dev See {IVaultGammaPool-reserveLPTokens}
     function reserveLPTokens(uint256 tokenId, uint256 lpTokens, bool isReserve) external virtual override whenNotPaused(26) returns(uint256) {
-        return abi.decode(callStrategy(externalRebalanceStrategy, abi.encodeCall(IVaultStrategy._reserveLPTokens, (tokenId, lpTokens, isReserve))), (uint256));
+        return abi.decode(callStrategy(externalRebalanceStrategy, abi.encodeCall(IVaultReserveStrategy._reserveLPTokens, (tokenId, lpTokens, isReserve))), (uint256));
     }
 
     /// @dev See {IVaultGammaPool-getReservedBalances}
@@ -34,7 +35,48 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
     }
 
     /// @dev See {IGammaPool-repayLiquidityWithLP}
-    function repayLiquidityWithLP(uint256 tokenId, uint256 collateralId, address to) external virtual override whenNotPaused(15) returns(uint256 liquidityPaid, uint128[] memory tokensHeld) {
+    function repayLiquidityWithLP(uint256 tokenId, uint256 collateralId, address to) external virtual override whenNotPaused(15) returns(uint256, uint128[] memory) {
         return (0, new uint128[](0));
+    }
+
+    /// @dev See {IGammaPoolExternal-liquidateExternally}
+    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual whenNotPaused(25) returns(uint256, uint256[] memory) {
+        return (0, new uint256[](0));
+    }
+
+    /// @dev See {GammaPoolERC4626-maxAssets}
+    function maxAssets(uint256 assets) internal view virtual override returns(uint256) {
+        uint256 reservedLpTokenBalance = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+        uint256 lpTokenBalance = s.LP_TOKEN_BALANCE; // CFMM LP tokens in GammaPool that have not been borrowed
+        lpTokenBalance = lpTokenBalance - GSMath.min(reservedLpTokenBalance, lpTokenBalance);
+        if(assets < lpTokenBalance){ // limit assets available to withdraw to what has not been borrowed
+            return assets;
+        }
+        return lpTokenBalance;
+    }
+
+    /// @dev See {GammaPoolERC4626-_totalAssetsAndSupply}
+    function _totalAssetsAndSupply() internal view virtual override returns (uint256 assets, uint256 supply) {
+        address _factory = s.factory;
+        uint256 borrowedInvariant = s.BORROWED_INVARIANT;
+        uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
+        (assets, supply) = IVaultShortStrategy(vaultImplementation()).totalAssetsAndSupply(
+            IVaultShortStrategy.VaultReservedBalancesParams({
+                factory: _factory,
+                pool: address(this),
+                paramsStore: _factory,
+                BORROWED_INVARIANT: borrowedInvariant,
+                RESERVED_BORROWED_INVARIANT: reservedBorrowedInvariant,
+                latestCfmmInvariant: _getLatestCFMMInvariant(),
+                latestCfmmTotalSupply: _getLatestCFMMTotalSupply(),
+                LAST_BLOCK_NUMBER: s.LAST_BLOCK_NUMBER,
+                lastCFMMInvariant: s.lastCFMMInvariant,
+                lastCFMMTotalSupply: s.lastCFMMTotalSupply,
+                lastCFMMFeeIndex: s.lastCFMMFeeIndex,
+                totalSupply: s.totalSupply,
+                LP_TOKEN_BALANCE: s.LP_TOKEN_BALANCE,
+                LP_INVARIANT: s.LP_INVARIANT
+            })
+        );
     }
 }

@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 /// @title Interface Vault Strategy
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Used to reserve LP tokens for vault to use in a future call to borrowLiquidity().
-interface IVaultStrategy {
+interface IVaultReserveStrategy {
     /// @dev reserve LP tokens for future borrowing (prevents others from borrowing) or free reserved LP tokens so others can borrow them.
     /// @param tokenId - tokenId of loan used to reserve or free reserved LP tokens. Must be refType 3.
     /// @param lpTokens - number of LP tokens that must be reserved or freed.

@@ -2,14 +2,14 @@
 pragma solidity 0.8.21;
 
 import "@gammaswap/v1-core/contracts/strategies/rebalance/ExternalRebalanceStrategy.sol";
-import "../../../interfaces/vault/strategies/IVaultStrategy.sol";
+import "../../../interfaces/vault/strategies/IVaultReserveStrategy.sol";
 import "../base/VaultBaseLongStrategy.sol";
 
 /// @title Vault External Long Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Constant Product Market Maker Long Strategy implementation that allows external swaps (flash loans)
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebalanceStrategy, IVaultStrategy {
+contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebalanceStrategy, IVaultReserveStrategy {
 
     error InvalidRefType();
     error ExcessiveLPTokensReserved();

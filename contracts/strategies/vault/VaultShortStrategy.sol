@@ -3,12 +3,13 @@ pragma solidity 0.8.21;
 
 import "../cpmm/CPMMShortStrategy.sol";
 import "./base/VaultBaseStrategy.sol";
+import "../../interfaces/vault/strategies/IVaultShortStrategy.sol";
 
 /// @title Vault Short Strategy concrete implementation contract for Constant Product Market Maker
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @notice Sets up variables used by ShortStrategy and defines internal functions specific to CPMM implementation
 /// @dev This implementation was specifically designed to work with UniswapV2
-contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
+contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy, IVaultShortStrategy {
 
     using LibStorage for LibStorage.Storage;
 
@@ -81,5 +82,41 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy {
 
         // Send CFMM LP tokens to receiver (`to`) and burn corresponding GS LP tokens from msg.sender
         withdrawAssets(msg.sender, to, from, assets, shares, false);
+    }
+
+    /// @dev See {IVaultShortStrategy-totalAssetsAndSupply}.
+    function totalAssetsAndSupply(IVaultShortStrategy.VaultReservedBalancesParams memory _params) external virtual override view returns(uint256 assets, uint256 supply) {
+        // use lastFeeIndex and cfmmFeeIndex to hold maxCFMMFeeLeverage and spread respectively
+        (uint256 borrowRate, uint256 utilizationRate, uint256 lastFeeIndex, uint256 cfmmFeeIndex) = calcBorrowRate(_params.LP_INVARIANT,
+            _params.BORROWED_INVARIANT, _params.paramsStore, _params.pool);
+
+        (lastFeeIndex, cfmmFeeIndex) = getLastFees(borrowRate, _params.BORROWED_INVARIANT, _params.latestCfmmInvariant,
+            _params.latestCfmmTotalSupply, _params.lastCFMMInvariant, _params.lastCFMMTotalSupply, _params.LAST_BLOCK_NUMBER,
+            _params.lastCFMMFeeIndex, lastFeeIndex, cfmmFeeIndex);
+
+        _params.RESERVED_BORROWED_INVARIANT = GSMath.min(_params.RESERVED_BORROWED_INVARIANT, _params.BORROWED_INVARIANT);
+        unchecked {
+            _params.BORROWED_INVARIANT = _params.BORROWED_INVARIANT - _params.RESERVED_BORROWED_INVARIANT;
+        }
+        // Total amount of GS LP tokens issued after protocol fees are paid
+        assets = totalAssets(_params.BORROWED_INVARIANT, _params.LP_TOKEN_BALANCE +
+            convertInvariantToLP(_params.RESERVED_BORROWED_INVARIANT, _params.lastCFMMTotalSupply, _params.lastCFMMInvariant),
+            _params.latestCfmmInvariant, _params.latestCfmmTotalSupply, lastFeeIndex);
+
+        // Calculates total CFMM LP tokens, including accrued interest, using state variables
+        supply = totalSupply(_params.factory, _params.pool, cfmmFeeIndex, lastFeeIndex, utilizationRate, _params.totalSupply);
+    }
+
+    /// @dev See {IShortStrategy-totalAssetsAndSupply}.
+    function totalAssetsAndSupply(VaultBalancesParams memory _params) public virtual override view returns(uint256 assets, uint256 supply) {
+        return (0,0);
+    }
+
+    /// @inheritdoc IShortStrategy
+    function getLatestBalances(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lpBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual override view
+        returns(uint256 lastLPBalance, uint256 lastBorrowedLPBalance, uint256 lastBorrowedInvariant) {
+        lastBorrowedInvariant = _accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
+        lastBorrowedLPBalance =  convertInvariantToLP(lastBorrowedInvariant, lastCFMMTotalSupply, lastCFMMInvariant);
+        lastLPBalance = lpBalance + lastBorrowedLPBalance;
     }
 }

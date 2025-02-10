@@ -12,7 +12,7 @@ abstract contract VaultBaseStrategy is BaseStrategy {
 
     using LibStorage for LibStorage.Storage;
 
-    /// @dev Accrue interest to borrowed invariant amount
+    /// @dev Accrue interest to borrowed invariant amount excluding reserved borrowed invariant
     /// @param borrowedInvariant - liquidity invariant borrowed in the GammaPool
     /// @param lastFeeIndex - interest accrued to loans in GammaPool
     /// @return newBorrowedInvariant - borrowed invariant with accrued interest
@@ -22,7 +22,15 @@ abstract contract VaultBaseStrategy is BaseStrategy {
         unchecked {
             borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
         }
-        return  super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex) + reservedBorrowedInvariant;
+        return  _accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex) + reservedBorrowedInvariant;
+    }
+
+    /// @dev Accrue interest to borrowed invariant amount
+    /// @param borrowedInvariant - liquidity invariant borrowed in the GammaPool
+    /// @param lastFeeIndex - interest accrued to loans in GammaPool
+    /// @return newBorrowedInvariant - borrowed invariant with accrued interest
+    function _accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual view returns(uint256) {
+        return  super.accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
     }
 
     /// @dev Revert if lpTokens withdrawal causes utilization rate to go over 98%
