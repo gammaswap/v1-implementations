@@ -29,13 +29,13 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
         reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
     }
 
-    /// @dev See {IGammaPool-repayLiquidityWithLP}
-    function repayLiquidityWithLP(uint256 tokenId, uint256 collateralId, address to) external virtual override whenNotPaused(15) returns(uint256, uint128[] memory) {
-        return (0, new uint128[](0));
+    /// @dev See {IGammaPool-liquidateWithLP}
+    function liquidateWithLP(uint256 tokenId) external virtual override returns(uint256 loanLiquidity, uint256[] memory refund) {
+        return (0, new uint256[](0));
     }
 
-    /// @dev See {IGammaPoolExternal-liquidateExternally}
-    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual whenNotPaused(25) returns(uint256, uint256[] memory) {
+    /// @dev See {IGammaPool-batchLiquidations}
+    function batchLiquidations(uint256[] calldata tokenIds) external virtual override returns(uint256 totalLoanLiquidity, uint256[] memory refund) {
         return (0, new uint256[](0));
     }
 

@@ -57,7 +57,8 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal, ICPMMGammaPool {
     }
 
     /// @dev See {IGammaPool-validateCFMM}
-    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view returns(address[] memory _tokensOrdered) {
+    function validateCFMM(address[] calldata _tokens, address _cfmm, bytes calldata) external virtual override view
+        returns(address[] memory _tokensOrdered) {
         if(!GammaSwapLibrary.isContract(_cfmm)) revert NotContract(); // Not a smart contract (hence not a CFMM) or not instantiated yet
         if(_tokens.length != 2) revert InvalidTokensLength();
 
@@ -66,7 +67,8 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal, ICPMMGammaPool {
         (_tokensOrdered[0], _tokensOrdered[1]) = _tokens[0] < _tokens[1] ? (_tokens[0], _tokens[1]) : (_tokens[1], _tokens[0]);
 
         // Verify CFMM was created by CFMM's factory contract
-        if(_cfmm != AddressCalculator.calcAddress(cfmmFactory,keccak256(abi.encodePacked(_tokensOrdered[0], _tokensOrdered[1])),cfmmInitCodeHash)) {
+        if(_cfmm != AddressCalculator.calcAddress(cfmmFactory,
+            keccak256(abi.encodePacked(_tokensOrdered[0], _tokensOrdered[1])),cfmmInitCodeHash)) {
             revert BadProtocol();
         }
     }
@@ -77,7 +79,8 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal, ICPMMGammaPool {
     }
 
     /// @dev See {IGammaPoolExternal-liquidateExternally}
-    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override virtual whenNotPaused(25) returns(uint256 loanLiquidity, uint256[] memory refund) {
+    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data)
+        external override virtual returns(uint256 loanLiquidity, uint256[] memory refund) {
         return (0, new uint256[](0));
     }
 }
