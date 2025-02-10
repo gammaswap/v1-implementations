@@ -58,15 +58,13 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
     /// @dev See {GammaPoolERC4626-_totalAssetsAndSupply}
     function _totalAssetsAndSupply() internal view virtual override returns (uint256 assets, uint256 supply) {
         address _factory = s.factory;
-        uint256 borrowedInvariant = s.BORROWED_INVARIANT;
-        uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
         (assets, supply) = IVaultShortStrategy(vaultImplementation()).totalAssetsAndSupply(
             IVaultShortStrategy.VaultReservedBalancesParams({
                 factory: _factory,
                 pool: address(this),
                 paramsStore: _factory,
-                BORROWED_INVARIANT: borrowedInvariant,
-                RESERVED_BORROWED_INVARIANT: reservedBorrowedInvariant,
+                BORROWED_INVARIANT: s.BORROWED_INVARIANT,
+                RESERVED_BORROWED_INVARIANT: s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT)),
                 latestCfmmInvariant: _getLatestCFMMInvariant(),
                 latestCfmmTotalSupply: _getLatestCFMMTotalSupply(),
                 LAST_BLOCK_NUMBER: s.LAST_BLOCK_NUMBER,
