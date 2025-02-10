@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.21;
 
-import "./CPMMGammaPool.sol";
+import "./VaultGammaPool.sol";
 
-/// @title GammaPool implementation for Constant Product Market Maker in mainnet Ethereum
+/// @title Vault GammaPool implementation for Constant Product Market Maker in mainnet Ethereum
 /// @author Daniel D. Alcarraz (https://github.com/0xDanr)
 /// @dev This implementation is specifically for validating UniswapV2Pair and clone contracts
 /// @dev Overrides the initialize function to set params for higher network costs in mainnet Ethereum
-contract CPMMGammaPoolMain is CPMMGammaPool {
+contract VaultGammaPoolMain is VaultGammaPool {
 
     using LibStorage for LibStorage.Storage;
 
     /// @dev Initializes the contract by setting `protocolId`, `factory`, `borrowStrategy`, `repayStrategy`, `rebalanceStrategy`,
     /// @dev `shortStrategy`, `liquidationStrategy`, `batchLiquidationStrategy`, `cfmmFactory`, and `cfmmInitCodeHash`.
-    constructor(InitializationParams memory params) CPMMGammaPool(params) {
+    constructor(InitializationParams memory params) VaultGammaPool(params) {
     }
 
     /// @dev See {IGammaPool-initialize}

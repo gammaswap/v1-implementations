@@ -82,8 +82,4 @@ contract TestCPMMBorrowStrategy is CPMMBorrowStrategy {
     function _increaseCollateral(uint256, uint256[] calldata) external virtual override returns(uint128[] memory) {
         return new uint128[](2);
     }
-
-    function _rebalanceCollateral(uint256, int256[] memory, uint256[] calldata) external virtual override returns(uint128[] memory) {
-        return new uint128[](2);
-    }
 }

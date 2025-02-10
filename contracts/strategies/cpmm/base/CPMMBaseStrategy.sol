@@ -12,13 +12,18 @@ import "../../../interfaces/external/cpmm/ICPMM.sol";
 /// @dev This implementation was specifically designed to work with UniswapV2. Inherits Rate Model
 abstract contract CPMMBaseStrategy is BaseStrategy, LinearKinkedRateModel {
 
+    using LibStorage for LibStorage.Storage;
+
     error MaxTotalApy();
 
     /// @dev Number of blocks network will issue within a ear. Currently expected
     uint256 immutable public BLOCKS_PER_YEAR; // 2628000 blocks per year in ETH mainnet (12 seconds per block)
 
-    /// @dev Max total annual APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
+    /// @dev Default max total APY the GammaPool will charge liquidity borrowers (e.g. 1,000%).
     uint256 immutable public MAX_TOTAL_APY;
+
+    /// @dev Key for overriding default max total APY
+    bytes32 internal constant MAX_TOTAL_APY_KEY = keccak256("MAX_TOTAL_APY");
 
     /// @dev Initializes the contract by setting `MAX_TOTAL_APY`, `BLOCKS_PER_YEAR`, `baseRate`, `optimalUtilRate`, `slope1`, and `slope2`
     constructor(uint256 maxTotalApy_, uint256 blocksPerYear_, uint64 baseRate_, uint64 optimalUtilRate_, uint64 slope1_, uint64 slope2_)
@@ -30,9 +35,14 @@ abstract contract CPMMBaseStrategy is BaseStrategy, LinearKinkedRateModel {
         BLOCKS_PER_YEAR = blocksPerYear_;
     }
 
+    /// @dev If set to 0 use default max total APY
     /// @dev See {BaseStrategy-maxTotalApy}.
     function maxTotalApy() internal virtual override view returns(uint256) {
-        return MAX_TOTAL_APY;
+        uint256 _maxTotalApy = s.getUint256(uint256(MAX_TOTAL_APY_KEY));
+        if(_maxTotalApy == 0) {
+            return MAX_TOTAL_APY;
+        }
+        return _maxTotalApy;
     }
 
     /// @dev See {BaseStrategy-blocksPerYear}.
