@@ -24,13 +24,14 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
     }
 
     /// @dev See {IVaultGammaPool-getReservedBalances}
-    function getReservedBalances() external virtual override view returns(uint256 reservedBorrowedInvariant, uint256 reservedLPTokens) {
-        reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
-        reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+    function getReservedBalances() external virtual override view returns(uint256, uint256) {
+        return(s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT)),
+            s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS)));
     }
 
-    /// @dev See {IGammaPool-liquidateWithLP}
-    function liquidateWithLP(uint256 tokenId) external virtual override returns(uint256 loanLiquidity, uint256[] memory refund) {
+    /// @dev See {IGammaPoolExternal-liquidateExternally}
+    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data)
+        external override virtual returns(uint256 loanLiquidity, uint256[] memory refund) {
         return (0, new uint256[](0));
     }
 
@@ -41,9 +42,8 @@ contract VaultGammaPool is CPMMGammaPool, IVaultGammaPool {
 
     /// @dev See {GammaPoolERC4626-maxAssets}
     function maxAssets(uint256 assets) internal view virtual override returns(uint256) {
-        uint256 reservedLpTokenBalance = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
         uint256 lpTokenBalance = s.LP_TOKEN_BALANCE; // CFMM LP tokens in GammaPool that have not been borrowed
-        lpTokenBalance = lpTokenBalance - GSMath.min(reservedLpTokenBalance, lpTokenBalance);
+        lpTokenBalance = lpTokenBalance - GSMath.min(s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS)), lpTokenBalance);
         if(assets < lpTokenBalance){ // limit assets available to withdraw to what has not been borrowed
             return assets;
         }
