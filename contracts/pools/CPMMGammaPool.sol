@@ -78,9 +78,8 @@ contract CPMMGammaPool is GammaPool, GammaPoolExternal, ICPMMGammaPool {
         abi.decode(callStrategy(rebalanceStrategy, abi.encodeCall(ICPMMRebalanceStrategy._setMaxTotalAPY, _maxTotalAPY)), ());
     }
 
-    /// @dev See {IGammaPoolExternal-liquidateExternally}
-    function liquidateExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data)
-        external override virtual returns(uint256 loanLiquidity, uint256[] memory refund) {
-        return (0, new uint256[](0));
+    /// @dev See {ICPMMGammaPool-getMaxTotalAPY}
+    function getMaxTotalAPY() external virtual override view returns(uint256) {
+        return s.getUint256(uint256(keccak256("MAX_TOTAL_APY")));
     }
 }

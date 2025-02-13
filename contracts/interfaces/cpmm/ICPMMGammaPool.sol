@@ -28,4 +28,8 @@ interface ICPMMGammaPool {
     /// @dev set maximum total APY charged by GammaPool to borrowers
     /// @param _maxTotalAPY - new maximum total APY charged to GammaPool borrowers
     function setMaxTotalAPY(uint256 _maxTotalAPY) external;
+
+    /// @dev get maximum total APY charged by GammaPool to borrowers
+    /// @return _maxTotalAPY - maximum total APY charged to GammaPool borrowers
+    function getMaxTotalAPY() external view returns(uint256);
 }
