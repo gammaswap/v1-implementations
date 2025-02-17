@@ -100,7 +100,7 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy, IVaultShort
         }
         // Total amount of GS LP tokens issued after protocol fees are paid
         assets = totalAssets(_params.BORROWED_INVARIANT, _params.LP_TOKEN_BALANCE +
-            convertInvariantToLP(_params.RESERVED_BORROWED_INVARIANT, _params.lastCFMMTotalSupply, _params.lastCFMMInvariant),
+            convertInvariantToLPRoundUp(_params.RESERVED_BORROWED_INVARIANT, _params.lastCFMMTotalSupply, _params.lastCFMMInvariant),
             _params.latestCfmmInvariant, _params.latestCfmmTotalSupply, lastFeeIndex);
 
         // Calculates total CFMM LP tokens, including accrued interest, using state variables
@@ -116,7 +116,7 @@ contract VaultShortStrategy is CPMMShortStrategy, VaultBaseStrategy, IVaultShort
     function getLatestBalances(uint256 lastFeeIndex, uint256 borrowedInvariant, uint256 lpBalance, uint256 lastCFMMInvariant, uint256 lastCFMMTotalSupply) public virtual override view
         returns(uint256 lastLPBalance, uint256 lastBorrowedLPBalance, uint256 lastBorrowedInvariant) {
         lastBorrowedInvariant = _accrueBorrowedInvariant(borrowedInvariant, lastFeeIndex);
-        lastBorrowedLPBalance =  convertInvariantToLP(lastBorrowedInvariant, lastCFMMTotalSupply, lastCFMMInvariant);
+        lastBorrowedLPBalance =  convertInvariantToLPRoundUp(lastBorrowedInvariant, lastCFMMTotalSupply, lastCFMMInvariant);
         lastLPBalance = lpBalance + lastBorrowedLPBalance;
     }
 }
