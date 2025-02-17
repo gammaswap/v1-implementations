@@ -7,6 +7,11 @@ import "@gammaswap/v1-core/contracts/libraries/GSMath.sol";
 import "../../contracts/libraries/FullMath.sol";
 
 contract FullMathTest is Test {
+    MathFunctions math;
+
+    function setUp() public {
+        math = new MathFunctions();
+    }
 
     // Babylonian Method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)
     function sqrt(uint256 y) internal pure returns (uint256 z) {
@@ -132,32 +137,32 @@ contract FullMathTest is Test {
         assertEq(a1, type(uint256).max);
 
         vm.expectRevert("ADDITION_OVERFLOW");
-        (a0, a1) = FullMath.add512x512(1, 0, type(uint256).max, type(uint256).max);
+        (a0, a1) = math.add512x512(1, 0, type(uint256).max, type(uint256).max);
     }
 
     function testAdd512Revert() public {
         vm.expectRevert("ADDITION_OVERFLOW");
-        FullMath.add512x512(type(uint256).max, type(uint256).max, 1, 0);
+        math.add512x512(type(uint256).max, type(uint256).max, 1, 0);
     }
 
     function testAdd512Revert2() public {
         vm.expectRevert("ADDITION_OVERFLOW");
-        FullMath.add512x512(0, type(uint256).max, 0, 1);
+        math.add512x512(0, type(uint256).max, 0, 1);
     }
 
     function testAdd512Revert3() public {
         vm.expectRevert("ADDITION_OVERFLOW");
-        FullMath.add512x512(0, 1, 0, type(uint256).max);
+        math.add512x512(0, 1, 0, type(uint256).max);
     }
 
     function testAdd512Revert4() public {
         vm.expectRevert("ADDITION_OVERFLOW");
-        FullMath.add512x512(0, type(uint256).max, 0, type(uint256).max);
+        math.add512x512(0, type(uint256).max, 0, type(uint256).max);
     }
 
     function testAdd512Revert5() public {
         vm.expectRevert("ADDITION_OVERFLOW");
-        (uint256 r0, uint256 r1) = FullMath.add512x512(type(uint256).max-2, type(uint256).max, 3, 0);
+        (uint256 r0, uint256 r1) = math.add512x512(type(uint256).max-2, type(uint256).max, 3, 0);
     }
 
     function testAddSubtract(uint256 num1, uint256 num2) public {
@@ -196,7 +201,7 @@ contract FullMathTest is Test {
 
         if(hasHighBit) {
             vm.expectRevert("ADDITION_OVERFLOW");
-            FullMath.add512x512(0, num1, 0, num2);
+            math.add512x512(0, num1, 0, num2);
         }
     }
 
@@ -242,22 +247,22 @@ contract FullMathTest is Test {
         assertEq(a1, 0);
 
         vm.expectRevert("SUBTRACTION_UNDERFLOW");
-        FullMath.sub512x512(0, 1, 1, 1);
+        math.sub512x512(0, 1, 1, 1);
     }
 
     function testSub512Revert() public {
         vm.expectRevert("SUBTRACTION_UNDERFLOW");
-        FullMath.sub512x512(0, 0, 1, 0);
+        math.sub512x512(0, 0, 1, 0);
     }
 
     function testSub512Revert2() public {
         vm.expectRevert("SUBTRACTION_UNDERFLOW");
-        FullMath.sub512x512(0, 0, 1, 0);
+        math.sub512x512(0, 0, 1, 0);
     }
 
     function testSub512Revert3() public {
         vm.expectRevert("SUBTRACTION_UNDERFLOW");
-        FullMath.sub512x512(0, type(uint256).max, 1, type(uint256).max);
+        math.sub512x512(0, type(uint256).max, 1, type(uint256).max);
     }
 
     function testSub512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) public {
@@ -267,12 +272,12 @@ contract FullMathTest is Test {
             (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
             assertEq(FullMath.gt512(c0, c1, 0, 0), true);
             vm.expectRevert("SUBTRACTION_UNDERFLOW");
-            FullMath.sub512x512(b0, b1, a0, a1);
+            math.sub512x512(b0, b1, a0, a1);
         } else if(FullMath.lt512(a0, a1, b0, b1)) {
             (c0, c1) = FullMath.sub512x512(b0, b1, a0, a1);
             assertEq(FullMath.gt512(c0, c1, 0, 0), true);
             vm.expectRevert("SUBTRACTION_UNDERFLOW");
-            FullMath.sub512x512(a0, a1, b0, b1);
+            math.sub512x512(a0, a1, b0, b1);
         } else {
             (c0, c1) = FullMath.sub512x512(a0, a1, b0, b1);
             assertEq(FullMath.eq512(c0, c1, 0, 0), true);
@@ -622,7 +627,7 @@ contract FullMathTest is Test {
 
         if(u1 > 0) {
             vm.expectRevert("MULTIPLICATION_OVERFLOW");
-            (uint256 x0, uint256 x1) = FullMath.mul512x256(0, num1, num2);
+            (uint256 x0, uint256 x1) = math.mul512x256(0, num1, num2);
         } else {
             if(num2 > 0) {
                 (uint256 x0, uint256 x1) = FullMath.div512x256(v0, v1, num2);
@@ -646,7 +651,7 @@ contract FullMathTest is Test {
             (uint256 y0, uint256 y1) = FullMath.add512x512(u0, 0, x1, 0);
             if(y1 > 0) {
                 vm.expectRevert("MULTIPLICATION_OVERFLOW");
-                FullMath.mul512x256(num1, num2, num3);
+                math.mul512x256(num1, num2, num3);
             }
         }
     }
@@ -656,7 +661,7 @@ contract FullMathTest is Test {
         uint256 num2 = type(uint256).max;
         uint256 num3 = 2;
         vm.expectRevert("MULTIPLICATION_OVERFLOW");
-        FullMath.mul512x256(num1, num2, num3);
+        math.mul512x256(num1, num2, num3);
     }
 
     function testMul512x256Revert2() public {
@@ -671,7 +676,7 @@ contract FullMathTest is Test {
 
         num1++;
         vm.expectRevert("MULTIPLICATION_OVERFLOW");
-        FullMath.mul512x256(num1, num2, num3);
+        math.mul512x256(num1, num2, num3);
     }
 
     function testMul512x256Revert3() public {
@@ -686,7 +691,7 @@ contract FullMathTest is Test {
 
         ++num1;
         vm.expectRevert("MULTIPLICATION_OVERFLOW");
-        FullMath.mul512x256(num1, num2, num3);
+        math.mul512x256(num1, num2, num3);
     }
 
     function testMul512x256Fixed() public {
@@ -726,7 +731,7 @@ contract FullMathTest is Test {
         assertEq(v1, num2*num3);
 
         vm.expectRevert("MULTIPLICATION_OVERFLOW");
-        FullMath.mul512x256(0, type(uint256).max, 2);
+        math.mul512x256(0, type(uint256).max, 2);
     }
 
     function testDivFixed512x256_128(uint128 num1, uint128 num2, uint128 num3) public {
@@ -892,10 +897,10 @@ contract FullMathTest is Test {
         assertEq(u1, 0);
 
         vm.expectRevert("DIVISION_BY_ZERO");
-        FullMath.div512x256(u0, u1, num3);
+        math.div512x256(u0, u1, num3);
 
         vm.expectRevert("DIVISION_BY_ZERO");
-        FullMath.divRem512x256(u0, u1, num3);
+        math.divRem512x256(u0, u1, num3);
     }
 
     function testDiv512x256(uint256 num1, uint256 num2, uint256 num3) public {
@@ -930,7 +935,7 @@ contract FullMathTest is Test {
     function testMulDiv512(uint256 num1, uint256 num2, uint256 num3) public {
         if(num3 == 0) {
             vm.expectRevert("MULDIV_ZERO_DIVISOR");
-            FullMath.mulDiv512(num1, num2, 0);
+            math.mulDiv512(num1, num2, 0);
             return;
         }
 
@@ -950,7 +955,7 @@ contract FullMathTest is Test {
     function testMulDiv256(uint256 num1, uint256 num2, uint256 num3) public {
         if(num3 == 0) {
             vm.expectRevert("MULDIV_ZERO_DIVISOR");
-            FullMath.mulDiv512(num1, num2, num3);
+            math.mulDiv512(num1, num2, num3);
             return;
         }
         if(num1 == 0 || num2 ==0) {
@@ -976,8 +981,39 @@ contract FullMathTest is Test {
                 assertEq(v1, 0);
             } else {
                 vm.expectRevert("MULDIV_OVERFLOW");
-                FullMath.mulDiv256(num1, num2, num3);
+                math.mulDiv256(num1, num2, num3);
             }
         }
+    }
+}
+
+contract MathFunctions {
+
+    function add512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) external pure returns (uint256, uint256) {
+        return FullMath.add512x512(a0, a1, b0, b1);
+    }
+
+    function sub512x512(uint256 a0, uint256 a1, uint256 b0, uint256 b1) external pure returns (uint256, uint256) {
+        return FullMath.sub512x512(a0, a1, b0, b1);
+    }
+
+    function mul512x256(uint256 a0, uint256 a1, uint256 b) external pure returns (uint256, uint256) {
+        return FullMath.mul512x256(a0, a1, b);
+    }
+
+    function div512x256(uint256 a0, uint256 a1, uint256 b) external pure returns(uint256, uint256) {
+        return FullMath.div512x256(a0, a1, b);
+    }
+
+    function divRem512x256(uint256 a0, uint256 a1, uint256 b) external pure returns(uint256) {
+        return FullMath.divRem512x256(a0, a1, b);
+    }
+
+    function mulDiv256(uint256 a, uint256 b, uint256 c) external pure returns(uint256) {
+        return FullMath.mulDiv256(a, b, c);
+    }
+
+    function mulDiv512(uint256 num1, uint256 num2, uint256 num3) external pure returns(uint256, uint256) {
+        return FullMath.mulDiv512(num1, num2, num3);
     }
 }

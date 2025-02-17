@@ -46,7 +46,7 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
         // Get loan for tokenId, revert if not loan creator
         LibStorage.Loan storage _loan = _getLoan(tokenId);
 
-        if(_loan.refType == 3) revert InvalidRefType();
+        if(_loan.refType != 3) revert InvalidRefType();
 
         updateLoan(_loan);
 
