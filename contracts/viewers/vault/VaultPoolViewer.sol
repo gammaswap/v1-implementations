@@ -70,6 +70,7 @@ contract VaultPoolViewer is PoolViewer, IVaultPoolViewer {
         if(_loanData.liquidity == 0) {
             return false;
         }
+        _loanData.accFeeIndex = _getLoanLastFeeIndex(_loanData);
         address refAddr = address(0);
         if(_loanData.refType == 3) {
             refAddr = _loanData.refAddr;
@@ -165,7 +166,7 @@ contract VaultPoolViewer is PoolViewer, IVaultPoolViewer {
         (,data.LP_TOKEN_BORROWED_PLUS_INTEREST, borrowedInvariant) = IShortStrategy(data.shortStrategy)
         .getLatestBalances(data.lastFeeIndex, borrowedInvariant, data.LP_TOKEN_BALANCE, lastCFMMInvariant, lastCFMMTotalSupply);
 
-        data.LP_TOKEN_BORROWED_PLUS_INTEREST += lastCFMMFeeIndex * lastCFMMTotalSupply / lastCFMMInvariant;
+        data.LP_TOKEN_BORROWED_PLUS_INTEREST += (lastCFMMFeeIndex * lastCFMMTotalSupply + (lastCFMMInvariant - 1))/ lastCFMMInvariant;
 
         data.BORROWED_INVARIANT = uint128(borrowedInvariant + lastCFMMFeeIndex);
         data.LP_INVARIANT = uint128(data.LP_TOKEN_BALANCE * lastCFMMInvariant / lastCFMMTotalSupply);

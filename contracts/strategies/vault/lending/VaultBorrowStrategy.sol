@@ -86,9 +86,8 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
 
         if(isRefType3) {
             uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
-            if(lpTokens >= reservedLPTokens) revert ExcessiveBorrowing();
             unchecked {
-                reservedLPTokens = reservedLPTokens - lpTokens;
+                reservedLPTokens = reservedLPTokens - GSMath.min(reservedLPTokens, lpTokens);
             }
             s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
         }
