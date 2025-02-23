@@ -63,7 +63,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
 
             if(actualLPTokens0 < actualLPTokens1) {
                 amounts[0] = amounts[1] * reserves[0] / reserves[1] + 1;
-            } else {
+            } else if(actualLPTokens0 > actualLPTokens1) {
                 amounts[1] = amounts[0] * reserves[1] / reserves[0] + 1;
             }
         }
