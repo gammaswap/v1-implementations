@@ -52,7 +52,7 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
         uint256 lastCFMMInvariant = calcInvariant(address(0), reserves);
 
         uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 expectedLPTokens = liquidity * lastCFMMTotalSupply / lastCFMMInvariant;
+        uint256 expectedLPTokens = liquidity * lastCFMMTotalSupply / lastCFMMInvariant + 1;
 
         amounts[0] = expectedLPTokens * reserves[0] / lastCFMMTotalSupply + 1;
         amounts[1] = expectedLPTokens * reserves[1] / lastCFMMTotalSupply + 1;
@@ -62,9 +62,9 @@ abstract contract CPMMBaseLongStrategy is BaseLongStrategy, CPMMBaseStrategy {
             uint256 actualLPTokens1 = amounts[1] * lastCFMMTotalSupply / reserves[1];
 
             if(actualLPTokens0 < actualLPTokens1) {
-                amounts[0] = amounts[1] * reserves[0] / reserves[1];
-            } else {
-                amounts[1] = amounts[0] * reserves[1] / reserves[0];
+                amounts[0] = amounts[1] * reserves[0] / reserves[1] + 1;
+            } else if(actualLPTokens0 > actualLPTokens1) {
+                amounts[1] = amounts[0] * reserves[1] / reserves[0] + 1;
             }
         }
 
