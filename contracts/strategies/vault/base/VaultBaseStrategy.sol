@@ -17,8 +17,7 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     /// @param lastFeeIndex - interest accrued to loans in GammaPool
     /// @return newBorrowedInvariant - borrowed invariant with accrued interest
     function accrueBorrowedInvariant(uint256 borrowedInvariant, uint256 lastFeeIndex) internal virtual override view returns(uint256) {
-        uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
-        reservedBorrowedInvariant = GSMath.min(borrowedInvariant,reservedBorrowedInvariant);
+        uint256 reservedBorrowedInvariant = GSMath.min(borrowedInvariant,s.getUint256(RESERVED_BORROWED_INVARIANT()));
         unchecked {
             borrowedInvariant = borrowedInvariant - reservedBorrowedInvariant;
         }
@@ -39,9 +38,8 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     function checkExpectedUtilizationRate(uint256 lpTokens, bool isLoan) internal virtual override view {
         uint256 lastCFMMInvariant = s.lastCFMMInvariant;
         uint256 lastCFMMTotalSupply = s.lastCFMMTotalSupply;
-        uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
 
-        uint256 reservedLPInvariant = convertLPToInvariant(reservedLPTokens, lastCFMMInvariant, lastCFMMTotalSupply);
+        uint256 reservedLPInvariant = convertLPToInvariant(s.getUint256(RESERVED_LP_TOKENS()), lastCFMMInvariant, lastCFMMTotalSupply);
         uint256 lpTokenInvariant = convertLPToInvariant(lpTokens, lastCFMMInvariant, lastCFMMTotalSupply);
         uint256 lpInvariant = s.LP_INVARIANT;
         lpInvariant = lpInvariant >= reservedLPInvariant ? lpInvariant - reservedLPInvariant : 0;
@@ -57,11 +55,19 @@ abstract contract VaultBaseStrategy is BaseStrategy {
     }
 
     function getAdjLPTokenBalance() internal virtual view returns(uint256 lpTokenBalance) {
-        uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+        uint256 reservedLPTokens = s.getUint256(RESERVED_LP_TOKENS());
         lpTokenBalance = s.LP_TOKEN_BALANCE;
         reservedLPTokens = GSMath.min(lpTokenBalance, reservedLPTokens);
         unchecked {
             lpTokenBalance = lpTokenBalance - reservedLPTokens;
         }
+    }
+
+    function RESERVED_LP_TOKENS() internal virtual pure returns(uint256) {
+        return uint256(0x1d4997f9934f878df7106acada1ff771325c95fb5c98472c2bbed4497048bf65);
+    }
+
+    function RESERVED_BORROWED_INVARIANT() internal virtual pure returns(uint256) {
+        return uint256(0x54f559f312bc80877ff037529d330829149d3630a04e9d467f30196e91b6ad9d);
     }
 }

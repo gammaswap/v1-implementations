@@ -77,12 +77,12 @@ abstract contract VaultBaseRepayStrategy is BaseRepayStrategy, VaultBaseRebalanc
         }
 
         if(_loan.refType == 3 && _paidLiquidity > 0) {
-            uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
+            uint256 reservedBorrowedInvariant = s.getUint256(RESERVED_BORROWED_INVARIANT());
             _paidLiquidity = GSMath.min(reservedBorrowedInvariant, _paidLiquidity);
             unchecked {
                 reservedBorrowedInvariant = reservedBorrowedInvariant - _paidLiquidity;
             }
-            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant);
+            s.setUint256(RESERVED_BORROWED_INVARIANT(), reservedBorrowedInvariant);
         }
     }
 }

@@ -48,8 +48,7 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
         uint256 lpInvariant = s.LP_INVARIANT;
         uint256 reservedLPInvariant = 0;
         if(!isRefType3) {
-            reservedLPInvariant = convertLPToInvariant(s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS)),
-                lastCFMMInvariant, lastCFMMTotalSupply);
+            reservedLPInvariant = convertLPToInvariant(s.getUint256(RESERVED_LP_TOKENS()), lastCFMMInvariant, lastCFMMTotalSupply);
             reservedLPInvariant = GSMath.min(lpInvariant, reservedLPInvariant);
             unchecked {
                 lpInvariant = lpInvariant - reservedLPInvariant;
@@ -85,11 +84,11 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
         checkExpectedUtilizationRate(lpTokens, isRefType3);
 
         if(isRefType3) {
-            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+            uint256 reservedLPTokens = s.getUint256(RESERVED_LP_TOKENS());
             unchecked {
                 reservedLPTokens = reservedLPTokens - GSMath.min(reservedLPTokens, lpTokens);
             }
-            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
+            s.setUint256(RESERVED_LP_TOKENS(), reservedLPTokens);
         }
 
         // Withdraw reserve tokens from CFMM that lpTokens represent
@@ -102,8 +101,7 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
 
         if(isRefType3) {
-            uint256 reservedBorrowedInvariant = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT));
-            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_BORROWED_INVARIANT), reservedBorrowedInvariant + liquidityBorrowed);
+            s.setUint256(RESERVED_BORROWED_INVARIANT(), s.getUint256(RESERVED_BORROWED_INVARIANT()) + liquidityBorrowed);
         }
 
         if(isRatioValid(ratio)) {
