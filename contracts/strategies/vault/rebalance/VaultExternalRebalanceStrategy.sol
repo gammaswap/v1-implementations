@@ -50,6 +50,7 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
 
         updateLoan(_loan);
 
+        uint256 key = RESERVED_LP_TOKENS();
         if(isReserve) {
             uint256 lpTokenBalance = getAdjLPTokenBalance();
 
@@ -58,18 +59,16 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
 
             checkExpectedUtilizationRate(lpTokens, true);
 
-            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
-
-            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens + lpTokens);
+            s.setUint256(key, s.getUint256(key) + lpTokens);
         } else {
-            uint256 reservedLPTokens = s.getUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS));
+            uint256 reservedLPTokens = s.getUint256(key);
 
             lpTokens = GSMath.min(reservedLPTokens, lpTokens);
             unchecked {
                 reservedLPTokens = reservedLPTokens - lpTokens;
             }
 
-            s.setUint256(uint256(IVaultGammaPool.StorageIndexes.RESERVED_LP_TOKENS), reservedLPTokens);
+            s.setUint256(key, reservedLPTokens);
         }
 
         return lpTokens;
