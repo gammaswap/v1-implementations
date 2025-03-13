@@ -84,11 +84,12 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
         checkExpectedUtilizationRate(lpTokens, isRefType3);
 
         if(isRefType3) {
-            uint256 reservedLPTokens = s.getUint256(RESERVED_LP_TOKENS());
+            uint256 key = RESERVED_LP_TOKENS();
+            uint256 reservedLPTokens = s.getUint256(key);
             unchecked {
                 reservedLPTokens = reservedLPTokens - GSMath.min(reservedLPTokens, lpTokens);
             }
-            s.setUint256(RESERVED_LP_TOKENS(), reservedLPTokens);
+            s.setUint256(key, reservedLPTokens);
         }
 
         // Withdraw reserve tokens from CFMM that lpTokens represent
@@ -101,7 +102,8 @@ contract VaultBorrowStrategy is VaultBaseRebalanceStrategy, BorrowStrategy {
         (liquidityBorrowed, loanLiquidity) = openLoan(_loan, lpTokens);
 
         if(isRefType3) {
-            s.setUint256(RESERVED_BORROWED_INVARIANT(), s.getUint256(RESERVED_BORROWED_INVARIANT()) + liquidityBorrowed);
+            uint256 key = RESERVED_BORROWED_INVARIANT();
+            s.setUint256(key, s.getUint256(key) + liquidityBorrowed);
         }
 
         if(isRatioValid(ratio)) {
