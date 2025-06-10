@@ -73,4 +73,40 @@ contract VaultExternalRebalanceStrategy is VaultBaseLongStrategy, ExternalRebala
 
         return lpTokens;
     }
+
+    /// @dev See {IExternalLongStrategy-_rebalanceExternally}.
+    function _rebalanceExternally(uint256 tokenId, uint128[] calldata amounts, uint256 lpTokens, address to, bytes calldata data) external override lock virtual returns(uint256 loanLiquidity, uint128[] memory tokensHeld) {
+        // Get loan for tokenId, revert if not loan creator
+        LibStorage.Loan storage _loan = _getLoan(tokenId);
+
+        // Update liquidity debt to include accrued interest since last update
+        loanLiquidity = updateLoan(_loan);
+
+        address _cfmm = s.cfmm;
+
+        uint256 liquiditySwapped;
+        // Calculate amounts to swap from deltas and available loan collateral
+        (liquiditySwapped, tokensHeld) = externalSwap(_loan, _cfmm, amounts, lpTokens, to, data);
+        _loan.tokensHeld = tokensHeld;
+
+        if(liquiditySwapped > loanLiquidity && _loan.refType != 3) {
+            uint256 fee = calcExternalSwapFee(liquiditySwapped, loanLiquidity);
+            uint256 borrowedInvariant = s.BORROWED_INVARIANT + fee;
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST = convertInvariantToLP(borrowedInvariant, s.lastCFMMTotalSupply, s.lastCFMMInvariant);
+            s.BORROWED_INVARIANT = uint128(borrowedInvariant);
+            loanLiquidity = loanLiquidity + fee;
+            _loan.liquidity = uint128(loanLiquidity);
+        }
+
+        // Check that loan is not undercollateralized after external swap
+        uint256 collateral = calcInvariant(_cfmm, tokensHeld) + onLoanUpdate(_loan, tokenId);
+        checkMargin(collateral, loanLiquidity);
+
+        emit ExternalSwap(tokenId, amounts, lpTokens, uint128(liquiditySwapped), TX_TYPE.EXTERNAL_REBALANCE);
+
+        emit LoanUpdated(tokenId, tokensHeld, uint128(loanLiquidity), _loan.initLiquidity, _loan.lpTokens, _loan.rateIndex, TX_TYPE.EXTERNAL_REBALANCE);
+
+        emit PoolUpdated(s.LP_TOKEN_BALANCE, s.LP_TOKEN_BORROWED, s.LAST_BLOCK_NUMBER, s.accFeeIndex,
+            s.LP_TOKEN_BORROWED_PLUS_INTEREST, s.LP_INVARIANT, s.BORROWED_INVARIANT, s.CFMM_RESERVES, TX_TYPE.EXTERNAL_REBALANCE);
+    }
 }
